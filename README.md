@@ -28,7 +28,7 @@ A Three.js-based game engine with ECS architecture, physics, navigation, and com
 
 ### As git submodule
 ```bash
-git submodule add git@github-other:series-ai/venus-three-engine.git venus-three
+git submodule add git@github.com:series-ai/venus-three-engine.git venus-three
 git submodule update --init --recursive
 ```
 
