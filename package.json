@@ -36,7 +36,7 @@
     "@dimforge/rapier3d-compat": "^0.11.2",
     "three": "^0.180.0",
     "three-stdlib": "^2.36.0",
-    "venus-sdk": "file:../venus-sdk/venus-sdk-2.1.4.tgz"
+    "venus-sdk": "file:../venus-sdk/venus-sdk-2.3.0.tgz"
   },
   "devDependencies": {
     "@types/three": "^0.180.0",
