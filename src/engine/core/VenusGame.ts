@@ -3,7 +3,7 @@ import { PhysicsSystem } from "@systems/physics/PhysicsSystem.ts"
 import { ComponentUpdater } from "./ComponentUpdater"
 import { InputManager } from "@systems/input"
 import { TweenSystem } from "@systems/math"
-import VenusAPI from "venus-sdk/api"
+import VenusAPI from "@series-inc/venus-sdk/api"
 import { AudioSystem } from "@systems/audio"
 import { UILoadingScreen, UISystem } from "@systems/ui"
 

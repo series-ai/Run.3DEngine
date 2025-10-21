@@ -1,2 +1,2 @@
 ﻿export * from "./engine"
-export * from "venus-sdk/api"
+export * from "@series-inc/venus-sdk/api"
