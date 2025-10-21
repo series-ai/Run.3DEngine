@@ -53,7 +53,7 @@ export class FollowCameraThree extends Component {
     if (!this.camera) return
 
     // BurgerSimCamera settings (matching original camera script)
-    this.cameraHeight = 40 // Default distance
+    this.cameraHeight = 50 // Default distance
     this.cameraAlpha = this.degreesToRadians(225) // Horizontal angle
     this.cameraBeta = this.degreesToRadians(33) // Vertical angle
     this.cameraFov = this.degreesToRadians(35) // Field of view
