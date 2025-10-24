@@ -1,6 +1,5 @@
 ﻿export * from "./core"
 export * from "./assets"
-export * from "./camera"
 export * from "./interaction"
 export * from "./mobile"
 export * from "./movement"
