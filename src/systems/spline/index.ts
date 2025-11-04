@@ -7,3 +7,4 @@ export {
 } from "./SplineThree"
 
 export * from "./SplineDebugRendererThree"
+export { SplineDebugManager, type SplineDebugConfig } from "./SplineDebugManager"
