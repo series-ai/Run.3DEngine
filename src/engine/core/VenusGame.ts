@@ -84,7 +84,7 @@ export abstract class VenusGame {
     VenusGame._camera = instance.camera
 
     const context = await VenusAPI.initializeAsync()
-    console.log("[Venus SDK] Venus API initialized")
+    console.log("[Venus SDK] Venus API initialized: ", context)
 
     const insets = context?.hudInsets
     if (insets) {
