@@ -33,6 +33,7 @@ export class DynamicNavSystem {
   private static navigationGrid: NavigationGrid | null = null
   private static scene: THREE.Scene | null = null
   private static isInitialized: boolean = false
+  private static obstacleRegistry = new Map<string, Footprint>()
 
   /**
    * Initialize the navigation system (must be called before use)
@@ -297,6 +298,97 @@ export class DynamicNavSystem {
     // Add obstacle using bounds
     DynamicNavSystem.addBoxObstacleFromBounds(gameObject, bounds)
     return true
+  }
+
+  /**
+   * Add a rotated box obstacle from bounds and track it by GameObject ID
+   * @param gameObject The GameObject to get world transform from
+   * @param boundsSize The size from bounds (uses X and Z for navigation)
+   * @returns The ID used to track this obstacle (GameObject UUID)
+   */
+  public static addRotatedBoxObstacle(
+    gameObject: GameObject,
+    boundsSize: THREE.Vector3,
+  ): string {
+    if (!DynamicNavSystem.navigationGrid) {
+      console.warn("DynamicNavSystem not initialized")
+      return ""
+    }
+
+    // Update world matrices to ensure accurate transforms
+    gameObject.updateMatrixWorld(true)
+
+    // Get world position and rotation
+    const worldPos = gameObject.getWorldPosition(new THREE.Vector3())
+    const worldRotation = gameObject.getWorldQuaternion(new THREE.Quaternion())
+
+    // Calculate the 4 corners of the box in local space
+    const halfWidth = boundsSize.x * 0.5
+    const halfDepth = boundsSize.z * 0.5
+
+    const corners = [
+      new THREE.Vector3(-halfWidth, 0, -halfDepth),
+      new THREE.Vector3(halfWidth, 0, -halfDepth),
+      new THREE.Vector3(halfWidth, 0, halfDepth),
+      new THREE.Vector3(-halfWidth, 0, halfDepth),
+    ]
+
+    // Rotate and translate corners to world space
+    const rotatedCorners = corners.map((corner) => {
+      const rotated = corner.clone()
+      rotated.applyQuaternion(worldRotation)
+      rotated.add(worldPos)
+      return rotated
+    })
+
+    // Create polygon footprint
+    const footprint: Footprint = {
+      type: "polygon",
+      vertices: rotatedCorners,
+    }
+
+    // Add obstacle
+    DynamicNavSystem.navigationGrid.addObstacle(footprint)
+
+    // Store in registry using GameObject UUID
+    const id = gameObject.uuid
+    DynamicNavSystem.obstacleRegistry.set(id, footprint)
+
+    return id
+  }
+
+  /**
+   * Remove an obstacle by GameObject ID
+   * @param id The ID returned from addRotatedBoxObstacle (GameObject UUID)
+   * @returns true if obstacle was found and removed
+   */
+  public static removeObstacleById(id: string): boolean {
+    if (!DynamicNavSystem.navigationGrid) {
+      console.warn("DynamicNavSystem not initialized")
+      return false
+    }
+
+    const footprint = DynamicNavSystem.obstacleRegistry.get(id)
+    if (!footprint) {
+      return false
+    }
+
+    // Remove from navigation grid
+    DynamicNavSystem.navigationGrid.removeObstacle(footprint)
+
+    // Remove from registry
+    DynamicNavSystem.obstacleRegistry.delete(id)
+
+    return true
+  }
+
+  /**
+   * Remove an obstacle by GameObject
+   * @param gameObject The GameObject whose obstacle should be removed
+   * @returns true if obstacle was found and removed
+   */
+  public static removeObstacleByGameObject(gameObject: GameObject): boolean {
+    return DynamicNavSystem.removeObstacleById(gameObject.uuid)
   }
 
   // ========================================
