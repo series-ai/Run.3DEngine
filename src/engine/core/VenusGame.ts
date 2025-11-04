@@ -83,7 +83,9 @@ export abstract class VenusGame {
     VenusGame._renderer = instance.renderer
     VenusGame._camera = instance.camera
 
-    const context = await VenusAPI.initializeAsync()
+    const context = await VenusAPI.initializeAsync({
+      usePreloader: true
+    })
     console.log("[Venus SDK] Venus API initialized: ", context)
 
     const insets = context?.hudInsets
@@ -101,8 +103,6 @@ export abstract class VenusGame {
       console.log(`[DEBUG] OnPause()`)
       instance.pause()
     })
-
-    UILoadingScreen.showLoadingScreen()
 
     // Initialize physics system (will be Rapier)
     await PhysicsSystem.initialize()
@@ -122,7 +122,7 @@ export abstract class VenusGame {
     // Start the render loop
     instance.startRenderLoop()
 
-    UILoadingScreen.hideLoadingScreen()
+    await VenusAPI.preloader.hideLoadScreen()
 
     return instance
   }
