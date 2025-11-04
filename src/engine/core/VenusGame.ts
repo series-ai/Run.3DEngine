@@ -6,6 +6,7 @@ import { TweenSystem } from "@systems/math"
 import VenusAPI from "@series-inc/venus-sdk/api"
 import { AudioSystem } from "@systems/audio"
 import { UILoadingScreen, UISystem } from "@systems/ui"
+import { BurgerShopDemo } from "threejs-job-sim/src/burgershop"
 
 /**
  * Three.js version of VenusGame
@@ -82,35 +83,22 @@ export abstract class VenusGame {
     VenusGame._renderer = instance.renderer
     VenusGame._camera = instance.camera
 
-    VenusAPI.onShow((context) => {
-      console.log(`[DEBUG] OnShow()`)
-      const insets = context?.hudInsets
-      if (insets) {
-        UISystem.setInsets(insets)
-      }
-      instance.resume()
-    })
+    const context = await VenusAPI.initializeAsync()
+    console.log("[Venus SDK] Venus API initialized")
 
-    VenusAPI.onResume(() => {
+    const insets = context?.hudInsets
+    if (insets) {
+      console.log(`[DEBUG] Hud Insets: `, insets)
+      UISystem.setInsets(insets)
+    }
+
+    VenusAPI.lifecycles.onResume(() => {
       console.log(`[DEBUG] OnResume()`)
       instance.resume()
     })
 
-    VenusAPI.onPause(() => {
+    VenusAPI.lifecycles.onPause(() => {
       console.log(`[DEBUG] OnPause()`)
-      instance.pause()
-    })
-
-    VenusAPI.onPlay((context) => {
-      const insets = context?.hudInsets
-      if (insets) {
-        UISystem.setInsets(insets)
-      }
-      instance.resume()
-    })
-
-    VenusAPI.onQuit(() => {
-      console.log(`[DEBUG] OnQuit()`)
       instance.pause()
     })
 
