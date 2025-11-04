@@ -3,6 +3,7 @@ import { PhysicsSystem } from "../physics/PhysicsSystem"
 import { DynamicNavSystem } from "../navigation/DynamicNavSystem"
 import { NavGridDebugDisplayThree } from "../navigation/NavGridDebugDisplayThree"
 import { PathVisualizationThree } from "../navigation/PathVisualizationThree"
+import { SplineDebugManager } from "../spline/SplineDebugManager"
 import { AssetManager } from "@engine/assets/AssetManager"
 
 /**
@@ -227,6 +228,11 @@ export class DebugPanelThree {
     this.addOption("Path Visualization", false, (checked) => {
       PathVisualizationThree.setVisualizationEnabled(checked)
       // Path visualization toggled
+    })
+
+    // Add spline debug toggle with working implementation
+    this.addOption("Spline Debug", true, (checked) => {
+      SplineDebugManager.getInstance().setDebugEnabled(checked)
     })
 
     // Post-processing option removed - using pure Three.js rendering

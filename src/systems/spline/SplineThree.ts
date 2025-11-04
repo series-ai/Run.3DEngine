@@ -1,4 +1,5 @@
 import * as THREE from "three"
+import { SplineDebugManager, SplineDebugConfig } from "./SplineDebugManager"
 
 export interface SplinePointThree {
   position: THREE.Vector3
@@ -33,6 +34,8 @@ export class SplineThree {
   private interpolatedPoints: THREE.Vector3[] = []
   private segments: SplineSegmentThree[] = []
   private totalLength: number = 0
+  private debugEnabled: boolean = false
+  private debugConfig: SplineDebugConfig | undefined
 
   constructor(
     config: SplineConfigThree = {
@@ -43,6 +46,9 @@ export class SplineThree {
     },
   ) {
     this.config = config
+    
+    // Auto-register with debug manager
+    SplineDebugManager.getInstance().registerSpline(this)
   }
 
   /**
@@ -365,5 +371,44 @@ export class SplineThree {
       (total, segment) => total + segment.length,
       0,
     )
+  }
+
+  /**
+   * Enable debug visualization for this spline
+   */
+  public enableDebug(config?: SplineDebugConfig): void {
+    this.debugEnabled = true
+    if (config) {
+      this.debugConfig = config
+      SplineDebugManager.getInstance().registerSpline(this, config)
+    }
+  }
+
+  /**
+   * Disable debug visualization for this spline
+   */
+  public disableDebug(): void {
+    this.debugEnabled = false
+  }
+
+  /**
+   * Check if debug is enabled for this spline
+   */
+  public isDebugEnabled(): boolean {
+    return this.debugEnabled
+  }
+
+  /**
+   * Get the debug configuration for this spline
+   */
+  public getDebugConfig(): SplineDebugConfig | undefined {
+    return this.debugConfig
+  }
+
+  /**
+   * Dispose of the spline and unregister from debug manager
+   */
+  public dispose(): void {
+    SplineDebugManager.getInstance().unregisterSpline(this)
   }
 }
