@@ -231,7 +231,7 @@ export class DebugPanelThree {
     })
 
     // Add spline debug toggle with working implementation
-    this.addOption("Spline Debug", true, (checked) => {
+    this.addOption("Spline Debug", false, (checked) => {
       SplineDebugManager.getInstance().setDebugEnabled(checked)
     })
 
