@@ -3,8 +3,8 @@
   "version": "0.2.0",
   "type": "module",
   "scripts": {
-    "build": "tsup src/index.ts src/systems/index.ts --format cjs,esm --dts",
-    "dev": "tsup src/index.ts src/systems/index.ts --format cjs,esm --dts --watch",
+    "build": "tsup",
+    "dev": "tsup --watch",
     "publish": "npm publish",
     "lint": "eslint . --ext .ts",
     "lint:deps": "eslint src/systems --ext .ts --no-eslintrc --config .eslintrc.json",
