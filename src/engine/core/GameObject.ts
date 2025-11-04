@@ -43,11 +43,20 @@ export class GameObject extends THREE.Object3D {
       )
     }
 
-    // Attach the component
-    component.attach(this)
-    this.components.set(componentType, component)
+    try {
+      // Attach the component
+      component.attach(this)
+      this.components.set(componentType, component)
 
-    return component
+      return component
+    } catch (error) {
+      // Provide better context for component initialization errors
+      console.error(
+        `❌ Failed to add component ${componentType.name} to GameObject "${this.name}":`,
+        error
+      )
+      throw error // Re-throw to stop initialization
+    }
   }
 
   /**
