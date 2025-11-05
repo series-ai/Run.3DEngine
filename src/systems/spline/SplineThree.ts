@@ -34,6 +34,7 @@ export class SplineThree {
   private interpolatedPoints: THREE.Vector3[] = []
   private segments: SplineSegmentThree[] = []
   private totalLength: number = 0
+  private cumulativeDistances: number[] = [] // Distance from start to each interpolated point
   private debugEnabled: boolean = false
   private debugConfig: SplineDebugConfig | undefined
 
@@ -103,13 +104,69 @@ export class SplineThree {
   }
 
   /**
+   * Convert a distance along the spline to a t parameter (0-1)
+   * Uses the cumulative distance lookup table for accurate distance-based parameterization
+   */
+  private getTFromDistance(distance: number): number {
+    if (this.totalLength === 0 || this.cumulativeDistances.length === 0) {
+      return 0
+    }
+    
+    // Clamp distance to valid range
+    distance = Math.max(0, Math.min(this.totalLength, distance))
+    
+    // Handle edge cases
+    if (distance === 0) return 0
+    if (distance >= this.totalLength) return 1
+    
+    // Find the segment that contains this distance using binary search
+    let left = 0
+    let right = this.cumulativeDistances.length - 1
+    
+    while (left < right - 1) {
+      const mid = Math.floor((left + right) / 2)
+      if (this.cumulativeDistances[mid] <= distance) {
+        left = mid
+      } else {
+        right = mid
+      }
+    }
+    
+    // Interpolate between the two points
+    const startDistance = this.cumulativeDistances[left]
+    const endDistance = this.cumulativeDistances[right]
+    const segmentDistance = endDistance - startDistance
+    
+    if (segmentDistance === 0) {
+      return left / (this.interpolatedPoints.length - 1)
+    }
+    
+    const localT = (distance - startDistance) / segmentDistance
+    const pointIndexT = (left + localT) / (this.interpolatedPoints.length - 1)
+    
+    return pointIndexT
+  }
+
+  /**
    * Get a point at a specific distance from the start
+   * This now uses proper distance-based parameterization
    */
   public getPointAtDistance(distance: number): THREE.Vector3 {
     if (this.totalLength === 0) return new THREE.Vector3()
 
-    const t = distance / this.totalLength
+    const t = this.getTFromDistance(distance)
     return this.getPointAt(t)
+  }
+
+  /**
+   * Get the direction (tangent) at a specific distance from the start
+   * This now uses proper distance-based parameterization
+   */
+  public getDirectionAtDistance(distance: number): THREE.Vector3 {
+    if (this.totalLength === 0) return new THREE.Vector3(0, 0, 1)
+
+    const t = this.getTFromDistance(distance)
+    return this.getDirectionAt(t)
   }
 
   /**
@@ -364,13 +421,22 @@ export class SplineThree {
   }
 
   /**
-   * Calculate total length of the spline
+   * Calculate total length of the spline and build cumulative distance lookup table
    */
   private calculateTotalLength(): void {
-    this.totalLength = this.segments.reduce(
-      (total, segment) => total + segment.length,
-      0,
-    )
+    this.cumulativeDistances = []
+    this.totalLength = 0
+    
+    // First point is at distance 0
+    if (this.interpolatedPoints.length > 0) {
+      this.cumulativeDistances.push(0)
+    }
+    
+    // Build cumulative distance array
+    for (let i = 0; i < this.segments.length; i++) {
+      this.totalLength += this.segments[i].length
+      this.cumulativeDistances.push(this.totalLength)
+    }
   }
 
   /**
