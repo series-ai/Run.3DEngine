@@ -96,6 +96,7 @@ export abstract class VenusGame {
 
     VenusAPI.lifecycles.onResume(() => {
       console.log(`[DEBUG] OnResume()`)
+      window.focus()
       instance.resume()
     })
 
@@ -123,6 +124,8 @@ export abstract class VenusGame {
     instance.startRenderLoop()
 
     await VenusAPI.preloader.hideLoadScreen()
+
+    window.focus()
 
     return instance
   }
