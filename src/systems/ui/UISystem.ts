@@ -93,7 +93,7 @@ export class UISystem {
       width: 100%;
       height: 100%;
       pointer-events: none;
-      z-index: 1001;
+      z-index: 999;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     `
     document.body.appendChild(UISystem.worldContainer)
