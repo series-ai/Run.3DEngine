@@ -1,5 +1,17 @@
 import * as THREE from "three"
 
+/**
+ * Defines how overlapping audio should be handled
+ */
+export enum AudioOverlapMode {
+  /** Create new instances for overlapping playback (default) */
+  OVERLAP = "overlap",
+  /** Stop current sound and restart it */
+  RESTART = "restart",
+  /** Ignore new play requests if sound is already playing */
+  IGNORE = "ignore"
+}
+
 export const AudioSystem: AudioSystemInstance = {
   mainListener: null,
   
@@ -148,7 +160,11 @@ export async function PopulateAudioBank3D(
   await Promise.all(loadPromises)
 }
 
-export function PlayAudioOneShot2D(audioBank: AudioBank2D, audioClip: string) {
+export function PlayAudioOneShot2D(
+  audioBank: AudioBank2D, 
+  audioClip: string,
+  overlapMode: AudioOverlapMode = AudioOverlapMode.OVERLAP
+) {
   if (!audioBank[audioClip]) {
     throw new Error(`Audio clip not found in bank: ${audioClip}`)
   }
@@ -157,7 +173,42 @@ export function PlayAudioOneShot2D(audioBank: AudioBank2D, audioClip: string) {
     throw new Error(`Audio clip not loaded yet: ${audioClip}`)
   }
 
-  audioBank[audioClip].play()
+  const originalAudio = audioBank[audioClip]
+  
+  // Handle different overlap modes
+  switch (overlapMode) {
+    case AudioOverlapMode.OVERLAP:
+      // Create a new Audio instance with the same buffer for overlapping playback
+      if (AudioSystem.mainListener) {
+        const audioClone = new THREE.Audio(AudioSystem.mainListener)
+        audioClone.setBuffer(originalAudio.buffer!)
+        audioClone.setVolume(originalAudio.getVolume())
+        audioClone.play()
+        
+        // Auto-cleanup after sound finishes
+        audioClone.onEnded = () => {
+          audioClone.disconnect()
+        }
+      } else {
+        console.warn("AudioSystem.mainListener not set, cannot play overlapping audio")
+      }
+      break
+      
+    case AudioOverlapMode.RESTART:
+      // Stop current sound and restart it
+      if (originalAudio.isPlaying) {
+        originalAudio.stop()
+      }
+      originalAudio.play()
+      break
+      
+    case AudioOverlapMode.IGNORE:
+      // Only play if not already playing
+      if (!originalAudio.isPlaying) {
+        originalAudio.play()
+      }
+      break
+  }
 }
 
 /**
