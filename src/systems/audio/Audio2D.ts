@@ -5,6 +5,7 @@ import {
   AudioSystem,
   Main2DAudioBank,
   AudioBank2D,
+  AudioOverlapMode,
 } from "./AudioSystem"
 
 /**
@@ -28,8 +29,9 @@ export class Audio2D extends Component {
   /**
    * Play a 2D audio clip
    * @param clipName - Name/path of the audio clip to play
+   * @param overlapMode - How to handle overlapping audio (default: OVERLAP)
    */
-  public play(clipName: string): void {
+  public play(clipName: string, overlapMode: AudioOverlapMode = AudioOverlapMode.OVERLAP): void {
     // If availableClips is specified, check if the clip is allowed
     if (this.availableClips.size > 0 && !this.availableClips.has(clipName)) {
       throw new Error(
@@ -37,7 +39,7 @@ export class Audio2D extends Component {
       )
     }
 
-    PlayAudioOneShot2D(this.audioBank, clipName)
+    PlayAudioOneShot2D(this.audioBank, clipName, overlapMode)
   }
 
   /**
