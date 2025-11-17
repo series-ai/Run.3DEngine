@@ -88,6 +88,8 @@ export abstract class VenusGame {
     })
     console.log("[Venus SDK] Venus API initialized: ", context)
 
+    VenusAPI.analytics.trackFunnelStep(1, "Venus Initialized")
+
     const insets = context?.hudInsets
     if (insets) {
       console.log(`[DEBUG] Hud Insets: `, insets)
