@@ -1,59 +1,59 @@
 {
-  "name": "@series-ai/venus-three",
-  "version": "0.2.0",
-  "type": "module",
-  "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "publish": "npm publish",
-    "lint": "eslint . --ext .ts",
-    "lint:deps": "eslint src/systems --ext .ts --no-eslintrc --config .eslintrc.json",
-    "format": "prettier --write ."
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/series-ai/job-sim-babylon.git",
-    "directory": "."
-  },
-  "publishConfig": {
-    "access": "restricted",
-    "registry": "https://npm.pkg.github.com/"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+    "name": "@series-ai/venus-three",
+    "version": "0.2.0",
+    "type": "module",
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "publish": "npm publish",
+        "lint": "eslint . --ext .ts",
+        "lint:deps": "eslint src/systems --ext .ts --no-eslintrc --config .eslintrc.json",
+        "format": "prettier --write ."
     },
-    "./systems": {
-      "types": "./dist/systems/index.d.ts",
-      "import": "./dist/systems/index.js",
-      "require": "./dist/systems/index.cjs"
-    }
-  },
-  "dependencies": {
-    "@dimforge/rapier3d": "^0.11.2",
-    "@dimforge/rapier3d-compat": "^0.11.2",
-    "three": "^0.180.0",
-    "three-stdlib": "^2.36.0",
-    "@series-inc/venus-sdk": "^3.0.4"
-  },
-  "devDependencies": {
-    "@types/three": "^0.180.0",
-    "@types/node": "^20.11.16",
-    "@typescript-eslint/eslint-plugin": "^8.32.1",
-    "@typescript-eslint/parser": "^8.32.1",
-    "eslint": "^8.56.0",
-    "eslint-import-resolver-typescript": "^4.4.1",
-    "eslint-plugin-import": "^2.31.0",
-    "prettier": "^3.2.4",
-    "tsup": "^8.5.0",
-    "typescript": "^5.3.3"
-  },
-  "peerDependencies": {
-    "@rollup/rollup-win32-x64-msvc": "^4.52.5"
-  },
-  "files": [
-    "dist"
-  ]
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/series-ai/job-sim-babylon.git",
+        "directory": "."
+    },
+    "publishConfig": {
+        "access": "restricted",
+        "registry": "https://npm.pkg.github.com/"
+    },
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
+        },
+        "./systems": {
+            "types": "./dist/systems/index.d.ts",
+            "import": "./dist/systems/index.js",
+            "require": "./dist/systems/index.cjs"
+        }
+    },
+    "dependencies": {
+        "@dimforge/rapier3d": "^0.11.2",
+        "@dimforge/rapier3d-compat": "^0.11.2",
+        "three": "^0.180.0",
+        "three-stdlib": "^2.36.0",
+        "@series-inc/venus-sdk": "^3.1.2-beta.2"
+    },
+    "devDependencies": {
+        "@types/three": "^0.180.0",
+        "@types/node": "^20.11.16",
+        "@typescript-eslint/eslint-plugin": "^8.32.1",
+        "@typescript-eslint/parser": "^8.32.1",
+        "eslint": "^8.56.0",
+        "eslint-import-resolver-typescript": "^4.4.1",
+        "eslint-plugin-import": "^2.31.0",
+        "prettier": "^3.2.4",
+        "tsup": "^8.5.0",
+        "typescript": "^5.3.3"
+    },
+    "peerDependencies": {
+        "@rollup/rollup-win32-x64-msvc": "^4.52.5"
+    },
+    "files": [
+        "dist"
+    ]
 }
