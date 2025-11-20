@@ -3,12 +3,14 @@ import { Component, GameObject } from "@engine/core"
 import { PhysicsSystem } from "./PhysicsSystem"
 //
 import {
-    RigidBody,
-    Collider,
-    RigidBodyDesc,
-    ColliderDesc,
-    ActiveEvents,
     ActiveCollisionTypes,
+    ActiveEvents,
+    Collider,
+    ColliderDesc,
+    Cuboid,
+    RigidBody,
+    RigidBodyDesc,
+    ShapeType,
 } from "@dimforge/rapier3d"
 
 export enum RigidBodyType {
@@ -746,6 +748,36 @@ export class RigidBodyComponentThree extends Component {
             // Physics enabled
         }
         this.setEnabled(true)
+    }
+
+    public getBounds(): THREE.Box3 {
+        // TODO: Handle other shapes
+        // TODO: Handle MULTIPLE colliders
+        const bounds = new THREE.Box3()
+        if (!this.collider) return bounds
+
+        const shape = this.collider.shape
+        if (shape.type === ShapeType.Cuboid) {
+            const cuboid = shape as Cuboid
+            const halfExtents = cuboid.halfExtents
+
+            // Center is at 0,0,0
+            const center = new THREE.Vector3(); // THREE.Vector3
+
+            bounds.min.set(
+                center.x - halfExtents.x,
+                center.y - halfExtents.y,
+                center.z - halfExtents.z
+            );
+
+            bounds.max.set(
+                center.x + halfExtents.x,
+                center.y + halfExtents.y,
+                center.z + halfExtents.z
+            );
+        }
+
+        return bounds;
     }
 
     /**
