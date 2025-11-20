@@ -3,6 +3,7 @@ import { NavigationGrid, Footprint } from "./NavigationGrid"
 import { NavGridDebugDisplayThree } from "./NavGridDebugDisplayThree"
 import { GameObject } from "@engine/core"
 import { ObjRenderer } from "@engine/render"
+import { RigidBodyComponentThree } from "@systems/physics"
 
 export interface Waypoint {
   x: number
@@ -232,6 +233,16 @@ export class DynamicNavSystem {
     console.log(
       `🚧 Removed box obstacle at (${x}, ${z}) with size ${width}x${depth}`,
     )
+  }
+
+  public static addBoxObstacleFromRigidBody(gameObject: GameObject): void {
+      const rigidBody = gameObject.getComponent(RigidBodyComponentThree)
+      if (!rigidBody)
+          return
+
+      const bounds = rigidBody.getBounds()
+      const boundsSize = bounds.getSize(new THREE.Vector3())
+      DynamicNavSystem.addBoxObstacleFromBounds(gameObject, boundsSize);
   }
 
   /**
