@@ -7,6 +7,8 @@ export interface VirtualJoystickOptions {
   deadZone?: number // Dead zone radius (0-1)
   maxDistance?: number // Maximum distance for knob movement
   color?: string // Color of the joystick
+  visible?: boolean // Whether to show joystick visuals (still functional when hidden)
+  opacity?: number // Opacity of joystick visuals (0-1)
 }
 
 /**
@@ -65,6 +67,8 @@ export class VirtualJoystickThree extends Component {
       deadZone: options.deadZone ?? 0.15,
       maxDistance: options.maxDistance ?? 50,
       color: options.color ?? "white",
+      visible: options.visible ?? true,
+      opacity: options.opacity ?? 0.2,
     }
 
     this.joystickRadius = this.options.maxDistance
@@ -112,6 +116,7 @@ export class VirtualJoystickThree extends Component {
             top: 50%;
             transform: translate(-50%, -50%);
             box-sizing: border-box;
+            opacity: ${this.options.opacity};
         `
 
     // Create joystick knob (inner circle)
@@ -128,6 +133,7 @@ export class VirtualJoystickThree extends Component {
             transform: translate(-50%, -50%);
             transition: none;
             box-sizing: border-box;
+            opacity: ${this.options.opacity};
         `
 
     // Add elements to container
@@ -274,9 +280,11 @@ export class VirtualJoystickThree extends Component {
     this.startPosition.set(x, y)
     this.currentPosition.set(x, y)
 
-    // Show and position the joystick
+    // Show and position the joystick (only if visible is true)
     if (this.joystickContainer) {
-      this.joystickContainer.style.display = "block"
+      this.joystickContainer.style.display = this.options.visible
+        ? "block"
+        : "none"
       this.joystickContainer.style.left = `${x - (this.options.size + this.options.knobSize) / 2}px`
       this.joystickContainer.style.top = `${y - (this.options.size + this.options.knobSize) / 2}px`
     }
@@ -456,6 +464,43 @@ export class VirtualJoystickThree extends Component {
    */
   public isActiveJoystick(): boolean {
     return this.isActive
+  }
+
+  /**
+   * Toggle joystick visual visibility (joystick remains functional)
+   */
+  public setVisible(visible: boolean): void {
+    this.options.visible = visible
+    if (this.joystickContainer && this.isActive) {
+      this.joystickContainer.style.display = visible ? "block" : "none"
+    }
+  }
+
+  /**
+   * Get current visibility state
+   */
+  public isVisible(): boolean {
+    return this.options.visible
+  }
+
+  /**
+   * Set joystick opacity (0-1)
+   */
+  public setOpacity(opacity: number): void {
+    this.options.opacity = Math.max(0, Math.min(1, opacity))
+    if (this.joystickBase) {
+      this.joystickBase.style.opacity = `${this.options.opacity}`
+    }
+    if (this.joystickKnob) {
+      this.joystickKnob.style.opacity = `${this.options.opacity}`
+    }
+  }
+
+  /**
+   * Get current opacity
+   */
+  public getOpacity(): number {
+    return this.options.opacity
   }
 
   /**

@@ -28,7 +28,7 @@ export class DebugPanelThree {
   protected contentContainer!: HTMLElement
   protected options: DebugOption[] = []
   protected isVisible: boolean = true
-  protected contentsExpanded: boolean = false
+  protected contentsExpanded: boolean = true
   protected performanceStats: { fps: number; frameTime: number } = {
     fps: 0,
     frameTime: 0,
