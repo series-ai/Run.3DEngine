@@ -101,7 +101,21 @@ export class GameObject extends THREE.Object3D {
     if (this.isDestroyed) return
     this.isDestroyed = true
 
-    // Cleanup all components
+    // First, recursively dispose all child GameObjects (and their components)
+    // Collect children first to avoid modification during iteration
+    const childGameObjects: GameObject[] = []
+    for (const child of this.children) {
+      if (child instanceof GameObject) {
+        childGameObjects.push(child)
+      }
+    }
+    
+    // Dispose each child GameObject (this will recursively dispose their children too)
+    for (const child of childGameObjects) {
+      child.dispose()
+    }
+
+    // Cleanup all components on this GameObject
     for (const component of this.components.values()) {
       component.cleanup()
     }
@@ -114,7 +128,7 @@ export class GameObject extends THREE.Object3D {
       this.parent.remove(this)
     }
 
-    // Dispose of any meshes/materials
+    // Dispose of any meshes/materials (for non-GameObject Three.js objects)
     this.traverse((object: THREE.Object3D) => {
       if (object instanceof THREE.Mesh) {
         object.geometry.dispose()
@@ -128,7 +142,7 @@ export class GameObject extends THREE.Object3D {
       }
     })
 
-    // Clear children
+    // Clear remaining children
     this.clear()
   }
 
