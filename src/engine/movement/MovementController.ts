@@ -17,6 +17,9 @@ export class MovementController extends Component {
   private targetRotationY: number = 0
   private currentRotationY: number = 0
 
+  // Pre-allocated vector for velocity queries to avoid GC pressure
+  private _currentVelocity = new THREE.Vector3()
+
   /**
    * Called when the component is created and attached to a GameObject
    */
@@ -97,18 +100,18 @@ export class MovementController extends Component {
   ): THREE.Vector3 {
     if (!this.rigidBodyComponent) return targetVelocity
 
-    const currentVelocity = this.rigidBodyComponent.getVelocity()
+    this.rigidBodyComponent.getVelocity(this._currentVelocity)
     const maxDelta = this.acceleration * deltaTime
 
     // Smooth X and Z velocities
     const smoothedVelocity = new THREE.Vector3()
     smoothedVelocity.x = this.moveTowards(
-      currentVelocity.x,
+      this._currentVelocity.x,
       targetVelocity.x,
       maxDelta,
     )
     smoothedVelocity.z = this.moveTowards(
-      currentVelocity.z,
+      this._currentVelocity.z,
       targetVelocity.z,
       maxDelta,
     )

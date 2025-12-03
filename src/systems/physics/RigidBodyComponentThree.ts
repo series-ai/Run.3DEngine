@@ -88,6 +88,7 @@ export class RigidBodyComponentThree extends Component {
     private onTriggerExitCallback: ((other: any) => void) | null = null
     private isRegisteredWithPhysics: boolean = false
 
+
     constructor(options: RigidBodyOptions = {}) {
         super()
         this.options = {
@@ -507,13 +508,15 @@ export class RigidBodyComponentThree extends Component {
     }
 
     /**
-     * Get linear velocity
+     * Get linear velocity into the provided output vector (zero allocation)
      */
-    public getVelocity(): THREE.Vector3 {
-        if (!this.rigidBody) return new THREE.Vector3()
-
+    public getVelocity(out: THREE.Vector3): void {
+        if (!this.rigidBody) {
+            out.set(0, 0, 0)
+            return
+        }
         const vel = this.rigidBody.linvel()
-        return new THREE.Vector3(vel.x, vel.y, vel.z)
+        out.set(vel.x, vel.y, vel.z)
     }
 
     /**
