@@ -21,24 +21,32 @@ function randRange(r: NumRange): number {
   if (Array.isArray(r)) return r[0] + Math.random() * (r[1] - r[0])
   return r as number
 }
-function randVec3(r: Vec3Range): THREE.Vector3 {
-  if (r instanceof THREE.Vector3) return r.clone()
+function randVec3(r: Vec3Range, out: THREE.Vector3): THREE.Vector3 {
+  if (r instanceof THREE.Vector3) {
+    out.copy(r)
+    return out
+  }
   const { min, max } = r
-  return new THREE.Vector3(
+  out.set(
     min.x + Math.random() * (max.x - min.x),
     min.y + Math.random() * (max.y - min.y),
     min.z + Math.random() * (max.z - min.z),
   )
+  return out
 }
-function randVec4(r: Vec4Range): THREE.Vector4 {
-  if (r instanceof THREE.Vector4) return r.clone()
+function randVec4(r: Vec4Range, out: THREE.Vector4): THREE.Vector4 {
+  if (r instanceof THREE.Vector4) {
+    out.copy(r)
+    return out
+  }
   const { min, max } = r
-  return new THREE.Vector4(
+  out.set(
     min.x + Math.random() * (max.x - min.x),
     min.y + Math.random() * (max.y - min.y),
     min.z + Math.random() * (max.z - min.z),
     min.w + Math.random() * (max.w - min.w),
   )
+  return out
 }
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
@@ -398,99 +406,108 @@ export function createParticleEmitter(
   const currNdc = new THREE.Vector3()
   const tmp4a = new THREE.Vector4()
   const tmp4b = new THREE.Vector4()
+  const tmp4c = new THREE.Vector4()
+  const tmpColor = new THREE.Color()
+  const tmpVec3A = new THREE.Vector3()
+  const tmpVec3B = new THREE.Vector3()
+  const tmpVec3C = new THREE.Vector3()
+  const tmpVec3D = new THREE.Vector3()
+  const tmpVec3E = new THREE.Vector3()
 
-  function sampleDirection(spawnPos: THREE.Vector3): THREE.Vector3 {
+  function sampleDirection(spawnPos: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
     switch (shape) {
       case EmitterShape.CONE: {
-        const offsetDir = new THREE.Vector3()
-          .copy(spawnPos)
-          .sub(burstOrigin)
-          .normalize()
+        tmpVec3A.copy(spawnPos).sub(burstOrigin).normalize()
         const angle = randRange(coneAngleRange)
         const cosA = Math.cos(angle)
         const sinA = Math.sin(angle)
-        return new THREE.Vector3()
-          .copy(coneDirection)
-          .multiplyScalar(cosA)
-          .addScaledVector(offsetDir, sinA)
-          .normalize()
+        out.copy(coneDirection).multiplyScalar(cosA).addScaledVector(tmpVec3A, sinA).normalize()
+        return out
       }
       case EmitterShape.SPHERE:
       case EmitterShape.POINT: {
-        const dir = new THREE.Vector3(
+        out.set(
           Math.random() * 2 - 1,
           Math.random() * 2 - 1,
           Math.random() * 2 - 1,
-        )
-        return dir.normalize()
+        ).normalize()
+        return out
       }
       default:
-        return new THREE.Vector3(0, 1, 0)
+        out.set(0, 1, 0)
+        return out
     }
   }
 
-  function sampleSpawnPosition(origin: THREE.Vector3): THREE.Vector3 {
+  // Pre-computed box size to avoid allocation
+  const defaultBoxSize = new THREE.Vector3(1, 1, 1)
+  const boxSize = cfg.boxSize ?? defaultBoxSize
+
+  function sampleSpawnPosition(origin: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
     switch (shape) {
       case EmitterShape.CONE:
       case EmitterShape.POINT: {
         const r = emitterRadius * Math.sqrt(Math.random())
         const t = Math.random() * Math.PI * 2
         const axis = coneDirection
-        const u = new THREE.Vector3()
-        const v = new THREE.Vector3()
-        if (Math.abs(axis.x) < 0.9) u.set(1, 0, 0)
-        else u.set(0, 1, 0)
-        u.cross(axis).normalize()
-        v.copy(axis).cross(u).normalize()
-        const p = new THREE.Vector3()
-          .copy(origin)
-          .addScaledVector(u, Math.cos(t) * r)
-          .addScaledVector(v, Math.sin(t) * r)
-        return p
+        if (Math.abs(axis.x) < 0.9) tmpVec3B.set(1, 0, 0)
+        else tmpVec3B.set(0, 1, 0)
+        tmpVec3B.cross(axis).normalize()
+        tmpVec3C.copy(axis).cross(tmpVec3B).normalize()
+        out.copy(origin)
+          .addScaledVector(tmpVec3B, Math.cos(t) * r)
+          .addScaledVector(tmpVec3C, Math.sin(t) * r)
+        return out
       }
       case EmitterShape.SPHERE: {
-        const dir = new THREE.Vector3(
+        tmpVec3B.set(
           Math.random() * 2 - 1,
           Math.random() * 2 - 1,
           Math.random() * 2 - 1,
         ).normalize()
         const r = (cfg.sphereRadius ?? emitterRadius) * Math.cbrt(Math.random())
-        return new THREE.Vector3().copy(origin).addScaledVector(dir, r)
+        out.copy(origin).addScaledVector(tmpVec3B, r)
+        return out
       }
       case EmitterShape.BOX: {
-        const size = cfg.boxSize ?? new THREE.Vector3(1, 1, 1)
-        return new THREE.Vector3(
-          origin.x + (Math.random() - 0.5) * size.x,
-          origin.y + (Math.random() - 0.5) * size.y,
-          origin.z + (Math.random() - 0.5) * size.z,
+        out.set(
+          origin.x + (Math.random() - 0.5) * boxSize.x,
+          origin.y + (Math.random() - 0.5) * boxSize.y,
+          origin.z + (Math.random() - 0.5) * boxSize.z,
         )
+        return out
       }
       default:
-        return origin.clone()
+        out.copy(origin)
+        return out
     }
   }
 
+  // Pre-compute sprite settings
+  const spriteTotalFrames = cfg.spriteSheet
+    ? (cfg.spriteSheet.frameCount ?? (cfg.spriteSheet.columns ?? 1) * (cfg.spriteSheet.rows ?? 1))
+    : 1
+  const spriteFps = cfg.spriteSheet?.fps ?? 15
+  const spriteLoop = cfg.spriteSheet?.loop ?? true
+
   function respawn(i: number, origin: THREE.Vector3 = burstOrigin) {
     const idx = i * 3
-    const p = sampleSpawnPosition(origin)
-    positions[idx + 0] = p.x
-    positions[idx + 1] = p.y
-    positions[idx + 2] = p.z
+    sampleSpawnPosition(origin, tmpVec3D)
+    positions[idx + 0] = tmpVec3D.x
+    positions[idx + 1] = tmpVec3D.y
+    positions[idx + 2] = tmpVec3D.z
 
-    const dir = sampleDirection(p)
+    sampleDirection(tmpVec3D, tmpVec3E)
     const speed = randRange(speedRange)
-    velocities[idx + 0] = dir.x * speed
-    velocities[idx + 1] = dir.y * speed
-    velocities[idx + 2] = dir.z * speed
+    velocities[idx + 0] = tmpVec3E.x * speed
+    velocities[idx + 1] = tmpVec3E.y * speed
+    velocities[idx + 2] = tmpVec3E.z * speed
 
     ages[i] = 0
     lifetimes[i] = Math.max(0.0001, randRange(lifeRange))
     // Randomize starting frame a bit so not all particles are in sync
     if (cfg.spriteSheet) {
-      const total =
-        cfg.spriteSheet.frameCount ??
-        (cfg.spriteSheet.columns ?? 1) * (cfg.spriteSheet.rows ?? 1)
-      instanceFrame[i] = Math.floor(Math.random() * total)
+      instanceFrame[i] = Math.floor(Math.random() * spriteTotalFrames)
     } else {
       instanceFrame[i] = 0
     }
@@ -501,22 +518,32 @@ export function createParticleEmitter(
     spinAngle[i] = randRange(rotAngleRange)
     spinVelocity[i] = randRange(rotVelRange)
 
-    const c0 = randVec4(colorStartRange)
-    const c1 = colorMidRange ? randVec4(colorMidRange) : c0.clone()
-    const c2 = randVec4(colorEndRange)
+    // Write colors directly to typed arrays without allocating Vector4
     const base = i * 4
-    color0[base + 0] = c0.x
-    color0[base + 1] = c0.y
-    color0[base + 2] = c0.z
-    color0[base + 3] = c0.w
-    color1[base + 0] = c1.x
-    color1[base + 1] = c1.y
-    color1[base + 2] = c1.z
-    color1[base + 3] = c1.w
-    color2[base + 0] = c2.x
-    color2[base + 1] = c2.y
-    color2[base + 2] = c2.z
-    color2[base + 3] = c2.w
+    randVec4(colorStartRange, tmp4a)
+    color0[base + 0] = tmp4a.x
+    color0[base + 1] = tmp4a.y
+    color0[base + 2] = tmp4a.z
+    color0[base + 3] = tmp4a.w
+    
+    if (colorMidRange) {
+      randVec4(colorMidRange, tmp4b)
+      color1[base + 0] = tmp4b.x
+      color1[base + 1] = tmp4b.y
+      color1[base + 2] = tmp4b.z
+      color1[base + 3] = tmp4b.w
+    } else {
+      color1[base + 0] = tmp4a.x
+      color1[base + 1] = tmp4a.y
+      color1[base + 2] = tmp4a.z
+      color1[base + 3] = tmp4a.w
+    }
+    
+    randVec4(colorEndRange, tmp4c)
+    color2[base + 0] = tmp4c.x
+    color2[base + 1] = tmp4c.y
+    color2[base + 2] = tmp4c.z
+    color2[base + 3] = tmp4c.w
   }
 
   for (let i = 0; i < particleCount; i++) {
@@ -574,10 +601,21 @@ export function createParticleEmitter(
     forward.setFromMatrixColumn(camera.matrixWorld, 2).normalize()
     viewDir.copy(forward).negate()
 
-    let aliveCount = 0
+    // Cache alignment config lookups
+    const velAlign = cfg.alignment?.enableVelocityAlignment ?? false
+    const velStretchEnabled = cfg.alignment?.enableVelocityStretch ?? false
+    const velScaleConfig = cfg.alignment?.velocityScale ?? velocityScaleFactor
+
+    // GPU write index - alive particles are packed contiguously for rendering
+    let writeIdx = 0
+    
     for (let i = 0; i < particleCount; i++) {
+      // Early exit for dead particles - skip all processing
+      if (ages[i] >= lifetimes[i]) continue
+
       const idx = i * 3
 
+      // Physics update
       velocities[idx + 0] += gravity.x * dt
       velocities[idx + 1] += gravity.y * dt
       velocities[idx + 2] += gravity.z * dt
@@ -587,6 +625,7 @@ export function createParticleEmitter(
       ages[i] += dt
       spinAngle[i] += spinVelocity[i] * dt
 
+      // Floor collision
       if (
         floorCollisionEnabled &&
         positions[idx + 1] <= floorY &&
@@ -599,19 +638,16 @@ export function createParticleEmitter(
         bounceCount[i]++
         if (bounceCount[i] >= killAfterBounces) {
           lifetimes[i] = ages[i]
+          continue // Particle just died, skip rendering
         }
       }
 
-      if (ages[i] >= lifetimes[i]) {
-        mesh.setMatrixAt(i, new THREE.Matrix4().makeScale(0, 0, 0))
-        continue
-      }
-      aliveCount++
+      // Check if particle died this frame from age
+      if (ages[i] >= lifetimes[i]) continue
 
       pos.set(positions[idx + 0], positions[idx + 1], positions[idx + 2])
 
       let angle = 0
-      const velAlign = cfg.alignment?.enableVelocityAlignment ?? false
       if (velAlign) {
         prevPos.set(
           positions[idx + 0] - velocities[idx + 0] * dt,
@@ -639,10 +675,7 @@ export function createParticleEmitter(
         -right.z * sinA + up.z * cosA,
       )
 
-      const velStretchEnabled = cfg.alignment?.enableVelocityStretch ?? false
-      currentVelocityScale = velStretchEnabled
-        ? (cfg.alignment?.velocityScale ?? currentVelocityScale)
-        : 0
+      currentVelocityScale = velStretchEnabled ? velScaleConfig : 0
       const vmag = Math.hypot(
         velocities[idx + 0],
         velocities[idx + 1],
@@ -657,36 +690,40 @@ export function createParticleEmitter(
       const sx = baseSizeX * s * attenuation
       const sy = baseSizeY * s * attenuation * stretch
 
-      const base = i * 4
+      // Color interpolation
+      const colorBase = i * 4
       tmp4a.set(
-        color0[base + 0],
-        color0[base + 1],
-        color0[base + 2],
-        color0[base + 3],
+        color0[colorBase + 0],
+        color0[colorBase + 1],
+        color0[colorBase + 2],
+        color0[colorBase + 3],
       )
       tmp4b.set(
-        color2[base + 0],
-        color2[base + 1],
-        color2[base + 2],
-        color2[base + 3],
+        color2[colorBase + 0],
+        color2[colorBase + 1],
+        color2[colorBase + 2],
+        color2[colorBase + 3],
       )
       if (colorMidRange) {
-        const cm = new THREE.Vector4(
-          color1[base + 0],
-          color1[base + 1],
-          color1[base + 2],
-          color1[base + 3],
+        tmp4c.set(
+          color1[colorBase + 0],
+          color1[colorBase + 1],
+          color1[colorBase + 2],
+          color1[colorBase + 3],
         )
         if (lifeRatio < 0.5) {
-          lerpVec4(tmp4a, cm, lifeRatio * 2, tmp4a)
+          lerpVec4(tmp4a, tmp4c, lifeRatio * 2, tmp4a)
         } else {
-          lerpVec4(cm, tmp4b, (lifeRatio - 0.5) * 2, tmp4a)
+          lerpVec4(tmp4c, tmp4b, (lifeRatio - 0.5) * 2, tmp4a)
         }
       } else {
         lerpVec4(tmp4a, tmp4b, lifeRatio, tmp4a)
       }
-      mesh.setColorAt(i, new THREE.Color(tmp4a.x, tmp4a.y, tmp4a.z))
-      instanceOpacity[i] = tmp4a.w
+
+      // Write GPU data at writeIdx (packed contiguously)
+      tmpColor.setRGB(tmp4a.x, tmp4a.y, tmp4a.z)
+      mesh.setColorAt(writeIdx, tmpColor)
+      instanceOpacity[writeIdx] = tmp4a.w
 
       const normal = viewDir
       m4.set(
@@ -707,24 +744,24 @@ export function createParticleEmitter(
         0,
         1,
       )
-      mesh.setMatrixAt(i, m4)
+      mesh.setMatrixAt(writeIdx, m4)
 
       // Per-particle sprite frame from lifetime
       if (cfg.spriteSheet) {
-        const total =
-          cfg.spriteSheet.frameCount ??
-          (cfg.spriteSheet.columns ?? 1) * (cfg.spriteSheet.rows ?? 1)
-        const fps = cfg.spriteSheet.fps ?? 15
-        const loop = cfg.spriteSheet.loop ?? true
-        let frameF = ages[i] * fps
-        if (loop) {
-          frameF = frameF % total
+        let frameF = ages[i] * spriteFps
+        if (spriteLoop) {
+          frameF = frameF % spriteTotalFrames
         } else {
-          frameF = Math.min(frameF, total - 0.01)
+          frameF = Math.min(frameF, spriteTotalFrames - 0.01)
         }
-        instanceFrame[i] = frameF
+        instanceFrame[writeIdx] = frameF
       }
+
+      writeIdx++
     }
+
+    // Set instance count to only render alive particles
+    mesh.count = writeIdx
 
     ;(
       mesh.instanceMatrix as unknown as THREE.InstancedBufferAttribute
