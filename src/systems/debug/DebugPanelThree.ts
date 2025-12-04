@@ -5,6 +5,7 @@ import { NavGridDebugDisplayThree } from "../navigation/NavGridDebugDisplayThree
 import { PathVisualizationThree } from "../navigation/PathVisualizationThree"
 import { SplineDebugManager } from "../spline/SplineDebugManager"
 import { AssetManager } from "@engine/assets/AssetManager"
+import { VenusGame } from "@engine/core/VenusGame"
 
 /**
  * Debug option interface for tracking state
@@ -259,6 +260,219 @@ export class DebugPanelThree {
         }, 100)
       }
     })
+    
+    // Add scene analysis command (one-time action)
+    this.addOption("Run Scene Analysis", false, (checked) => {
+      if (checked) {
+        this.runSceneAnalysis()
+        // Reset checkbox after running
+        setTimeout(() => {
+          const checkbox = document.querySelector(
+            `input[type="checkbox"][data-label="Run Scene Analysis"]`,
+          ) as HTMLInputElement
+          if (checkbox) {
+            checkbox.checked = false
+          }
+        }, 100)
+      }
+    })
+    
+    // Add render cost analysis command (one-time action)
+    this.addOption("Run Render Cost Analysis", false, (checked) => {
+      if (checked) {
+        this.runRenderCostAnalysis()
+        // Reset checkbox after running
+        setTimeout(() => {
+          const checkbox = document.querySelector(
+            `input[type="checkbox"][data-label="Run Render Cost Analysis"]`,
+          ) as HTMLInputElement
+          if (checkbox) {
+            checkbox.checked = false
+          }
+        }, 100)
+      }
+    })
+  }
+  
+  /**
+   * Run scene analysis to find instancing opportunities
+   */
+  protected runSceneAnalysis(): void {
+    const scene = this.findScene()
+    if (!scene) {
+      console.warn("Scene not found for analysis")
+      return
+    }
+    
+    console.log('%c=== SCENE ANALYSIS ===', 'font-size: 16px; font-weight: bold; color: #00ff00')
+    
+    const geometryGroups: Map<string, { count: number; name: string; triangles: number; examples: string[] }> = new Map()
+    const nameGroups: Map<string, number> = new Map()
+    let skinnedMeshCount = 0
+    let totalMeshes = 0
+    
+    scene.traverse((obj: THREE.Object3D) => {
+      if (obj instanceof THREE.SkinnedMesh) {
+        skinnedMeshCount++
+        totalMeshes++
+      } else if (obj instanceof THREE.Mesh && obj.visible) {
+        totalMeshes++
+        const geomId = obj.geometry.uuid
+        const triangles = obj.geometry.index 
+          ? obj.geometry.index.count / 3 
+          : (obj.geometry.attributes.position?.count || 0) / 3
+        
+        if (!geometryGroups.has(geomId)) {
+          geometryGroups.set(geomId, { 
+            count: 0, 
+            name: obj.geometry.name || obj.name || 'unnamed',
+            triangles: Math.floor(triangles),
+            examples: []
+          })
+        }
+        const group = geometryGroups.get(geomId)!
+        group.count++
+        if (group.examples.length < 3) {
+          group.examples.push(obj.name || obj.parent?.name || 'unnamed')
+        }
+        
+        const baseName = (obj.name || 'unnamed').replace(/[0-9_]+$/, '').trim() || 'unnamed'
+        nameGroups.set(baseName, (nameGroups.get(baseName) || 0) + 1)
+      }
+    })
+    
+    const instanceCandidates = [...geometryGroups.entries()]
+      .filter(([_, data]) => data.count > 1)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 15)
+    
+    console.log('%c📦 TOP INSTANCING CANDIDATES:', 'font-weight: bold; color: #ffff00')
+    console.table(instanceCandidates.map(([id, data]) => ({
+      'Geometry': data.name.substring(0, 30),
+      'Count': data.count,
+      'Triangles Each': data.triangles,
+      'Potential Savings': `${data.count - 1} draw calls`,
+      'Examples': data.examples.join(', ').substring(0, 40)
+    })))
+    
+    console.log('%c📊 SUMMARY:', 'font-weight: bold; color: #ff00ff')
+    console.table({
+      'Total Visible Meshes': totalMeshes,
+      'Skinned Meshes (animated)': skinnedMeshCount,
+      'Regular Meshes': totalMeshes - skinnedMeshCount,
+      'Unique Geometries': geometryGroups.size,
+      'Potential Draw Call Savings': instanceCandidates.reduce((sum, [_, d]) => sum + d.count - 1, 0)
+    })
+  }
+  
+  /**
+   * Run render cost analysis to identify bottlenecks
+   */
+  protected runRenderCostAnalysis(): void {
+    const scene = this.findScene()
+    if (!scene) {
+      console.warn("Scene not found for analysis")
+      return
+    }
+    
+    console.log('%c=== RENDER COST BREAKDOWN ===', 'font-size: 16px; font-weight: bold; color: #ff6600')
+    
+    let staticCandidates = 0
+    let alreadyStatic = 0
+    let skinnedMeshes = 0
+    let skinnedBoneCount = 0
+    let shadowCasters = 0
+    let shadowReceivers = 0
+    let transparentObjects = 0
+    let totalObjects = 0
+    
+    scene.traverse((obj: THREE.Object3D) => {
+      totalObjects++
+      
+      if (obj.matrixAutoUpdate) {
+        if (!(obj instanceof THREE.SkinnedMesh) && 
+            !(obj.parent instanceof THREE.SkinnedMesh) &&
+            !obj.name.toLowerCase().includes('player')) {
+          staticCandidates++
+        }
+      } else {
+        alreadyStatic++
+      }
+      
+      if (obj instanceof THREE.SkinnedMesh) {
+        skinnedMeshes++
+        if (obj.skeleton) {
+          skinnedBoneCount += obj.skeleton.bones.length
+        }
+      }
+      
+      if (obj instanceof THREE.Mesh || obj instanceof THREE.SkinnedMesh) {
+        if (obj.castShadow) shadowCasters++
+        if (obj.receiveShadow) shadowReceivers++
+        
+        const mat = obj.material as THREE.Material
+        if (mat && mat.transparent) {
+          transparentObjects++
+        }
+      }
+    })
+    
+    let shadowLights = 0
+    scene.traverse((obj: THREE.Object3D) => {
+      if (obj instanceof THREE.Light && (obj as any).castShadow) {
+        shadowLights++
+      }
+    })
+    
+    console.log('%c🔄 MATRIX UPDATES:', 'font-weight: bold; color: #ffff00')
+    console.table({
+      'Total Objects': totalObjects,
+      'With matrixAutoUpdate ON': staticCandidates + skinnedMeshes,
+      'Could be static': staticCandidates,
+      'Already static': alreadyStatic,
+      'Potential CPU savings': `${staticCandidates} matrix calcs/frame`
+    })
+    
+    console.log('%c🦴 SKINNED MESH (Animation) COST:', 'font-weight: bold; color: #ff00ff')
+    console.table({
+      'Skinned Meshes': skinnedMeshes,
+      'Total Bones': skinnedBoneCount,
+      'Avg Bones per Character': skinnedMeshes > 0 ? Math.round(skinnedBoneCount / skinnedMeshes) : 0,
+      'Impact': skinnedBoneCount > 500 ? '⚠️ HIGH' : '✅ Reasonable'
+    })
+    
+    console.log('%c🌑 SHADOW COST:', 'font-weight: bold; color: #00ffff')
+    console.table({
+      'Shadow-casting Lights': shadowLights,
+      'Shadow Casters': shadowCasters,
+      'Shadow Receivers': shadowReceivers,
+      'Impact': shadowLights > 1 ? '⚠️ Multiple shadow maps' : '✅ OK'
+    })
+    
+    console.log('%c🔮 TRANSPARENCY:', 'font-weight: bold; color: #00ff00')
+    console.table({
+      'Transparent Objects': transparentObjects,
+      'Impact': transparentObjects > 50 ? '⚠️ Sorting overhead' : '✅ OK'
+    })
+    
+    console.log('%c📋 PRIORITY ACTIONS:', 'font-weight: bold; color: #ffffff; background: #333')
+    const priorities: string[] = []
+    if (staticCandidates > 50) priorities.push(`• Set ${staticCandidates} objects to matrixAutoUpdate=false`)
+    if (skinnedBoneCount > 300) priorities.push(`• Consider LOD for characters (${skinnedBoneCount} bones)`)
+    if (shadowCasters > 50) priorities.push(`• Reduce shadow casters (${shadowCasters})`)
+    if (transparentObjects > 30) priorities.push(`• Reduce transparent objects (${transparentObjects})`)
+    console.log(priorities.length > 0 ? priorities.join('\n') : '✅ No major issues')
+  }
+  
+  /**
+   * Get the scene from VenusGame
+   */
+  protected findScene(): THREE.Scene | null {
+    try {
+      return VenusGame.scene
+    } catch {
+      return null
+    }
   }
 
   // Post-processing callback method removed - post-processing disabled
