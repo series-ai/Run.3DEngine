@@ -261,6 +261,128 @@ export class DebugPanelThree {
       }
     })
     
+    // Toggle to hide skinned meshes (for performance testing)
+    this.addOption("Hide Skinned Meshes", false, (checked) => {
+      const scene = this.findScene()
+      if (!scene) return
+      scene.traverse((obj: THREE.Object3D) => {
+        if (obj instanceof THREE.SkinnedMesh) {
+          obj.visible = !checked
+        }
+      })
+    })
+    
+    // Toggle to hide transparent objects (for performance testing)
+    this.addOption("Hide Transparent", false, (checked) => {
+      const scene = this.findScene()
+      if (!scene) return
+      let count = 0
+      scene.traverse((obj: THREE.Object3D) => {
+        if (obj instanceof THREE.Mesh && !(obj instanceof THREE.SkinnedMesh)) {
+          const mat = obj.material as THREE.Material
+          if (mat && mat.transparent) {
+            obj.visible = !checked
+            count++
+          }
+        }
+      })
+      if (checked) console.log(`Hidden ${count} transparent objects`)
+    })
+    
+    // Toggle to hide blob shadows specifically
+    this.addOption("Hide Blob Shadows", false, (checked) => {
+      const scene = this.findScene()
+      if (!scene) return
+      let count = 0
+      scene.traverse((obj: THREE.Object3D) => {
+        if (obj.name?.toLowerCase().includes('shadow') || 
+            obj.name?.toLowerCase().includes('blob')) {
+          obj.visible = !checked
+          count++
+        }
+      })
+      if (checked) console.log(`Hidden ${count} blob shadows`)
+    })
+    
+    // Toggle to use real shadows on characters instead of blob shadows
+    this.addOption("Real Character Shadows", false, (checked) => {
+      const scene = this.findScene()
+      if (!scene) return
+      let skinnedCount = 0
+      let blobCount = 0
+      
+      scene.traverse((obj: THREE.Object3D) => {
+        // Enable/disable real shadows on skinned meshes
+        if (obj instanceof THREE.SkinnedMesh) {
+          obj.castShadow = checked
+          skinnedCount++
+        }
+        // Hide/show blob shadows (opposite of real shadows)
+        if (obj.name?.toLowerCase().includes('shadow') || 
+            obj.name?.toLowerCase().includes('blob')) {
+          obj.visible = !checked
+          blobCount++
+        }
+      })
+      
+      if (checked) {
+        console.log(`Enabled real shadows on ${skinnedCount} skinned meshes, hidden ${blobCount} blob shadows`)
+      } else {
+        console.log(`Disabled real shadows, restored ${blobCount} blob shadows`)
+      }
+    })
+    
+    // Toggle to hide UI canvases (sprites/planes with canvas textures)
+    this.addOption("Hide UI Canvases", false, (checked) => {
+      const scene = this.findScene()
+      if (!scene) return
+      let count = 0
+      scene.traverse((obj: THREE.Object3D) => {
+        // Check for sprites
+        if (obj instanceof THREE.Sprite) {
+          obj.visible = !checked
+          count++
+          return
+        }
+        // Check for meshes with canvas textures or UI-like names
+        if (obj instanceof THREE.Mesh) {
+          const isUI = obj.name?.toLowerCase().includes('ui') ||
+                       obj.name?.toLowerCase().includes('canvas') ||
+                       obj.name?.toLowerCase().includes('label') ||
+                       obj.name?.toLowerCase().includes('text') ||
+                       obj.name?.toLowerCase().includes('indicator')
+          if (isUI) {
+            obj.visible = !checked
+            count++
+            return
+          }
+          // Check for CanvasTexture
+          const mat = obj.material as THREE.MeshBasicMaterial
+          if (mat?.map && (mat.map as any).isCanvasTexture) {
+            obj.visible = !checked
+            count++
+          }
+        }
+      })
+      if (checked) console.log(`Hidden ${count} UI canvas elements`)
+    })
+    
+    // Bake instancing for duplicate meshes (one-time performance optimization)
+    this.addOption("Bake Instancing", false, (checked) => {
+      if (checked) {
+        this.bakeInstancing()
+        // Reset checkbox after running
+        setTimeout(() => {
+          const checkbox = document.querySelector(
+            `input[type="checkbox"][data-label="Bake Instancing"]`,
+          ) as HTMLInputElement
+          if (checkbox) {
+            checkbox.checked = false
+          }
+        }, 100)
+      }
+    })
+
     // Add scene analysis command (one-time action)
     this.addOption("Run Scene Analysis", false, (checked) => {
       if (checked) {
@@ -473,6 +595,90 @@ export class DebugPanelThree {
     } catch {
       return null
     }
+  }
+  
+  /**
+   * Bake duplicate meshes into InstancedMeshes for better performance.
+   * Finds meshes with the same geometry and replaces them with a single InstancedMesh.
+   */
+  protected bakeInstancing(): void {
+    const scene = this.findScene()
+    if (!scene) {
+      console.warn("Scene not found for instancing")
+      return
+    }
+    
+    console.log('%c=== BAKING INSTANCED MESHES ===', 'font-size: 16px; font-weight: bold; color: #00ff00')
+    
+    // Group meshes by geometry UUID
+    const geometryGroups: Map<string, THREE.Mesh[]> = new Map()
+    
+    scene.traverse((obj: THREE.Object3D) => {
+      // Skip skinned meshes and instanced meshes
+      if (obj instanceof THREE.SkinnedMesh) return
+      if (obj instanceof THREE.InstancedMesh) return
+      
+      if (obj instanceof THREE.Mesh && obj.visible) {
+        const geomId = obj.geometry.uuid
+        if (!geometryGroups.has(geomId)) {
+          geometryGroups.set(geomId, [])
+        }
+        geometryGroups.get(geomId)!.push(obj)
+      }
+    })
+    
+    // Find groups with 3+ meshes (worth instancing)
+    let totalInstanced = 0
+    let totalSaved = 0
+    
+    for (const [geomId, meshes] of geometryGroups) {
+      if (meshes.length < 3) continue
+      
+      const firstMesh = meshes[0]
+      const geometry = firstMesh.geometry
+      const material = firstMesh.material
+      
+      // Skip if mesh has multiple materials (complex case)
+      if (Array.isArray(material)) continue
+      
+      // Create InstancedMesh
+      const instancedMesh = new THREE.InstancedMesh(
+        geometry,
+        material,
+        meshes.length
+      )
+      instancedMesh.name = `Instanced_${firstMesh.name || 'unnamed'}`
+      instancedMesh.castShadow = firstMesh.castShadow
+      instancedMesh.receiveShadow = firstMesh.receiveShadow
+      
+      // Set transforms for each instance
+      const matrix = new THREE.Matrix4()
+      for (let i = 0; i < meshes.length; i++) {
+        const mesh = meshes[i]
+        mesh.updateWorldMatrix(true, false)
+        matrix.copy(mesh.matrixWorld)
+        instancedMesh.setMatrixAt(i, matrix)
+      }
+      instancedMesh.instanceMatrix.needsUpdate = true
+      
+      // Add instanced mesh to scene
+      scene.add(instancedMesh)
+      
+      // Remove original meshes
+      for (const mesh of meshes) {
+        if (mesh.parent) {
+          mesh.parent.remove(mesh)
+        }
+      }
+      
+      console.log(`✅ Instanced ${meshes.length}x "${firstMesh.name || 'unnamed'}" → 1 draw call (saved ${meshes.length - 1})`)
+      totalInstanced += meshes.length
+      totalSaved += meshes.length - 1
+    }
+    
+    console.log('%c📊 INSTANCING COMPLETE:', 'font-weight: bold; color: #ff00ff')
+    console.log(`   Meshes instanced: ${totalInstanced}`)
+    console.log(`   Draw calls saved: ${totalSaved}`)
   }
 
   // Post-processing callback method removed - post-processing disabled
