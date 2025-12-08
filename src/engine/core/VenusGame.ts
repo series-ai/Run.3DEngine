@@ -5,8 +5,7 @@ import { InputManager } from "@systems/input"
 import { TweenSystem } from "@systems/math"
 import VenusAPI from "@series-inc/venus-sdk/api"
 import { AudioSystem } from "@systems/audio"
-import { UILoadingScreen, UISystem } from "@systems/ui"
-import { BurgerShopDemo } from "threejs-job-sim/src/burgershop"
+import { UISystem } from "@systems/ui"
 
 /**
  * Three.js version of VenusGame
@@ -90,11 +89,11 @@ export abstract class VenusGame {
 
     VenusAPI.analytics.trackFunnelStep(1, "Venus Initialized")
 
-    const insets = context?.hudInsets
-    if (insets) {
-      console.log(`[DEBUG] Hud Insets: `, insets)
-      UISystem.setInsets(insets)
-    }
+    // const insets = context?.
+    // if (insets) {
+    //   console.log(`[DEBUG] Hud Insets: `, insets)
+    //   UISystem.setInsets(insets)
+    // }
 
     VenusAPI.lifecycles.onResume(() => {
       console.log(`[DEBUG] OnResume()`)
