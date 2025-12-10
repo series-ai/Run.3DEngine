@@ -273,6 +273,8 @@ export class DebugPanelThree {
     })
     
     // Toggle to hide transparent objects (for performance testing)
+    // DISABLED: Breaks purchase area displays which use transparent materials
+    /*
     this.addOption("Hide Transparent", false, (checked) => {
       const scene = this.findScene()
       if (!scene) return
@@ -288,6 +290,7 @@ export class DebugPanelThree {
       })
       if (checked) console.log(`Hidden ${count} transparent objects`)
     })
+    */
     
     // Toggle to hide blob shadows specifically
     this.addOption("Hide Blob Shadows", false, (checked) => {
@@ -333,6 +336,8 @@ export class DebugPanelThree {
     })
     
     // Toggle to hide UI canvases (sprites/planes with canvas textures)
+    // DISABLED: Breaks UI elements like purchase areas, indicators, etc.
+    /*
     this.addOption("Hide UI Canvases", false, (checked) => {
       const scene = this.findScene()
       if (!scene) return
@@ -366,6 +371,7 @@ export class DebugPanelThree {
       })
       if (checked) console.log(`Hidden ${count} UI canvas elements`)
     })
+    */
     
     // Bake instancing for duplicate meshes (one-time performance optimization)
     this.addOption("Bake Instancing", false, (checked) => {
