@@ -16,8 +16,13 @@ export class UISystem {
   private static activeElements: Map<string, UIElement> = new Map()
   private static lastMoneyAmount: number = -1 // Track last money amount for animation
 
-  // Simple unified scaling system
-  private static targetScale: number = 1.0 // Simple scale factor for all UI (will be set to 0.5)
+  // Unity-style Canvas Scaler system
+  // Reference width is the screen width at which UI appears at 100% scale (design resolution)
+  // Scale = screenWidth / referenceWidth, clamped between min and max
+  private static referenceWidth: number = 800 // Reference resolution width - UI designed for ~800px screens
+  private static minScale: number = 0.5 // Minimum scale to prevent UI from getting too small on narrow mobile
+  private static maxScale: number = 1.5 // Maximum scale for large screens
+  private static currentScale: number = 1.0 // Calculated scale based on screen width
 
   /**
    * Reset the UISystem state - useful for page refreshes or reinitialization
@@ -759,24 +764,32 @@ export class UISystem {
   }
 
   /**
-   * Simple unified scaling - just scale everything by the target scale
+   * Unity-style Canvas Scaler - scales UI based on screen width relative to reference resolution
+   * This ensures UI looks consistent across different screen sizes (mobile, tablet, desktop)
+   * 
+   * How it works:
+   * - Set a reference width (e.g., 800px) - this is the screen width where UI is 100% scale
+   * - UI components use CSS: transform: scale(var(--ui-scale, 1))
+   * - On smaller screens, --ui-scale < 1 (UI shrinks)
+   * - On larger screens, --ui-scale > 1 (UI grows)
    */
   public static updateResponsiveScale(): void {
-    // Apply simple scale to the main UI container
-    if (UISystem.container) {
-      UISystem.container.style.transform = `scale(${UISystem.targetScale})`
-      UISystem.container.style.transformOrigin = 'top left'
-    }
+    // Calculate scale factor based on screen width vs reference width (like Unity's "Scale With Screen Size" mode)
+    const screenWidth = window.innerWidth
+    const rawScale = screenWidth / UISystem.referenceWidth
     
-    // Also scale world container to keep everything consistent
-    if (UISystem.worldContainer) {
-      UISystem.worldContainer.style.transform = `scale(${UISystem.targetScale})`
-      UISystem.worldContainer.style.transformOrigin = 'top left'
+    // Clamp the scale to prevent extremes
+    const prevScale = UISystem.currentScale
+    UISystem.currentScale = Math.max(UISystem.minScale, Math.min(UISystem.maxScale, rawScale))
+    
+    // Log scale changes for debugging
+    if (Math.abs(prevScale - UISystem.currentScale) > 0.01) {
+      console.log(`[UISystem] Canvas Scale: ${UISystem.currentScale.toFixed(2)} (screen: ${screenWidth}px, ref: ${UISystem.referenceWidth}px)`)
     }
 
-    // Set CSS custom properties for any remaining components that need them
-    document.documentElement.style.setProperty("--ui-scale", UISystem.targetScale.toString())
-    document.documentElement.style.setProperty("--screen-width", `${window.innerWidth}px`)
+    // Set CSS custom property that UI components use via: transform: scale(var(--ui-scale, 1))
+    document.documentElement.style.setProperty("--ui-scale", UISystem.currentScale.toString())
+    document.documentElement.style.setProperty("--screen-width", `${screenWidth}px`)
     document.documentElement.style.setProperty("--screen-height", `${window.innerHeight}px`)
   }
 
@@ -907,14 +920,31 @@ export class UISystem {
     return uiElement
   }
 
-  // Legacy scaling methods removed - use setUIScale() instead
+  /**
+   * Configure the reference resolution for UI scaling (like Unity's Canvas Scaler)
+   * @param referenceWidth - The width at which UI is designed (e.g., 1280 for typical desktop)
+   * @param minScale - Minimum scale factor (prevents UI from getting too small on mobile)
+   * @param maxScale - Maximum scale factor (prevents UI from getting too large on big screens)
+   */
+  public static configureScaling(referenceWidth: number, minScale: number = 0.4, maxScale: number = 1.2): void {
+    UISystem.referenceWidth = referenceWidth
+    UISystem.minScale = minScale
+    UISystem.maxScale = maxScale
+    UISystem.updateResponsiveScale()
+  }
 
   /**
-   * Set the simple scale factor for all UI (0.5 = half size, 1.0 = full size, etc.)
+   * Get the current calculated UI scale factor
    */
-  public static setUIScale(scale: number): void {
-    UISystem.targetScale = scale
-    UISystem.updateResponsiveScale()
+  public static getUIScale(): number {
+    return UISystem.currentScale
+  }
+
+  /**
+   * Get the reference width used for scaling calculations
+   */
+  public static getReferenceWidth(): number {
+    return UISystem.referenceWidth
   }
 
   /**
