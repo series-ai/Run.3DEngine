@@ -16,13 +16,15 @@ export class UISystem {
   private static activeElements: Map<string, UIElement> = new Map()
   private static lastMoneyAmount: number = -1 // Track last money amount for animation
 
-  // Unity-style Canvas Scaler system
-  // Reference width is the screen width at which UI appears at 100% scale (design resolution)
-  // Scale = screenWidth / referenceWidth, clamped between min and max
-  private static referenceWidth: number = 800 // Reference resolution width - UI designed for ~800px screens
-  private static minScale: number = 0.5 // Minimum scale to prevent UI from getting too small on narrow mobile
-  private static maxScale: number = 1.5 // Maximum scale for large screens
-  private static currentScale: number = 1.0 // Calculated scale based on screen width
+  // Unity-style Canvas Scaler system with "Match Width Or Height" support
+  // Reference resolution is the screen size at which UI appears at 100% scale
+  // matchWidthOrHeight: 0 = match width only, 1 = match height only, 0.5 = blend both
+  private static referenceWidth: number = 1920 // Reference resolution width (Full HD)
+  private static referenceHeight: number = 1080 // Reference resolution height (Full HD)
+  private static matchWidthOrHeight: number = 0.5 // 0=width, 1=height, 0.5=blend (like Unity)
+  private static minScale: number = 0.5 // Minimum scale
+  private static maxScale: number = 1.5 // Maximum scale
+  private static currentScale: number = 1.0 // Calculated scale
 
   /**
    * Reset the UISystem state - useful for page refreshes or reinitialization
@@ -764,19 +766,32 @@ export class UISystem {
   }
 
   /**
-   * Unity-style Canvas Scaler - scales UI based on screen width relative to reference resolution
-   * This ensures UI looks consistent across different screen sizes (mobile, tablet, desktop)
+   * Unity-style Canvas Scaler with "Match Width Or Height" support
    * 
    * How it works:
-   * - Set a reference width (e.g., 800px) - this is the screen width where UI is 100% scale
+   * - Reference resolution (e.g., 800x600) - screen size where UI is 100% scale
+   * - matchWidthOrHeight: 0 = match width, 1 = match height, 0.5 = blend both
    * - UI components use CSS: transform: scale(var(--ui-scale, 1))
-   * - On smaller screens, --ui-scale < 1 (UI shrinks)
-   * - On larger screens, --ui-scale > 1 (UI grows)
+   * 
+   * The blend formula (same as Unity):
+   * scale = widthScale^(1-match) * heightScale^match
+   * 
+   * This means on portrait mobile (narrow width, tall height):
+   * - Width-only (match=0): very small UI
+   * - Height-only (match=1): large UI  
+   * - Blend (match=0.5): balanced UI that looks good
    */
   public static updateResponsiveScale(): void {
-    // Calculate scale factor based on screen width vs reference width (like Unity's "Scale With Screen Size" mode)
     const screenWidth = window.innerWidth
-    const rawScale = screenWidth / UISystem.referenceWidth
+    const screenHeight = window.innerHeight
+    
+    // Calculate scale factors for width and height
+    const widthScale = screenWidth / UISystem.referenceWidth
+    const heightScale = screenHeight / UISystem.referenceHeight
+    
+    // Unity's blend formula: scale = widthScale^(1-match) * heightScale^match
+    const match = UISystem.matchWidthOrHeight
+    const rawScale = Math.pow(widthScale, 1 - match) * Math.pow(heightScale, match)
     
     // Clamp the scale to prevent extremes
     const prevScale = UISystem.currentScale
@@ -784,13 +799,13 @@ export class UISystem {
     
     // Log scale changes for debugging
     if (Math.abs(prevScale - UISystem.currentScale) > 0.01) {
-      console.log(`[UISystem] Canvas Scale: ${UISystem.currentScale.toFixed(2)} (screen: ${screenWidth}px, ref: ${UISystem.referenceWidth}px)`)
+      console.log(`[UISystem] Canvas Scale: ${UISystem.currentScale.toFixed(2)} (screen: ${screenWidth}x${screenHeight}, ref: ${UISystem.referenceWidth}x${UISystem.referenceHeight}, match: ${match})`)
     }
 
     // Set CSS custom property that UI components use via: transform: scale(var(--ui-scale, 1))
     document.documentElement.style.setProperty("--ui-scale", UISystem.currentScale.toString())
     document.documentElement.style.setProperty("--screen-width", `${screenWidth}px`)
-    document.documentElement.style.setProperty("--screen-height", `${window.innerHeight}px`)
+    document.documentElement.style.setProperty("--screen-height", `${screenHeight}px`)
   }
 
   /**
@@ -922,12 +937,22 @@ export class UISystem {
 
   /**
    * Configure the reference resolution for UI scaling (like Unity's Canvas Scaler)
-   * @param referenceWidth - The width at which UI is designed (e.g., 1280 for typical desktop)
-   * @param minScale - Minimum scale factor (prevents UI from getting too small on mobile)
-   * @param maxScale - Maximum scale factor (prevents UI from getting too large on big screens)
+   * @param referenceWidth - The width at which UI is designed (default: 1920 Full HD)
+   * @param referenceHeight - The height at which UI is designed (default: 1080 Full HD)
+   * @param matchWidthOrHeight - 0 = match width, 1 = match height, 0.5 = blend both (recommended)
+   * @param minScale - Minimum scale factor (prevents UI from getting too small)
+   * @param maxScale - Maximum scale factor (prevents UI from getting too large)
    */
-  public static configureScaling(referenceWidth: number, minScale: number = 0.4, maxScale: number = 1.2): void {
+  public static configureScaling(
+    referenceWidth: number = 1920,
+    referenceHeight: number = 1080,
+    matchWidthOrHeight: number = 0.5,
+    minScale: number = 0.5,
+    maxScale: number = 1.5
+  ): void {
     UISystem.referenceWidth = referenceWidth
+    UISystem.referenceHeight = referenceHeight
+    UISystem.matchWidthOrHeight = Math.max(0, Math.min(1, matchWidthOrHeight))
     UISystem.minScale = minScale
     UISystem.maxScale = maxScale
     UISystem.updateResponsiveScale()
