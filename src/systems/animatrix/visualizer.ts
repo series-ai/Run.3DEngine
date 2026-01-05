@@ -339,6 +339,8 @@ export default class AnimatrixVisualizer {
         this.setup_animator_listeners()
         this.node_positions.clear()
         this.auto_layout_complete = false
+        // Ensure canvas size is updated before layout
+        this.update_canvas_size()
         this.auto_layout_nodes()
         // Reset view so nodes appear centered by default
         this.viewScale = 1
@@ -2113,6 +2115,13 @@ export default class AnimatrixVisualizer {
   public show(): void {
     this.is_visible = true
     this.container.style.display = "block"
+    // Re-run layout now that container is visible and has proper dimensions
+    this.update_canvas_size()
+    if (this.animator) {
+      this.node_positions.clear()
+      this.auto_layout_complete = false
+      this.auto_layout_nodes()
+    }
     this.render()
   }
 
