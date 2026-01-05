@@ -13,12 +13,17 @@ import Animatrix, {
   LibraryBlendTree1DWrapper,
 } from "./animatrix"
 import { AnimationLibrary } from "./animation-library"
+import AnimatrixVisualizer from "./visualizer"
 
 /**
  * Component-based wrapper for Animatrix animation system
  * Provides animation state machine functionality as a proper engine component
  */
 export class AnimationControllerComponent extends Component {
+  private static instances: Set<AnimationControllerComponent> = new Set()
+  private static sharedVisualizer: AnimatrixVisualizer | null = null
+  private static debugViewEnabled: boolean = false
+
   private animator: Animatrix | null = null
   private characterModel: THREE.Object3D | null = null
   private debug: boolean = false
@@ -29,17 +34,54 @@ export class AnimationControllerComponent extends Component {
   }
 
   /**
+   * Enable or disable the debug visualizer for all animation controllers
+   */
+  public static setDebugViewEnabled(enabled: boolean): void {
+    AnimationControllerComponent.debugViewEnabled = enabled
+
+    if (enabled) {
+      if (!AnimationControllerComponent.sharedVisualizer) {
+        AnimationControllerComponent.sharedVisualizer = new AnimatrixVisualizer()
+        AnimationControllerComponent.sharedVisualizer.hide()
+      }
+
+      for (const instance of AnimationControllerComponent.instances) {
+        if (instance.animator) {
+          const name = instance.gameObject?.name || `animator_${AnimationControllerComponent.instances.size}`
+          AnimationControllerComponent.sharedVisualizer.add_animator(name, instance.animator)
+        }
+      }
+
+      AnimationControllerComponent.sharedVisualizer.show()
+    } else {
+      if (AnimationControllerComponent.sharedVisualizer) {
+        AnimationControllerComponent.sharedVisualizer.hide()
+      }
+    }
+  }
+
+  /**
+   * Check if debug view is currently enabled
+   */
+  public static isDebugViewEnabled(): boolean {
+    return AnimationControllerComponent.debugViewEnabled
+  }
+
+  /**
    * Initialize the animation controller with a character model
    */
   public setCharacterModel(model: THREE.Object3D): void {
     this.characterModel = model
 
     if (this.animator) {
-      // Swap the model in the existing animator
       this.animator.swap_model(model)
     } else {
-      // Create new animator
       this.animator = new Animatrix(model, this.debug)
+    }
+
+    if (AnimationControllerComponent.debugViewEnabled && AnimationControllerComponent.sharedVisualizer) {
+      const name = this.gameObject?.name || `animator_${AnimationControllerComponent.instances.size}`
+      AnimationControllerComponent.sharedVisualizer.add_animator(name, this.animator)
     }
   }
 
@@ -219,7 +261,8 @@ export class AnimationControllerComponent extends Component {
   // ========== Component Lifecycle ==========
 
   protected onCreate(): void {
-    // Component initialization happens when character model is set
+    AnimationControllerComponent.instances.add(this)
+
     if (this.debug) {
       console.log(
         `[AnimationControllerComponent] Component created on ${this.gameObject.name}`,
@@ -228,6 +271,13 @@ export class AnimationControllerComponent extends Component {
   }
 
   protected onCleanup(): void {
+    AnimationControllerComponent.instances.delete(this)
+
+    if (AnimationControllerComponent.sharedVisualizer && this.animator) {
+      const name = this.gameObject?.name || "unknown"
+      AnimationControllerComponent.sharedVisualizer.remove_animator(name)
+    }
+
     if (this.animator) {
       this.animator.stop_all()
     }

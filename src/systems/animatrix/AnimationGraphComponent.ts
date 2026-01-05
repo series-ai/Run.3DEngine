@@ -3,6 +3,8 @@ import { Component } from "@engine/core/GameObject"
 import { AnimationLibrary } from "./animation-library"
 import { SharedAnimationManager, CharacterAnimationController } from "./SharedAnimationManager"
 import { AnimationPerformance } from "./AnimationPerformance"
+import Animatrix, { ParameterType, ComparisonOperator, BlendType } from "./animatrix"
+import AnimatrixVisualizer from "./visualizer"
 
 // Config interfaces - trees for CONTROL FLOW, not blending
 export interface ParameterConfig {
@@ -40,14 +42,30 @@ export interface AnimationGraphConfig {
 }
 
 /**
+ * Tree config stored for visualization drill-down
+ */
+export interface StoredTreeConfig {
+  stateName: string
+  tree: AnimationTree | null
+  simpleAnimation: string | null
+}
+
+/**
  * Animation component with state machine and decision trees
- * NO BLENDING - trees are just for control flow/organization
+ * Uses Animatrix internally for state machine logic and visualization
  */
 export class AnimationGraphComponent extends Component {
+  private static instances: Set<AnimationGraphComponent> = new Set()
+  private static sharedVisualizer: AnimatrixVisualizer | null = null
+  private static debugViewEnabled: boolean = false
+  private static treeConfigs: Map<string, Map<string, StoredTreeConfig>> = new Map()
+
   private config: AnimationGraphConfig
   private readonly model: THREE.Object3D
   private controller: CharacterAnimationController | null = null
   private sharedManager: SharedAnimationManager
+  private animator: Animatrix | null = null
+  private animatorName: string | null = null
   
   private parameters: Map<string, any> = new Map()
   private currentState: string | null = null
@@ -67,19 +85,131 @@ export class AnimationGraphComponent extends Component {
     }
   }
 
+  /**
+   * Enable or disable the debug visualizer for all animation graphs
+   */
+  public static setDebugViewEnabled(enabled: boolean): void {
+    AnimationGraphComponent.debugViewEnabled = enabled
+
+    if (enabled) {
+      if (!AnimationGraphComponent.sharedVisualizer) {
+        AnimationGraphComponent.sharedVisualizer = new AnimatrixVisualizer()
+        AnimationGraphComponent.sharedVisualizer.hide()
+      }
+
+      for (const instance of AnimationGraphComponent.instances) {
+        if (instance.animator && instance.animatorName) {
+          AnimationGraphComponent.sharedVisualizer.add_animator(instance.animatorName, instance.animator)
+        }
+      }
+
+      AnimationGraphComponent.sharedVisualizer.show()
+    } else {
+      if (AnimationGraphComponent.sharedVisualizer) {
+        AnimationGraphComponent.sharedVisualizer.hide()
+      }
+    }
+  }
+
+  /**
+   * Check if debug view is enabled
+   */
+  public static isDebugViewEnabled(): boolean {
+    return AnimationGraphComponent.debugViewEnabled
+  }
+
+  /**
+   * Get tree config for a specific animator and state (for drill-down visualization)
+   */
+  public static getTreeConfig(animatorName: string, stateName: string): StoredTreeConfig | null {
+    const animatorConfigs = AnimationGraphComponent.treeConfigs.get(animatorName)
+    if (!animatorConfigs) return null
+    return animatorConfigs.get(stateName) || null
+  }
+
+  /**
+   * Get all state configs for an animator (for drill-down visualization)
+   */
+  public static getStateConfigs(animatorName: string): Map<string, StoredTreeConfig> | null {
+    return AnimationGraphComponent.treeConfigs.get(animatorName) || null
+  }
+
+  /**
+   * Get parameter value for a specific animator
+   */
+  public static getParameterValue(animatorName: string, paramName: string): any {
+    for (const instance of AnimationGraphComponent.instances) {
+      if (instance.animatorName === animatorName) {
+        return instance.parameters.get(paramName)
+      }
+    }
+    return null
+  }
+
+  /**
+   * Get current animation for a specific animator
+   */
+  public static getCurrentAnimation(animatorName: string): string | null {
+    for (const instance of AnimationGraphComponent.instances) {
+      if (instance.animatorName === animatorName) {
+        return instance.currentAnimation
+      }
+    }
+    return null
+  }
+
+  /**
+   * Get the underlying Animatrix instance for visualization
+   */
+  public getAnimator(): Animatrix | null {
+    return this.animator
+  }
+
   protected onCreate(): void {
+    AnimationGraphComponent.instances.add(this)
     this.setupAnimationGraph()
   }
 
   private async setupAnimationGraph(): Promise<void> {
-    // Create controller
+    // Create controller for actual animation playback
     this.controller = new CharacterAnimationController(this.model, this.sharedManager)
     
-    // Register all clips
+    // Create Animatrix for state machine logic and visualization
+    this.animator = new Animatrix(this.model, this.config.debug || false)
+    
+    // Store animator name for lookups
+    this.animatorName = this.gameObject?.name || `graph_${AnimationGraphComponent.instances.size}`
+    
+    // Register all clips and set up state machine
     await this.registerAnimationClips()
+    this.setupAnimatrixStateMachine()
+    
+    // Store tree configs for drill-down visualization
+    this.storeTreeConfigs()
+    
+    // Register with visualizer if debug view is enabled
+    if (AnimationGraphComponent.debugViewEnabled && AnimationGraphComponent.sharedVisualizer) {
+      AnimationGraphComponent.sharedVisualizer.add_animator(this.animatorName, this.animator)
+    }
     
     // Set initial state
     this.setState(this.config.initialState)
+  }
+
+  private storeTreeConfigs(): void {
+    if (!this.animatorName) return
+
+    const stateConfigs = new Map<string, StoredTreeConfig>()
+    
+    for (const [stateName, stateConfig] of Object.entries(this.config.states)) {
+      stateConfigs.set(stateName, {
+        stateName,
+        tree: stateConfig.tree || null,
+        simpleAnimation: stateConfig.animation || null
+      })
+    }
+    
+    AnimationGraphComponent.treeConfigs.set(this.animatorName, stateConfigs)
   }
   
   private async registerAnimationClips(): Promise<void> {
@@ -96,12 +226,69 @@ export class AnimationGraphComponent extends Component {
       }
     }
     
-    // Register each clip
+    // Register each clip with SharedAnimationManager
     for (const clipId of clipIds) {
       const clip = AnimationLibrary.getClip(clipId)
       if (clip) {
         const cleanedClip = AnimationPerformance.cleanAnimationClip(clip, this.model!, true)
         this.sharedManager.registerClip(clipId, cleanedClip)
+      }
+    }
+  }
+
+  private setupAnimatrixStateMachine(): void {
+    if (!this.animator) return
+
+    // Add parameters to Animatrix
+    if (this.config.parameters) {
+      for (const [name, paramConfig] of Object.entries(this.config.parameters)) {
+        let paramType: ParameterType
+        switch (paramConfig.type) {
+          case "bool": paramType = ParameterType.BOOL; break
+          case "float": paramType = ParameterType.FLOAT; break
+          case "int": paramType = ParameterType.INT; break
+          default: paramType = ParameterType.BOOL
+        }
+        this.animator.add_parameter(name, paramType, paramConfig.default)
+      }
+    }
+
+    // Register each STATE as a clip in Animatrix (for visualization)
+    for (const [stateName, stateConfig] of Object.entries(this.config.states)) {
+      // Get the primary animation for this state
+      let primaryAnimationId: string | null = null
+      if (stateConfig.animation) {
+        primaryAnimationId = stateConfig.animation
+      } else if (stateConfig.tree && stateConfig.tree.children.length > 0) {
+        primaryAnimationId = stateConfig.tree.children[0].animation
+      }
+
+      if (primaryAnimationId) {
+        const clip = AnimationLibrary.getClip(primaryAnimationId)
+        if (clip) {
+          const cleanedClip = AnimationPerformance.cleanAnimationClip(clip, this.model!, true)
+          this.animator.add_clip(stateName, cleanedClip, 1.0, true)
+        }
+      }
+    }
+
+    // Add transitions to Animatrix
+    if (this.config.transitions) {
+      for (const transition of this.config.transitions) {
+        const conditions = Object.entries(transition.when).map(([param, value]) => ({
+          parameter: param,
+          operator: ComparisonOperator.EQUALS,
+          value: value
+        }))
+
+        this.animator.add_transition({
+          from: transition.from,
+          to: transition.to,
+          conditions: conditions,
+          duration: 0.15,
+          priority: 1,
+          blend_type: BlendType.EASE_IN_OUT
+        })
       }
     }
   }
@@ -124,6 +311,9 @@ export class AnimationGraphComponent extends Component {
   
   public update(deltaTime: number): void {
     if (!this.controller || !this.gameObject.isEnabled()) return
+    
+    // Update Animatrix for visualization (playback progress)
+    this.animator?.update(deltaTime)
     
     // Check transitions
     if (this.config.transitions) {
@@ -189,6 +379,19 @@ export class AnimationGraphComponent extends Component {
   
   public setParameter(name: string, value: any): void {
     this.parameters.set(name, value)
+    
+    // Sync with Animatrix for visualization
+    if (this.animator) {
+      if (typeof value === "boolean") {
+        this.animator.set_bool(name, value)
+      } else if (typeof value === "number") {
+        if (Number.isInteger(value)) {
+          this.animator.set_int(name, value)
+        } else {
+          this.animator.set_float(name, value)
+        }
+      }
+    }
   }
   
   public getParameter(name: string): any {
@@ -200,6 +403,10 @@ export class AnimationGraphComponent extends Component {
     
     this.currentState = stateName
     this.currentAnimation = null  // Force re-evaluation
+    
+    // Sync with Animatrix for visualization
+    this.animator?.set_state(stateName)
+    
     this.updateAnimation()
   }
   
@@ -212,6 +419,22 @@ export class AnimationGraphComponent extends Component {
   }
   
   protected onCleanup(): void {
+    AnimationGraphComponent.instances.delete(this)
+    
+    // Remove tree configs
+    if (this.animatorName) {
+      AnimationGraphComponent.treeConfigs.delete(this.animatorName)
+    }
+    
+    // Remove from visualizer
+    if (AnimationGraphComponent.sharedVisualizer && this.animator && this.animatorName) {
+      AnimationGraphComponent.sharedVisualizer.remove_animator(this.animatorName)
+    }
+    
+    if (this.animator) {
+      this.animator.stop_all()
+    }
+    
     if (this.controller) {
       this.controller.dispose()
     }

@@ -1,4 +1,5 @@
 import Animatrix, { AnimationEvent, ParameterType } from "./animatrix"
+import { AnimationGraphComponent, StoredTreeConfig, AnimationTree } from "./AnimationGraphComponent"
 
 interface NodePosition {
   x: number
@@ -60,6 +61,12 @@ export default class AnimatrixVisualizer {
     font: string
     color: string
   }> = []
+  
+  // Drill-down view state
+  private drillDownState: string | null = null
+  private drillDownTreeConfig: StoredTreeConfig | null = null
+  private lastClickTime: number = 0
+  private lastClickNode: string | null = null
 
   private getLOD(): number {
     // 0 = full detail, 1 = medium, 2 = minimal, 3 = headers only
@@ -84,7 +91,7 @@ export default class AnimatrixVisualizer {
     this.container.style.position = "absolute"
     this.container.style.bottom = "10px"
     this.container.style.right = "10px"
-    this.container.style.width = "500px"
+    this.container.style.width = "620px"
     this.container.style.height = "400px"
     this.container.style.backgroundColor = this.BG_COLOR
     this.container.style.border = "2px solid #333"
@@ -116,22 +123,6 @@ export default class AnimatrixVisualizer {
     controls_div.style.gap = "8px"
     controls_div.style.alignItems = "center"
 
-    const animator_select = document.createElement("select")
-    animator_select.id = "animator-select"
-    animator_select.style.background = "#333"
-    animator_select.style.border = "1px solid #555"
-    animator_select.style.color = "#FFF"
-    animator_select.style.padding = "2px 4px"
-    animator_select.style.borderRadius = "3px"
-    animator_select.style.fontSize = "11px"
-    animator_select.style.cursor = "pointer"
-    animator_select.style.display = "none"
-    animator_select.onchange = (e) => {
-      const target = e.target as HTMLSelectElement
-      this.set_animator(target.value)
-    }
-    controls_div.appendChild(animator_select)
-
     const toggle_btn = document.createElement("button")
     toggle_btn.textContent = "−"
     toggle_btn.style.background = "none"
@@ -156,18 +147,45 @@ export default class AnimatrixVisualizer {
     params_panel.style.padding = "8px"
     params_panel.style.fontSize = "11px"
     params_panel.style.color = "#AAA"
-    params_panel.style.width = "180px"
-    params_panel.style.minWidth = "160px"
+    params_panel.style.width = "140px"
+    params_panel.style.minWidth = "120px"
     params_panel.style.overflowY = "auto"
     params_panel.style.borderRight = "1px solid #333"
     params_panel.style.flexShrink = "0"
 
     this.canvas = document.createElement("canvas")
     this.canvas.style.flex = "1"
-    this.canvas.style.minWidth = "300px"
+    this.canvas.style.minWidth = "280px"
+
+    // Create animator list panel on the right
+    const animator_list_panel = document.createElement("div")
+    animator_list_panel.id = "animator-list-panel"
+    animator_list_panel.style.backgroundColor = "#1a1a1a"
+    animator_list_panel.style.padding = "8px"
+    animator_list_panel.style.fontSize = "11px"
+    animator_list_panel.style.color = "#AAA"
+    animator_list_panel.style.width = "140px"
+    animator_list_panel.style.minWidth = "120px"
+    animator_list_panel.style.overflowY = "auto"
+    animator_list_panel.style.borderLeft = "1px solid #333"
+    animator_list_panel.style.flexShrink = "0"
+
+    const animator_list_header = document.createElement("div")
+    animator_list_header.style.color = "#5B9AE8"
+    animator_list_header.style.fontWeight = "bold"
+    animator_list_header.style.marginBottom = "8px"
+    animator_list_header.style.fontSize = "10px"
+    animator_list_header.style.textTransform = "uppercase"
+    animator_list_header.textContent = "Animators"
+    animator_list_panel.appendChild(animator_list_header)
+
+    const animator_list_content = document.createElement("div")
+    animator_list_content.id = "animator-list-content"
+    animator_list_panel.appendChild(animator_list_content)
 
     content_area.appendChild(params_panel)
     content_area.appendChild(this.canvas)
+    content_area.appendChild(animator_list_panel)
 
     this.container.appendChild(header)
     this.container.appendChild(content_area)
@@ -232,8 +250,12 @@ export default class AnimatrixVisualizer {
       { passive: false },
     )
 
-    // Enable window dragging via header
+    // Enable window dragging via header (but not on buttons)
     header.addEventListener("mousedown", (e) => {
+      const target = e.target as HTMLElement
+      if (target.tagName === "BUTTON") {
+        return
+      }
       e.preventDefault()
       e.stopPropagation()
       this.start_window_drag(e)
@@ -266,6 +288,13 @@ export default class AnimatrixVisualizer {
     })
     window.addEventListener("mousemove", (e) => this.on_window_resize(e))
     window.addEventListener("mouseup", () => this.stop_window_resize())
+
+    // ESC key to exit drill-down view
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && this.drillDownState) {
+        this.exitDrillDown()
+      }
+    })
 
     if (animator) {
       this.add_animator(name || `animator_${this.animators.size + 1}`, animator)
@@ -379,30 +408,59 @@ export default class AnimatrixVisualizer {
   }
 
   private update_animator_select(): void {
-    const select = this.container.querySelector(
-      "#animator-select",
-    ) as HTMLSelectElement
-    if (!select) return
+    const listContent = this.container.querySelector(
+      "#animator-list-content",
+    ) as HTMLElement
+    if (!listContent) return
 
-    select.innerHTML = ""
+    listContent.innerHTML = ""
 
     if (this.animators.size === 0) {
-      select.style.display = "none"
+      const emptyMsg = document.createElement("div")
+      emptyMsg.style.color = "#666"
+      emptyMsg.style.fontStyle = "italic"
+      emptyMsg.style.fontSize = "10px"
+      emptyMsg.textContent = "No animators"
+      listContent.appendChild(emptyMsg)
       return
     }
 
-    if (this.animators.size === 1) {
-      select.style.display = "none"
-    } else {
-      select.style.display = "block"
-    }
-
     this.animators.forEach((_, name) => {
-      const option = document.createElement("option")
-      option.value = name
-      option.textContent = name
-      option.selected = name === this.current_animator_name
-      select.appendChild(option)
+      const item = document.createElement("div")
+      item.style.padding = "6px 8px"
+      item.style.marginBottom = "4px"
+      item.style.borderRadius = "4px"
+      item.style.cursor = "pointer"
+      item.style.fontSize = "11px"
+      item.style.transition = "background 0.15s"
+      item.style.whiteSpace = "nowrap"
+      item.style.overflow = "hidden"
+      item.style.textOverflow = "ellipsis"
+      
+      const isSelected = name === this.current_animator_name
+      item.style.background = isSelected ? "rgba(91, 154, 232, 0.3)" : "rgba(255, 255, 255, 0.05)"
+      item.style.color = isSelected ? "#5B9AE8" : "#AAA"
+      item.style.fontWeight = isSelected ? "bold" : "normal"
+      
+      item.textContent = name
+      item.title = name
+      
+      item.onmouseenter = () => {
+        if (name !== this.current_animator_name) {
+          item.style.background = "rgba(255, 255, 255, 0.1)"
+        }
+      }
+      item.onmouseleave = () => {
+        item.style.background = name === this.current_animator_name 
+          ? "rgba(91, 154, 232, 0.3)" 
+          : "rgba(255, 255, 255, 0.05)"
+      }
+      item.onclick = (e) => {
+        e.stopPropagation()
+        this.set_animator(name)
+      }
+      
+      listContent.appendChild(item)
     })
   }
 
@@ -412,7 +470,9 @@ export default class AnimatrixVisualizer {
     ) as HTMLElement
     if (!title) return
 
-    if (this.current_animator_name) {
+    if (this.drillDownState) {
+      title.textContent = `DRILL-DOWN: ${this.drillDownState}`
+    } else if (this.current_animator_name) {
       title.textContent = `ANIMATION GRAPH - ${this.current_animator_name}`
     } else {
       title.textContent = "ANIMATION GRAPH - No Animator"
@@ -432,6 +492,7 @@ export default class AnimatrixVisualizer {
     const clips = this.animator.get_clips()
     const blendNodes = this.animator.get_blend_tree_ids()
     const transitions = this.animator.get_transitions()
+    
     // States referenced explicitly in transitions should always be visible
     const referencedStates = new Set<string>()
     transitions.forEach((t) => {
@@ -456,23 +517,578 @@ export default class AnimatrixVisualizer {
     const nodeIds: string[] = [
       ...new Set<string>([...baseClipIds, ...blendNodes]),
     ]
-    const num_nodes = nodeIds.length
-    if (num_nodes === 0) return
+    
+    if (nodeIds.length === 0) return
 
-    const center_x = this.canvas.width / 2
-    const center_y = this.canvas.height / 2
-    // Lay out nodes in a vertical column with generous spacing
-    const verticalGap = 300 // more space by default
-    const startY = center_y - ((num_nodes - 1) * verticalGap) / 2
-    let index = 0
-    for (const state_id of nodeIds) {
-      const x = center_x
-      const y = startY + index * verticalGap
-      this.node_positions.set(state_id, { x, y })
-      index++
+    // Build graph structure
+    const graph = this.buildGraph(nodeIds, transitions)
+    
+    // Check if graph has cycles (bidirectional edges)
+    const hasCycles = this.detectCycles(nodeIds, graph)
+    
+    if (hasCycles) {
+      // Use radial/force-directed layout for cyclic graphs
+      this.radialLayout(nodeIds, graph)
+    } else {
+      // Use Sugiyama-style layered layout for DAGs
+      const layers = this.assignLayers(nodeIds, graph)
+      this.minimizeCrossings(layers, graph)
+      this.assignCoordinates(layers, graph)
     }
 
     this.auto_layout_complete = true
+  }
+
+  private detectCycles(
+    nodeIds: string[],
+    graph: { outgoing: Map<string, Set<string>>; incoming: Map<string, Set<string>> }
+  ): boolean {
+    const { outgoing, incoming } = graph
+    
+    // Check for bidirectional edges (A->B and B->A)
+    for (const [from, targets] of outgoing) {
+      for (const to of targets) {
+        if (outgoing.get(to)?.has(from)) {
+          return true
+        }
+      }
+    }
+    
+    // Also check if any node has both incoming and outgoing to suggest cycles
+    for (const node of nodeIds) {
+      const hasIn = (incoming.get(node)?.size || 0) > 0
+      const hasOut = (outgoing.get(node)?.size || 0) > 0
+      if (hasIn && hasOut) {
+        // Could be part of a cycle - do DFS to confirm
+        const visited = new Set<string>()
+        const recStack = new Set<string>()
+        
+        const hasCycleDFS = (n: string): boolean => {
+          visited.add(n)
+          recStack.add(n)
+          
+          for (const neighbor of outgoing.get(n) || []) {
+            if (!visited.has(neighbor)) {
+              if (hasCycleDFS(neighbor)) return true
+            } else if (recStack.has(neighbor)) {
+              return true
+            }
+          }
+          
+          recStack.delete(n)
+          return false
+        }
+        
+        if (hasCycleDFS(node)) return true
+      }
+    }
+    
+    return false
+  }
+
+  private radialLayout(
+    nodeIds: string[],
+    graph: { outgoing: Map<string, Set<string>>; incoming: Map<string, Set<string>> }
+  ): void {
+    const { outgoing, incoming } = graph
+    const canvasW = this.canvas.width
+    const canvasH = this.canvas.height
+    
+    // Node dimensions for spacing
+    const nodeW = 250
+    const nodeH = 100
+    
+    // Find the hub node (most total connections)
+    let hubNode = nodeIds[0]
+    let maxConnections = 0
+    
+    for (const node of nodeIds) {
+      const connections = (outgoing.get(node)?.size || 0) + (incoming.get(node)?.size || 0)
+      if (connections > maxConnections) {
+        maxConnections = connections
+        hubNode = node
+      }
+    }
+    
+    // Get nodes directly connected to hub
+    const hubConnected = new Set<string>()
+    for (const n of outgoing.get(hubNode) || []) hubConnected.add(n)
+    for (const n of incoming.get(hubNode) || []) hubConnected.add(n)
+    
+    // Separate into tiers: hub, directly connected, and others
+    const directlyConnected = nodeIds.filter(n => n !== hubNode && hubConnected.has(n))
+    const others = nodeIds.filter(n => n !== hubNode && !hubConnected.has(n))
+    
+    // Place hub in center
+    const centerX = canvasW / 2
+    const centerY = canvasH / 2
+    this.node_positions.set(hubNode, { x: centerX, y: centerY })
+    
+    // Calculate radius for first ring - must fit all directly connected nodes
+    const numDirectConnected = directlyConnected.length
+    if (numDirectConnected > 0) {
+      // Calculate minimum radius to avoid node overlap
+      // Circumference needed = numNodes * (nodeWidth + gap)
+      const nodeSpacing = nodeW + 60
+      const circumference = numDirectConnected * nodeSpacing
+      const minRadius = circumference / (2 * Math.PI)
+      
+      // Also ensure radius is enough to clear center node
+      const clearanceRadius = Math.max(nodeW, nodeH) / 2 + nodeH / 2 + 80
+      const radius = Math.max(minRadius, clearanceRadius, 200)
+      
+      // Sort connected nodes by their connections to each other (for better edge routing)
+      const sortedConnected = this.sortNodesByConnectivity(directlyConnected, graph)
+      
+      // Place nodes in a circle
+      for (let i = 0; i < sortedConnected.length; i++) {
+        const angle = (2 * Math.PI * i) / sortedConnected.length - Math.PI / 2 // Start from top
+        const x = centerX + radius * Math.cos(angle)
+        const y = centerY + radius * Math.sin(angle)
+        this.node_positions.set(sortedConnected[i], { x, y })
+      }
+    }
+    
+    // Place other nodes (not directly connected to hub) in outer ring
+    if (others.length > 0) {
+      const innerRadius = numDirectConnected > 0 
+        ? Math.max(...directlyConnected.map(n => {
+            const pos = this.node_positions.get(n)!
+            return Math.sqrt((pos.x - centerX) ** 2 + (pos.y - centerY) ** 2)
+          }))
+        : 200
+      
+      const outerRadius = innerRadius + nodeH + 100
+      
+      for (let i = 0; i < others.length; i++) {
+        const angle = (2 * Math.PI * i) / others.length - Math.PI / 2
+        const x = centerX + outerRadius * Math.cos(angle)
+        const y = centerY + outerRadius * Math.sin(angle)
+        this.node_positions.set(others[i], { x, y })
+      }
+    }
+    
+    // Fine-tune with force-directed adjustment
+    this.forceDirectedRefinement(nodeIds, graph, 50)
+  }
+
+  private sortNodesByConnectivity(
+    nodes: string[],
+    graph: { outgoing: Map<string, Set<string>>; incoming: Map<string, Set<string>> }
+  ): string[] {
+    if (nodes.length <= 2) return nodes
+    
+    const { outgoing, incoming } = graph
+    
+    // Build adjacency between these nodes only
+    const adj = new Map<string, Set<string>>()
+    for (const n of nodes) {
+      adj.set(n, new Set())
+    }
+    
+    for (const n of nodes) {
+      for (const target of outgoing.get(n) || []) {
+        if (nodes.includes(target)) {
+          adj.get(n)!.add(target)
+          adj.get(target)!.add(n)
+        }
+      }
+    }
+    
+    // Greedy ordering: start with first node, always pick the most connected neighbor
+    const result: string[] = []
+    const remaining = new Set(nodes)
+    
+    // Start with node that has most connections within the group
+    let current = nodes.reduce((a, b) => 
+      (adj.get(a)?.size || 0) >= (adj.get(b)?.size || 0) ? a : b
+    )
+    
+    while (remaining.size > 0) {
+      result.push(current)
+      remaining.delete(current)
+      
+      if (remaining.size === 0) break
+      
+      // Find the remaining node most connected to current
+      let bestNext: string | null = null
+      let bestScore = -1
+      
+      for (const n of remaining) {
+        const isConnected = adj.get(current)?.has(n) ? 1 : 0
+        if (isConnected > bestScore || bestNext === null) {
+          bestScore = isConnected
+          bestNext = n
+        }
+      }
+      
+      current = bestNext!
+    }
+    
+    return result
+  }
+
+  private forceDirectedRefinement(
+    nodeIds: string[],
+    graph: { outgoing: Map<string, Set<string>>; incoming: Map<string, Set<string>> },
+    iterations: number
+  ): void {
+    const { outgoing } = graph
+    const canvasW = this.canvas.width
+    const canvasH = this.canvas.height
+    const nodeW = 250
+    const nodeH = 100
+    const minDist = Math.max(nodeW, nodeH) + 40
+    
+    for (let iter = 0; iter < iterations; iter++) {
+      const forces = new Map<string, { fx: number; fy: number }>()
+      
+      for (const id of nodeIds) {
+        forces.set(id, { fx: 0, fy: 0 })
+      }
+      
+      // Repulsion between all nodes
+      for (let i = 0; i < nodeIds.length; i++) {
+        for (let j = i + 1; j < nodeIds.length; j++) {
+          const a = nodeIds[i]
+          const b = nodeIds[j]
+          const posA = this.node_positions.get(a)!
+          const posB = this.node_positions.get(b)!
+          
+          const dx = posB.x - posA.x
+          const dy = posB.y - posA.y
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1
+          
+          if (dist < minDist * 1.5) {
+            const force = (minDist * 1.5 - dist) * 0.5
+            const fx = (dx / dist) * force
+            const fy = (dy / dist) * force
+            
+            forces.get(a)!.fx -= fx
+            forces.get(a)!.fy -= fy
+            forces.get(b)!.fx += fx
+            forces.get(b)!.fy += fy
+          }
+        }
+      }
+      
+      // Attraction along edges
+      for (const [from, targets] of outgoing) {
+        for (const to of targets) {
+          const posFrom = this.node_positions.get(from)
+          const posTo = this.node_positions.get(to)
+          if (!posFrom || !posTo) continue
+          
+          const dx = posTo.x - posFrom.x
+          const dy = posTo.y - posFrom.y
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1
+          
+          const idealDist = minDist * 1.2
+          if (dist > idealDist) {
+            const force = (dist - idealDist) * 0.02
+            const fx = (dx / dist) * force
+            const fy = (dy / dist) * force
+            
+            forces.get(from)!.fx += fx
+            forces.get(from)!.fy += fy
+            forces.get(to)!.fx -= fx
+            forces.get(to)!.fy -= fy
+          }
+        }
+      }
+      
+      // Apply forces
+      const damping = 0.8 * (1 - iter / iterations) // Decrease over iterations
+      const padding = nodeW / 2 + 20
+      
+      for (const id of nodeIds) {
+        const pos = this.node_positions.get(id)!
+        const f = forces.get(id)!
+        
+        pos.x += f.fx * damping
+        pos.y += f.fy * damping
+        
+        // Keep within bounds
+        pos.x = Math.max(padding, Math.min(canvasW - padding, pos.x))
+        pos.y = Math.max(padding, Math.min(canvasH - padding, pos.y))
+      }
+    }
+  }
+
+  private buildGraph(nodeIds: string[], transitions: any[]): {
+    outgoing: Map<string, Set<string>>
+    incoming: Map<string, Set<string>>
+    edges: Array<{ from: string; to: string }>
+  } {
+    const outgoing = new Map<string, Set<string>>()
+    const incoming = new Map<string, Set<string>>()
+    const edges: Array<{ from: string; to: string }> = []
+    
+    for (const id of nodeIds) {
+      outgoing.set(id, new Set())
+      incoming.set(id, new Set())
+    }
+    
+    for (const t of transitions) {
+      if (t.from !== "*" && nodeIds.includes(t.from) && nodeIds.includes(t.to) && t.from !== t.to) {
+        if (!outgoing.get(t.from)?.has(t.to)) {
+          outgoing.get(t.from)?.add(t.to)
+          incoming.get(t.to)?.add(t.from)
+          edges.push({ from: t.from, to: t.to })
+        }
+      }
+    }
+    
+    return { outgoing, incoming, edges }
+  }
+
+  private assignLayers(
+    nodeIds: string[],
+    graph: { outgoing: Map<string, Set<string>>; incoming: Map<string, Set<string>> }
+  ): string[][] {
+    const { outgoing, incoming } = graph
+    const layers = new Map<string, number>()
+    
+    // Use longest path algorithm for layer assignment
+    // First, find nodes with no incoming edges (roots)
+    const roots = nodeIds.filter(id => (incoming.get(id)?.size || 0) === 0)
+    
+    // If no roots (cyclic), pick node with minimum incoming edges
+    const startNodes = roots.length > 0 ? roots : 
+      [nodeIds.reduce((a, b) => 
+        (incoming.get(a)?.size || 0) <= (incoming.get(b)?.size || 0) ? a : b
+      )]
+    
+    // Compute longest path from any root to each node
+    const computeLayer = (node: string, visited: Set<string>): number => {
+      if (layers.has(node)) return layers.get(node)!
+      if (visited.has(node)) return 0 // Cycle detected
+      
+      visited.add(node)
+      const parents = incoming.get(node) || new Set()
+      let maxParentLayer = -1
+      
+      for (const parent of parents) {
+        const parentLayer = computeLayer(parent, visited)
+        maxParentLayer = Math.max(maxParentLayer, parentLayer)
+      }
+      
+      const layer = maxParentLayer + 1
+      layers.set(node, layer)
+      return layer
+    }
+    
+    // Assign layers to all nodes
+    for (const node of nodeIds) {
+      if (!layers.has(node)) {
+        computeLayer(node, new Set())
+      }
+    }
+    
+    // Handle disconnected nodes - place them based on their connections or at end
+    const maxLayer = Math.max(...Array.from(layers.values()), 0)
+    for (const node of nodeIds) {
+      if (!layers.has(node)) {
+        layers.set(node, maxLayer + 1)
+      }
+    }
+    
+    // Group into layer arrays
+    const layerArrays: string[][] = []
+    const layerCount = Math.max(...Array.from(layers.values())) + 1
+    
+    for (let i = 0; i < layerCount; i++) {
+      layerArrays.push([])
+    }
+    
+    for (const [node, layer] of layers) {
+      layerArrays[layer].push(node)
+    }
+    
+    // Remove empty layers
+    return layerArrays.filter(l => l.length > 0)
+  }
+
+  private minimizeCrossings(
+    layers: string[][],
+    graph: { outgoing: Map<string, Set<string>>; incoming: Map<string, Set<string>> }
+  ): void {
+    const { outgoing, incoming } = graph
+    
+    // Barycenter heuristic with multiple passes
+    const numPasses = 4
+    
+    for (let pass = 0; pass < numPasses; pass++) {
+      // Forward pass (top to bottom)
+      for (let i = 1; i < layers.length; i++) {
+        this.orderLayerByBarycenter(layers[i], layers[i - 1], incoming, true)
+      }
+      
+      // Backward pass (bottom to top)
+      for (let i = layers.length - 2; i >= 0; i--) {
+        this.orderLayerByBarycenter(layers[i], layers[i + 1], outgoing, false)
+      }
+    }
+  }
+
+  private orderLayerByBarycenter(
+    layer: string[],
+    adjacentLayer: string[],
+    connections: Map<string, Set<string>>,
+    useIncoming: boolean
+  ): void {
+    // Create position map for adjacent layer
+    const posMap = new Map<string, number>()
+    adjacentLayer.forEach((node, idx) => posMap.set(node, idx))
+    
+    // Calculate barycenter for each node in current layer
+    const barycenters: Array<{ node: string; bc: number }> = []
+    
+    for (const node of layer) {
+      const connectedNodes = connections.get(node) || new Set()
+      let sum = 0
+      let count = 0
+      
+      for (const connected of connectedNodes) {
+        const pos = posMap.get(connected)
+        if (pos !== undefined) {
+          sum += pos
+          count++
+        }
+      }
+      
+      // If no connections, keep current relative position
+      const bc = count > 0 ? sum / count : layer.indexOf(node)
+      barycenters.push({ node, bc })
+    }
+    
+    // Sort by barycenter
+    barycenters.sort((a, b) => a.bc - b.bc)
+    
+    // Update layer order
+    layer.length = 0
+    barycenters.forEach(({ node }) => layer.push(node))
+  }
+
+  private assignCoordinates(
+    layers: string[][],
+    graph: { outgoing: Map<string, Set<string>>; incoming: Map<string, Set<string>>; edges: Array<{ from: string; to: string }> }
+  ): void {
+    const canvasW = this.canvas.width
+    const canvasH = this.canvas.height
+    
+    // Get actual node dimensions (use max dimensions for spacing)
+    const nodeW = 250  // Slightly more than the 240px node width
+    const nodeH = 100  // Slightly more than the 80px node height
+    
+    // Layout constants - spacing includes node size + gap
+    const paddingX = 60
+    const paddingY = 60
+    const gapX = 40   // Gap between nodes horizontally
+    const gapY = 60   // Gap between layers vertically
+    
+    const nodeSpacingX = nodeW + gapX
+    const nodeSpacingY = nodeH + gapY
+    
+    // Calculate required dimensions
+    const maxNodesInLayer = Math.max(...layers.map(l => l.length))
+    const numLayers = layers.length
+    
+    // Calculate total graph size
+    const totalWidth = maxNodesInLayer * nodeSpacingX - gapX
+    const totalHeight = numLayers * nodeSpacingY - gapY
+    
+    // Center the graph in canvas
+    const startX = Math.max(paddingX + nodeW / 2, (canvasW - totalWidth) / 2 + nodeW / 2)
+    const startY = Math.max(paddingY + nodeH / 2, (canvasH - totalHeight) / 2 + nodeH / 2)
+    
+    // Position each layer
+    for (let layerIdx = 0; layerIdx < layers.length; layerIdx++) {
+      const layer = layers[layerIdx]
+      const y = startY + layerIdx * nodeSpacingY
+      
+      // Center this layer horizontally
+      const layerWidth = (layer.length - 1) * nodeSpacingX
+      const layerStartX = (canvasW - layerWidth) / 2
+      
+      for (let nodeIdx = 0; nodeIdx < layer.length; nodeIdx++) {
+        const node = layer[nodeIdx]
+        const x = layer.length === 1 ? canvasW / 2 : layerStartX + nodeIdx * nodeSpacingX
+        this.node_positions.set(node, { x, y })
+      }
+    }
+    
+    // Apply priority layout adjustment to reduce edge lengths
+    this.priorityLayoutAdjustment(layers, graph, nodeSpacingX)
+  }
+
+  private priorityLayoutAdjustment(
+    layers: string[][],
+    graph: { outgoing: Map<string, Set<string>>; incoming: Map<string, Set<string>> },
+    minSpacing: number
+  ): void {
+    const { incoming } = graph
+    const nodeHalfWidth = 125  // Half of node width for bounds
+    
+    // Adjust each node to be closer to its parents' average position
+    for (let layerIdx = 1; layerIdx < layers.length; layerIdx++) {
+      const layer = layers[layerIdx]
+      const positions: Array<{ node: string; idealX: number; currentX: number }> = []
+      
+      for (const node of layer) {
+        const pos = this.node_positions.get(node)!
+        const parents = incoming.get(node) || new Set()
+        
+        if (parents.size > 0) {
+          // Calculate average parent X position
+          let sumX = 0
+          for (const parent of parents) {
+            const parentPos = this.node_positions.get(parent)
+            if (parentPos) sumX += parentPos.x
+          }
+          const idealX = sumX / parents.size
+          positions.push({ node, idealX, currentX: pos.x })
+        } else {
+          positions.push({ node, idealX: pos.x, currentX: pos.x })
+        }
+      }
+      
+      // Sort by ideal position
+      positions.sort((a, b) => a.idealX - b.idealX)
+      
+      // Assign new positions maintaining minimum spacing
+      const canvasW = this.canvas.width
+      const padding = nodeHalfWidth + 20
+      
+      for (let i = 0; i < positions.length; i++) {
+        let newX = positions[i].idealX
+        
+        // Ensure minimum spacing from previous node
+        if (i > 0) {
+          const prevX = this.node_positions.get(positions[i - 1].node)!.x
+          newX = Math.max(newX, prevX + minSpacing)
+        }
+        
+        // Keep within bounds
+        newX = Math.max(padding, Math.min(canvasW - padding, newX))
+        
+        this.node_positions.get(positions[i].node)!.x = newX
+      }
+      
+      // Center the layer if it got pushed to one side
+      const xs = layer.map(n => this.node_positions.get(n)!.x)
+      const minX = Math.min(...xs)
+      const maxX = Math.max(...xs)
+      const centerX = (minX + maxX) / 2
+      const offset = canvasW / 2 - centerX
+      
+      // Only apply centering if it doesn't push nodes out of bounds
+      if (minX + offset >= padding && maxX + offset <= canvasW - padding) {
+        for (const node of layer) {
+          this.node_positions.get(node)!.x += offset
+        }
+      }
+    }
   }
 
   private dragging_node: string | null = null
@@ -482,6 +1098,23 @@ export default class AnimatrixVisualizer {
     const rect = this.canvas.getBoundingClientRect()
     const sx = event.clientX - rect.left
     const sy = event.clientY - rect.top
+
+    // Check for back button click in drill-down mode
+    if (this.drillDownState) {
+      if (sx >= 10 && sx <= 70 && sy >= 10 && sy <= 38) {
+        this.exitDrillDown()
+        return
+      }
+      // Double-click anywhere else exits drill-down
+      const now = Date.now()
+      if (now - this.lastClickTime < 300) {
+        this.exitDrillDown()
+        return
+      }
+      this.lastClickTime = now
+      return
+    }
+
     const x = (sx - this.panX) / this.viewScale
     const y = (sy - this.panY) / this.viewScale
 
@@ -521,6 +1154,18 @@ export default class AnimatrixVisualizer {
         this.render()
         return
       }
+      
+      // Check for double-click to enter drill-down view
+      const now = Date.now()
+      if (this.lastClickNode === hitNode && now - this.lastClickTime < 300) {
+        this.enterDrillDown(hitNode)
+        this.lastClickNode = null
+        this.lastClickTime = 0
+        return
+      }
+      this.lastClickNode = hitNode
+      this.lastClickTime = now
+      
       const pos = this.node_positions.get(hitNode)!
       this.dragging_node = hitNode
       this.drag_offset = { x: x - pos.x, y: y - pos.y }
@@ -704,13 +1349,19 @@ export default class AnimatrixVisualizer {
   private render(): void {
     if (!this.is_visible) return
 
-    if (!this.auto_layout_complete) {
-      this.auto_layout_nodes()
-    }
-
     this.ctx.setTransform(1, 0, 0, 1, 0, 0)
     this.ctx.fillStyle = "#1E1E1E"
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
+
+    // Render drill-down view if active
+    if (this.drillDownState && this.drillDownTreeConfig) {
+      this.render_drill_down_view()
+      return
+    }
+
+    if (!this.auto_layout_complete) {
+      this.auto_layout_nodes()
+    }
 
     this.ctx.save()
     this.ctx.translate(this.panX, this.panY)
@@ -720,6 +1371,172 @@ export default class AnimatrixVisualizer {
     this.ctx.restore()
     this.draw_labels_screen_space()
     this.update_parameters_panel()
+  }
+
+  private enterDrillDown(stateName: string): void {
+    if (!this.current_animator_name) return
+    
+    const treeConfig = AnimationGraphComponent.getTreeConfig(this.current_animator_name, stateName)
+    if (!treeConfig) return
+    
+    this.drillDownState = stateName
+    this.drillDownTreeConfig = treeConfig
+    this.render()
+    this.update_title()
+  }
+
+  private exitDrillDown(): void {
+    this.drillDownState = null
+    this.drillDownTreeConfig = null
+    this.render()
+    this.update_title()
+  }
+
+  private render_drill_down_view(): void {
+    if (!this.drillDownTreeConfig || !this.current_animator_name) return
+
+    const ctx = this.ctx
+    const w = this.canvas.width
+    const h = this.canvas.height
+    const padding = 20
+
+    // Draw back button area
+    ctx.fillStyle = "#333"
+    ctx.fillRect(10, 10, 60, 28)
+    ctx.strokeStyle = "#555"
+    ctx.lineWidth = 1
+    ctx.strokeRect(10, 10, 60, 28)
+    ctx.fillStyle = "#FFF"
+    ctx.font = "12px monospace"
+    ctx.textAlign = "center"
+    ctx.textBaseline = "middle"
+    ctx.fillText("< Back", 40, 24)
+
+    // Draw state name header
+    ctx.fillStyle = "#5B9AE8"
+    ctx.font = "bold 16px monospace"
+    ctx.textAlign = "center"
+    ctx.fillText(`State: ${this.drillDownState}`, w / 2, 24)
+
+    if (this.drillDownTreeConfig.simpleAnimation) {
+      // Simple animation - just show the animation name
+      ctx.fillStyle = "#AAA"
+      ctx.font = "14px monospace"
+      ctx.textAlign = "center"
+      ctx.fillText("Simple Animation:", w / 2, h / 2 - 20)
+      ctx.fillStyle = "#4CAF50"
+      ctx.font = "bold 18px monospace"
+      ctx.fillText(this.drillDownTreeConfig.simpleAnimation, w / 2, h / 2 + 10)
+      return
+    }
+
+    if (!this.drillDownTreeConfig.tree) return
+
+    const tree = this.drillDownTreeConfig.tree
+    const children = tree.children
+    if (children.length === 0) return
+
+    // Get current parameter value
+    const paramValue = AnimationGraphComponent.getParameterValue(this.current_animator_name, tree.parameter) || 0
+    const currentAnim = AnimationGraphComponent.getCurrentAnimation(this.current_animator_name)
+
+    // Draw parameter name and value
+    ctx.fillStyle = "#AAA"
+    ctx.font = "14px monospace"
+    ctx.textAlign = "center"
+    ctx.fillText(`Parameter: ${tree.parameter}`, w / 2, 60)
+    ctx.fillStyle = "#FFEE58"
+    ctx.font = "bold 16px monospace"
+    ctx.fillText(`Value: ${typeof paramValue === 'number' ? paramValue.toFixed(2) : paramValue}`, w / 2, 85)
+
+    // Draw threshold slider
+    const sliderY = 130
+    const sliderWidth = w - padding * 4
+    const sliderLeft = padding * 2
+    const sliderRight = sliderLeft + sliderWidth
+
+    // Get min/max thresholds
+    const sortedChildren = [...children].sort((a, b) => a.threshold - b.threshold)
+    const minT = sortedChildren[0].threshold
+    const maxT = sortedChildren[sortedChildren.length - 1].threshold
+    const range = Math.max(0.001, maxT - minT)
+
+    // Draw slider background
+    ctx.fillStyle = "#333"
+    ctx.fillRect(sliderLeft, sliderY - 4, sliderWidth, 8)
+
+    // Draw threshold markers
+    for (const child of sortedChildren) {
+      const x = sliderLeft + ((child.threshold - minT) / range) * sliderWidth
+      ctx.strokeStyle = "#666"
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(x, sliderY - 10)
+      ctx.lineTo(x, sliderY + 10)
+      ctx.stroke()
+      
+      ctx.fillStyle = "#888"
+      ctx.font = "10px monospace"
+      ctx.textAlign = "center"
+      ctx.fillText(child.threshold.toString(), x, sliderY + 22)
+    }
+
+    // Draw current value marker
+    const clampedValue = Math.min(maxT, Math.max(minT, paramValue as number))
+    const valueX = sliderLeft + ((clampedValue - minT) / range) * sliderWidth
+    ctx.fillStyle = "#FFEE58"
+    ctx.beginPath()
+    ctx.arc(valueX, sliderY, 8, 0, Math.PI * 2)
+    ctx.fill()
+
+    // Draw animation children as cards
+    const cardStartY = 170
+    const cardHeight = 50
+    const cardGap = 10
+    const cardWidth = Math.min(200, (w - padding * 2 - cardGap * (children.length - 1)) / children.length)
+
+    const totalCardsWidth = cardWidth * children.length + cardGap * (children.length - 1)
+    let cardX = (w - totalCardsWidth) / 2
+
+    for (const child of sortedChildren) {
+      const isActive = currentAnim === child.animation
+      
+      // Card background
+      ctx.fillStyle = isActive ? "rgba(76, 175, 80, 0.3)" : "rgba(255, 255, 255, 0.05)"
+      ctx.fillRect(cardX, cardStartY, cardWidth, cardHeight)
+      
+      // Card border
+      ctx.strokeStyle = isActive ? "#4CAF50" : "#444"
+      ctx.lineWidth = isActive ? 2 : 1
+      ctx.strokeRect(cardX, cardStartY, cardWidth, cardHeight)
+
+      // Animation name
+      ctx.fillStyle = isActive ? "#4CAF50" : "#AAA"
+      ctx.font = isActive ? "bold 12px monospace" : "12px monospace"
+      ctx.textAlign = "center"
+      ctx.fillText(child.animation, cardX + cardWidth / 2, cardStartY + 20)
+
+      // Threshold value
+      ctx.fillStyle = "#666"
+      ctx.font = "10px monospace"
+      ctx.fillText(`>= ${child.threshold}`, cardX + cardWidth / 2, cardStartY + 38)
+
+      // Active indicator
+      if (isActive) {
+        ctx.fillStyle = "#4CAF50"
+        ctx.beginPath()
+        ctx.arc(cardX + cardWidth / 2, cardStartY - 8, 4, 0, Math.PI * 2)
+        ctx.fill()
+      }
+
+      cardX += cardWidth + cardGap
+    }
+
+    // Instructions
+    ctx.fillStyle = "#555"
+    ctx.font = "11px monospace"
+    ctx.textAlign = "center"
+    ctx.fillText("Double-click or press ESC to go back", w / 2, h - 20)
   }
 
   private draw_connections(): void {
@@ -744,7 +1561,7 @@ export default class AnimatrixVisualizer {
         this.ctx.strokeStyle = is_active
           ? this.CONNECTION_COLOR_ACTIVE
           : this.CONNECTION_COLOR
-        this.ctx.lineWidth = is_active ? 3 : 1
+        this.ctx.lineWidth = is_active ? 3 : 2
         this.ctx.setLineDash(transition.from === "*" ? [5, 5] : [])
 
         this.ctx.beginPath()
@@ -753,25 +1570,31 @@ export default class AnimatrixVisualizer {
           this.ctx.moveTo(from_pos.x, from_pos.y)
           this.ctx.lineTo(to_pos.x, to_pos.y)
         } else {
-          const angle = Math.atan2(to_pos.y - from_pos.y, to_pos.x - from_pos.x)
-          const start_x = from_pos.x + Math.cos(angle) * this.NODE_RADIUS
-          const start_y = from_pos.y + Math.sin(angle) * this.NODE_RADIUS
-          const end_x = to_pos.x - Math.cos(angle) * this.NODE_RADIUS
-          const end_y = to_pos.y - Math.sin(angle) * this.NODE_RADIUS
+          // Get actual node dimensions for both nodes
+          const fromIsBlend = this.animator?.is_blend_tree_state(transition.from) || false
+          const toIsBlend = this.animator?.is_blend_tree_state(transition.to) || false
+          const fromDims = this.get_node_dimensions(transition.from, fromIsBlend)
+          const toDims = this.get_node_dimensions(transition.to, toIsBlend)
+          
+          // Calculate intersection points with rectangle edges
+          const startPoint = this.getRectEdgePoint(from_pos, to_pos, fromDims.w / 2, fromDims.h / 2)
+          const endPoint = this.getRectEdgePoint(to_pos, from_pos, toDims.w / 2, toDims.h / 2)
 
-          this.ctx.moveTo(start_x, start_y)
-          this.ctx.lineTo(end_x, end_y)
+          this.ctx.moveTo(startPoint.x, startPoint.y)
+          this.ctx.lineTo(endPoint.x, endPoint.y)
 
-          const arrow_length = 10
+          // Draw arrow head at the end point
+          const angle = Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x)
+          const arrow_length = 12
           const arrow_angle = Math.PI / 6
           this.ctx.lineTo(
-            end_x - arrow_length * Math.cos(angle - arrow_angle),
-            end_y - arrow_length * Math.sin(angle - arrow_angle),
+            endPoint.x - arrow_length * Math.cos(angle - arrow_angle),
+            endPoint.y - arrow_length * Math.sin(angle - arrow_angle),
           )
-          this.ctx.moveTo(end_x, end_y)
+          this.ctx.moveTo(endPoint.x, endPoint.y)
           this.ctx.lineTo(
-            end_x - arrow_length * Math.cos(angle + arrow_angle),
-            end_y - arrow_length * Math.sin(angle + arrow_angle),
+            endPoint.x - arrow_length * Math.cos(angle + arrow_angle),
+            endPoint.y - arrow_length * Math.sin(angle + arrow_angle),
           )
         }
 
@@ -785,7 +1608,7 @@ export default class AnimatrixVisualizer {
 
           this.ctx.fillStyle = this.CONNECTION_COLOR_ACTIVE
           this.ctx.beginPath()
-          this.ctx.arc(mid_x, mid_y, 4, 0, Math.PI * 2)
+          this.ctx.arc(mid_x, mid_y, 5, 0, Math.PI * 2)
           this.ctx.fill()
         }
       }
@@ -802,6 +1625,31 @@ export default class AnimatrixVisualizer {
     this.ctx.textAlign = "center"
     this.ctx.textBaseline = "middle"
     this.ctx.fillText("ANY", any_state_pos.x, any_state_pos.y)
+  }
+
+  // Calculate the point where a line from center to target intersects a rectangle edge
+  private getRectEdgePoint(
+    center: { x: number; y: number },
+    target: { x: number; y: number },
+    halfWidth: number,
+    halfHeight: number
+  ): { x: number; y: number } {
+    const dx = target.x - center.x
+    const dy = target.y - center.y
+    
+    if (dx === 0 && dy === 0) {
+      return { x: center.x, y: center.y }
+    }
+    
+    // Calculate the scale factor to reach the rectangle edge
+    const scaleX = halfWidth / Math.abs(dx || 0.001)
+    const scaleY = halfHeight / Math.abs(dy || 0.001)
+    const scale = Math.min(scaleX, scaleY)
+    
+    return {
+      x: center.x + dx * scale,
+      y: center.y + dy * scale
+    }
   }
 
   private draw_nodes(): void {
