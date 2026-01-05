@@ -68,6 +68,8 @@ export class AnimationPerformance {
    * Clean up animation clip by removing tracks for non-bone objects
    * This prevents PropertyBinding warnings and improves performance
    * Removes tracks for accessories, hair, hats, etc that are mesh names not bones
+   * 
+   * IMPORTANT: Returns a NEW clip, does not modify the original
    */
   public static cleanAnimationClip(
     clip: THREE.AnimationClip,
@@ -106,7 +108,7 @@ export class AnimationPerformance {
       const parts = track.name.split('.')
       if (parts.length < 2) {
         // Keep tracks without proper naming (shouldn't happen but be safe)
-        validTracks.push(track)
+        validTracks.push(track.clone())
         continue
       }
       
@@ -125,7 +127,7 @@ export class AnimationPerformance {
       
       // Check if this is a valid bone or object in the model
       if (validBoneNames.has(objectName) || validObjectNames.has(objectName)) {
-        validTracks.push(track)
+        validTracks.push(track.clone())
       } else {
         removedTracks.push(track.name)
       }
@@ -140,11 +142,16 @@ export class AnimationPerformance {
       }
     }
     
-    // Modify the original clip directly to ensure the cleaned version is used
-    clip.tracks = validTracks
-    clip.optimize() // Optimize the clip
+    // Create a NEW clip with the valid tracks - never modify the original
+    const cleanedClip = new THREE.AnimationClip(
+      clip.name,
+      clip.duration,
+      validTracks,
+      clip.blendMode
+    )
+    cleanedClip.optimize()
     
-    return clip
+    return cleanedClip
   }
   
   /**

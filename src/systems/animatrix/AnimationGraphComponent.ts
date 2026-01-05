@@ -70,6 +70,7 @@ export class AnimationGraphComponent extends Component {
   private parameters: Map<string, any> = new Map()
   private currentState: string | null = null
   private currentAnimation: string | null = null
+  private clipKeyMap: Map<string, string> = new Map() // Maps animation ID to registration key
   
   constructor(model: THREE.Object3D, config: AnimationGraphConfig) {
     super()
@@ -226,14 +227,45 @@ export class AnimationGraphComponent extends Component {
       }
     }
     
-    // Register each clip with SharedAnimationManager
+    // Get skeleton identifier for this model (to ensure proper clip cleaning per skeleton type)
+    const skeletonId = this.getSkeletonIdentifier()
+    
+    // Register each clip with SharedAnimationManager using skeleton-specific key
     for (const clipId of clipIds) {
       const clip = AnimationLibrary.getClip(clipId)
       if (clip) {
+        // Use skeleton-specific key so different skeleton types get properly cleaned clips
+        const registrationKey = skeletonId ? `${clipId}__${skeletonId}` : clipId
         const cleanedClip = AnimationPerformance.cleanAnimationClip(clip, this.model!, true)
-        this.sharedManager.registerClip(clipId, cleanedClip)
+        this.sharedManager.registerClip(registrationKey, cleanedClip)
+        
+        // Store mapping from animation ID to registration key for playback
+        this.clipKeyMap.set(clipId, registrationKey)
       }
     }
+  }
+  
+  private getSkeletonIdentifier(): string | null {
+    // Generate a skeleton identifier based on bone names
+    // Models with the same skeleton will share animations (performance optimization)
+    // Models with different skeletons get separate cleaned clips
+    let boneNames: string[] = []
+    
+    this.model.traverse((child) => {
+      if (child instanceof THREE.SkinnedMesh && child.skeleton) {
+        boneNames = child.skeleton.bones.map(b => b.name).sort()
+      }
+    })
+    
+    if (boneNames.length === 0) return null
+    
+    // Simple hash of bone names to identify skeleton type
+    const hash = boneNames.join(',').split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0)
+      return a & a
+    }, 0)
+    
+    return `skel_${Math.abs(hash).toString(16)}`
   }
 
   private setupAnimatrixStateMachine(): void {
@@ -372,7 +404,9 @@ export class AnimationGraphComponent extends Component {
     
     // Switch animation if different
     if (targetAnimation && targetAnimation !== this.currentAnimation) {
-      this.controller.playAnimation(targetAnimation)
+      // Use the skeleton-specific registration key for playback
+      const registrationKey = this.clipKeyMap.get(targetAnimation) || targetAnimation
+      this.controller.playAnimation(registrationKey)
       this.currentAnimation = targetAnimation
     }
   }
