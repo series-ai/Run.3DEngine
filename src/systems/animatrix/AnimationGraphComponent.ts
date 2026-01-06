@@ -28,7 +28,9 @@ export interface StateConfig {
 export interface TransitionConfig {
   from: string
   to: string
-  when: Record<string, any>
+  when?: Record<string, any>
+  /** Exit time as a normalized value (0-1). If true, defaults to 1.0 (end of animation) */
+  exitTime?: number | boolean
 }
 
 export interface AnimationGraphConfig {
@@ -61,6 +63,8 @@ export class AnimationGraphComponent extends Component {
   private parameters: Map<string, any> = new Map()
   private currentState: string | null = null
   private currentAnimation: string | null = null
+  private stateElapsedTime: number = 0
+  private currentStateDuration: number = 1
   
   constructor(model: THREE.Object3D, config: AnimationGraphConfig) {
     super()
@@ -225,11 +229,13 @@ export class AnimationGraphComponent extends Component {
         this.animator.add_transition({
           from: transition.from,
           to: transition.to,
-          conditions: Object.entries(transition.when).map(([param, value]) => ({
-            parameter: param,
-            operator: "==" as any,
-            value: value
-          }))
+          conditions: transition.when 
+            ? Object.entries(transition.when).map(([param, value]) => ({
+                parameter: param,
+                operator: "==" as any,
+                value: value
+              }))
+            : []
         })
       }
     }
@@ -240,16 +246,27 @@ export class AnimationGraphComponent extends Component {
     
     this.animator?.update(deltaTime)
     this.controller.update(deltaTime)
+    this.stateElapsedTime += deltaTime
     
     if (this.config.transitions) {
       for (const transition of this.config.transitions) {
         if (transition.from !== this.currentState) continue
         
+        // Check exit time condition if specified
+        if (transition.exitTime !== undefined) {
+          const exitThreshold = typeof transition.exitTime === 'boolean' ? 1.0 : transition.exitTime
+          const normalizedTime = this.stateElapsedTime / this.currentStateDuration
+          if (normalizedTime < exitThreshold) continue
+        }
+        
+        // Check parameter conditions if specified
         let allConditionsMet = true
-        for (const [param, value] of Object.entries(transition.when)) {
-          if (this.parameters.get(param) !== value) {
-            allConditionsMet = false
-            break
+        if (transition.when) {
+          for (const [param, value] of Object.entries(transition.when)) {
+            if (this.parameters.get(param) !== value) {
+              allConditionsMet = false
+              break
+            }
           }
         }
         
@@ -327,12 +344,30 @@ export class AnimationGraphComponent extends Component {
     
     this.currentState = stateName
     this.currentAnimation = null
+    this.stateElapsedTime = 0
+    this.currentStateDuration = this.getStateDuration(stateName)
     this.animator?.set_state(stateName)
     this.updateAnimation()
   }
   
   public getCurrentState(): string | null {
     return this.currentState
+  }
+  
+  private getStateDuration(stateName: string): number {
+    const stateConfig = this.config.states[stateName]
+    if (!stateConfig) return 1
+    
+    if (stateConfig.animation) {
+      const clip = AnimationLibrary.getClip(stateConfig.animation)
+      if (clip) return clip.duration
+    } else if (stateConfig.tree && stateConfig.tree.children.length > 0) {
+      // Use first child's duration as reference for blend trees
+      const clip = AnimationLibrary.getClip(stateConfig.tree.children[0].animation)
+      if (clip) return clip.duration
+    }
+    
+    return 1
   }
   
   public addEventListener(_event: string, _callback: (data?: any) => void): void {
