@@ -149,7 +149,6 @@ export class AnimationPerformance {
       validTracks,
       clip.blendMode
     )
-    cleanedClip.optimize()
     
     return cleanedClip
   }

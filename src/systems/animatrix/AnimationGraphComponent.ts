@@ -2,11 +2,9 @@ import * as THREE from "three"
 import { Component } from "@engine/core/GameObject"
 import { AnimationLibrary } from "./animation-library"
 import { SharedAnimationManager, CharacterAnimationController } from "./SharedAnimationManager"
-import { AnimationPerformance } from "./AnimationPerformance"
-import Animatrix, { ParameterType, ComparisonOperator, BlendType } from "./animatrix"
+import Animatrix, { ParameterType } from "./animatrix"
 import AnimatrixVisualizer from "./visualizer"
 
-// Config interfaces - trees for CONTROL FLOW, not blending
 export interface ParameterConfig {
   type: "bool" | "float" | "int" 
   default: any
@@ -14,7 +12,7 @@ export interface ParameterConfig {
 
 export interface AnimationTreeChild {
   animation: string
-  threshold: number  // When param >= threshold, use this animation
+  threshold: number
 }
 
 export interface AnimationTree {
@@ -23,14 +21,14 @@ export interface AnimationTree {
 }
 
 export interface StateConfig {
-  animation?: string  // Simple state - one animation
-  tree?: AnimationTree  // Decision tree based on parameter
+  animation?: string
+  tree?: AnimationTree
 }
 
 export interface TransitionConfig {
   from: string
   to: string
-  when: Record<string, any>  // Simple conditions
+  when: Record<string, any>
 }
 
 export interface AnimationGraphConfig {
@@ -41,19 +39,12 @@ export interface AnimationGraphConfig {
   debug?: boolean
 }
 
-/**
- * Tree config stored for visualization drill-down
- */
 export interface StoredTreeConfig {
   stateName: string
   tree: AnimationTree | null
   simpleAnimation: string | null
 }
 
-/**
- * Animation component with state machine and decision trees
- * Uses Animatrix internally for state machine logic and visualization
- */
 export class AnimationGraphComponent extends Component {
   private static instances: Set<AnimationGraphComponent> = new Set()
   private static sharedVisualizer: AnimatrixVisualizer | null = null
@@ -70,7 +61,6 @@ export class AnimationGraphComponent extends Component {
   private parameters: Map<string, any> = new Map()
   private currentState: string | null = null
   private currentAnimation: string | null = null
-  private clipKeyMap: Map<string, string> = new Map() // Maps animation ID to registration key
   
   constructor(model: THREE.Object3D, config: AnimationGraphConfig) {
     super()
@@ -78,7 +68,6 @@ export class AnimationGraphComponent extends Component {
     this.config = config
     this.sharedManager = SharedAnimationManager.getInstance()
     
-    // Initialize parameters
     if (config.parameters) {
       for (const [name, paramConfig] of Object.entries(config.parameters)) {
         this.parameters.set(name, paramConfig.default)
@@ -86,9 +75,6 @@ export class AnimationGraphComponent extends Component {
     }
   }
 
-  /**
-   * Enable or disable the debug visualizer for all animation graphs
-   */
   public static setDebugViewEnabled(enabled: boolean): void {
     AnimationGraphComponent.debugViewEnabled = enabled
 
@@ -112,32 +98,20 @@ export class AnimationGraphComponent extends Component {
     }
   }
 
-  /**
-   * Check if debug view is enabled
-   */
   public static isDebugViewEnabled(): boolean {
     return AnimationGraphComponent.debugViewEnabled
   }
 
-  /**
-   * Get tree config for a specific animator and state (for drill-down visualization)
-   */
   public static getTreeConfig(animatorName: string, stateName: string): StoredTreeConfig | null {
     const animatorConfigs = AnimationGraphComponent.treeConfigs.get(animatorName)
     if (!animatorConfigs) return null
     return animatorConfigs.get(stateName) || null
   }
 
-  /**
-   * Get all state configs for an animator (for drill-down visualization)
-   */
   public static getStateConfigs(animatorName: string): Map<string, StoredTreeConfig> | null {
     return AnimationGraphComponent.treeConfigs.get(animatorName) || null
   }
 
-  /**
-   * Get parameter value for a specific animator
-   */
   public static getParameterValue(animatorName: string, paramName: string): any {
     for (const instance of AnimationGraphComponent.instances) {
       if (instance.animatorName === animatorName) {
@@ -147,9 +121,6 @@ export class AnimationGraphComponent extends Component {
     return null
   }
 
-  /**
-   * Get current animation for a specific animator
-   */
   public static getCurrentAnimation(animatorName: string): string | null {
     for (const instance of AnimationGraphComponent.instances) {
       if (instance.animatorName === animatorName) {
@@ -159,9 +130,6 @@ export class AnimationGraphComponent extends Component {
     return null
   }
 
-  /**
-   * Get the underlying Animatrix instance for visualization
-   */
   public getAnimator(): Animatrix | null {
     return this.animator
   }
@@ -171,29 +139,19 @@ export class AnimationGraphComponent extends Component {
     this.setupAnimationGraph()
   }
 
-  private async setupAnimationGraph(): Promise<void> {
-    // Create controller for actual animation playback
+  private setupAnimationGraph(): void {
     this.controller = new CharacterAnimationController(this.model, this.sharedManager)
-    
-    // Create Animatrix for state machine logic and visualization
-    this.animator = new Animatrix(this.model, this.config.debug || false)
-    
-    // Store animator name for lookups
+    this.animator = new Animatrix()
     this.animatorName = this.gameObject?.name || `graph_${AnimationGraphComponent.instances.size}`
     
-    // Register all clips and set up state machine
-    await this.registerAnimationClips()
-    this.setupAnimatrixStateMachine()
-    
-    // Store tree configs for drill-down visualization
+    this.registerAnimationClips()
+    this.setupAnimatrix()
     this.storeTreeConfigs()
     
-    // Register with visualizer if debug view is enabled
     if (AnimationGraphComponent.debugViewEnabled && AnimationGraphComponent.sharedVisualizer) {
       AnimationGraphComponent.sharedVisualizer.add_animator(this.animatorName, this.animator)
     }
     
-    // Set initial state
     this.setState(this.config.initialState)
   }
 
@@ -213,10 +171,9 @@ export class AnimationGraphComponent extends Component {
     AnimationGraphComponent.treeConfigs.set(this.animatorName, stateConfigs)
   }
   
-  private async registerAnimationClips(): Promise<void> {
+  private registerAnimationClips(): void {
     const clipIds = new Set<string>()
     
-    // Collect all animation IDs
     for (const stateConfig of Object.values(this.config.states)) {
       if (stateConfig.animation) {
         clipIds.add(stateConfig.animation)
@@ -227,51 +184,17 @@ export class AnimationGraphComponent extends Component {
       }
     }
     
-    // Get skeleton identifier for this model (to ensure proper clip cleaning per skeleton type)
-    const skeletonId = this.getSkeletonIdentifier()
-    
-    // Register each clip with SharedAnimationManager using skeleton-specific key
     for (const clipId of clipIds) {
       const clip = AnimationLibrary.getClip(clipId)
       if (clip) {
-        // Use skeleton-specific key so different skeleton types get properly cleaned clips
-        const registrationKey = skeletonId ? `${clipId}__${skeletonId}` : clipId
-        const cleanedClip = AnimationPerformance.cleanAnimationClip(clip, this.model!, true)
-        this.sharedManager.registerClip(registrationKey, cleanedClip)
-        
-        // Store mapping from animation ID to registration key for playback
-        this.clipKeyMap.set(clipId, registrationKey)
+        this.sharedManager.registerClip(clipId, clip)
       }
     }
   }
-  
-  private getSkeletonIdentifier(): string | null {
-    // Generate a skeleton identifier based on bone names
-    // Models with the same skeleton will share animations (performance optimization)
-    // Models with different skeletons get separate cleaned clips
-    let boneNames: string[] = []
-    
-    this.model.traverse((child) => {
-      if (child instanceof THREE.SkinnedMesh && child.skeleton) {
-        boneNames = child.skeleton.bones.map(b => b.name).sort()
-      }
-    })
-    
-    if (boneNames.length === 0) return null
-    
-    // Simple hash of bone names to identify skeleton type
-    const hash = boneNames.join(',').split('').reduce((a, b) => {
-      a = ((a << 5) - a) + b.charCodeAt(0)
-      return a & a
-    }, 0)
-    
-    return `skel_${Math.abs(hash).toString(16)}`
-  }
 
-  private setupAnimatrixStateMachine(): void {
+  private setupAnimatrix(): void {
     if (!this.animator) return
 
-    // Add parameters to Animatrix
     if (this.config.parameters) {
       for (const [name, paramConfig] of Object.entries(this.config.parameters)) {
         let paramType: ParameterType
@@ -285,69 +208,39 @@ export class AnimationGraphComponent extends Component {
       }
     }
 
-    // Register each STATE as a clip in Animatrix (for visualization)
     for (const [stateName, stateConfig] of Object.entries(this.config.states)) {
-      // Get the primary animation for this state
-      let primaryAnimationId: string | null = null
+      let clipDuration = 1
       if (stateConfig.animation) {
-        primaryAnimationId = stateConfig.animation
+        const clip = AnimationLibrary.getClip(stateConfig.animation)
+        if (clip) clipDuration = clip.duration
       } else if (stateConfig.tree && stateConfig.tree.children.length > 0) {
-        primaryAnimationId = stateConfig.tree.children[0].animation
+        const clip = AnimationLibrary.getClip(stateConfig.tree.children[0].animation)
+        if (clip) clipDuration = clip.duration
       }
-
-      if (primaryAnimationId) {
-        const clip = AnimationLibrary.getClip(primaryAnimationId)
-        if (clip) {
-          const cleanedClip = AnimationPerformance.cleanAnimationClip(clip, this.model!, true)
-          this.animator.add_clip(stateName, cleanedClip, 1.0, true)
-        }
-      }
+      this.animator.add_clip(stateName, { duration: clipDuration })
     }
 
-    // Add transitions to Animatrix
     if (this.config.transitions) {
       for (const transition of this.config.transitions) {
-        const conditions = Object.entries(transition.when).map(([param, value]) => ({
-          parameter: param,
-          operator: ComparisonOperator.EQUALS,
-          value: value
-        }))
-
         this.animator.add_transition({
           from: transition.from,
           to: transition.to,
-          conditions: conditions,
-          duration: 0.15,
-          priority: 1,
-          blend_type: BlendType.EASE_IN_OUT
+          conditions: Object.entries(transition.when).map(([param, value]) => ({
+            parameter: param,
+            operator: "==" as any,
+            value: value
+          }))
         })
       }
     }
-  }
-  
-  private findModel(): THREE.Object3D | null {
-    if (this.gameObject.children && this.gameObject.children.length > 0) {
-      const model = this.gameObject.children.find(child => {
-        let hasBones = false
-        child.traverse((c) => {
-          if (c instanceof THREE.SkinnedMesh || c instanceof THREE.Bone) {
-            hasBones = true
-          }
-        })
-        return hasBones
-      })
-      return model || null
-    }
-    return null
   }
   
   public update(deltaTime: number): void {
     if (!this.controller || !this.gameObject.isEnabled()) return
     
-    // Update Animatrix for visualization (playback progress)
     this.animator?.update(deltaTime)
+    this.controller.update(deltaTime)
     
-    // Check transitions
     if (this.config.transitions) {
       for (const transition of this.config.transitions) {
         if (transition.from !== this.currentState) continue
@@ -367,7 +260,6 @@ export class AnimationGraphComponent extends Component {
       }
     }
     
-    // Update animation based on current state
     this.updateAnimation()
   }
   
@@ -380,14 +272,10 @@ export class AnimationGraphComponent extends Component {
     let targetAnimation: string | null = null
     
     if (stateConfig.animation) {
-      // Simple state
       targetAnimation = stateConfig.animation
     } else if (stateConfig.tree) {
-      // Decision tree - find which animation based on parameter
       const paramValue = this.parameters.get(stateConfig.tree.parameter) || 0
       
-      // Find the right animation for this parameter value
-      // Go backwards to find the highest threshold we meet
       for (let i = stateConfig.tree.children.length - 1; i >= 0; i--) {
         const child = stateConfig.tree.children[i]
         if (paramValue >= child.threshold) {
@@ -396,17 +284,16 @@ export class AnimationGraphComponent extends Component {
         }
       }
       
-      // Default to first if below all thresholds
       if (!targetAnimation && stateConfig.tree.children.length > 0) {
         targetAnimation = stateConfig.tree.children[0].animation
       }
     }
     
-    // Switch animation if different
     if (targetAnimation && targetAnimation !== this.currentAnimation) {
-      // Use the skeleton-specific registration key for playback
-      const registrationKey = this.clipKeyMap.get(targetAnimation) || targetAnimation
-      this.controller.playAnimation(registrationKey)
+      if (this.config.debug) {
+        console.log(`[AnimGraph] ${this.animatorName}: ${this.currentAnimation} -> ${targetAnimation} (model: ${this.model?.name || 'unnamed'})`)
+      }
+      this.controller.playAnimation(targetAnimation)
       this.currentAnimation = targetAnimation
     }
   }
@@ -414,7 +301,6 @@ export class AnimationGraphComponent extends Component {
   public setParameter(name: string, value: any): void {
     this.parameters.set(name, value)
     
-    // Sync with Animatrix for visualization
     if (this.animator) {
       if (typeof value === "boolean") {
         this.animator.set_bool(name, value)
@@ -435,12 +321,13 @@ export class AnimationGraphComponent extends Component {
   public setState(stateName: string): void {
     if (this.currentState === stateName) return
     
+    if (this.config.debug) {
+      console.log(`[AnimGraph] ${this.animatorName} setState: ${this.currentState} -> ${stateName}`)
+    }
+    
     this.currentState = stateName
-    this.currentAnimation = null  // Force re-evaluation
-    
-    // Sync with Animatrix for visualization
+    this.currentAnimation = null
     this.animator?.set_state(stateName)
-    
     this.updateAnimation()
   }
   
@@ -448,19 +335,17 @@ export class AnimationGraphComponent extends Component {
     return this.currentState
   }
   
-  public addEventListener(event: string, callback: (data?: any) => void): void {
+  public addEventListener(_event: string, _callback: (data?: any) => void): void {
     // Not implemented
   }
   
   protected onCleanup(): void {
     AnimationGraphComponent.instances.delete(this)
     
-    // Remove tree configs
     if (this.animatorName) {
       AnimationGraphComponent.treeConfigs.delete(this.animatorName)
     }
     
-    // Remove from visualizer
     if (AnimationGraphComponent.sharedVisualizer && this.animator && this.animatorName) {
       AnimationGraphComponent.sharedVisualizer.remove_animator(this.animatorName)
     }

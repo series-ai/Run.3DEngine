@@ -1,28 +1,20 @@
 import * as THREE from "three"
 
 /**
- * Ultra-lightweight shared animation manager
- * Uses ONE mixer and AnimationObjectGroups for massive performance gains
+ * Shared animation clip registry
+ * Stores clips once, characters create their own mixers
+ * 
+ * Note: We tried using AnimationObjectGroup for true sharing, but it had
+ * issues with certain animations not applying to some character models.
+ * Per-character mixers are slightly less efficient but much more reliable.
  */
 export class SharedAnimationManager {
   private static instance: SharedAnimationManager | null = null
   
-  // Single mixer for ALL animations
-  private mixer: THREE.AnimationMixer
-  
-  // One action per animation clip (shared by all characters)
-  private actions: Map<string, THREE.AnimationAction> = new Map()
-  
-  // AnimationObjectGroup per animation - characters get added/removed from these
-  private groups: Map<string, THREE.AnimationObjectGroup> = new Map()
-  
-  // Cached clips
+  // Cached clips (shared by all characters - this is the main memory savings)
   private clips: Map<string, THREE.AnimationClip> = new Map()
   
-  private constructor() {
-    // Create mixer with a dummy root
-    this.mixer = new THREE.AnimationMixer(new THREE.Object3D())
-  }
+  private constructor() {}
   
   public static getInstance(): SharedAnimationManager {
     if (!SharedAnimationManager.instance) {
@@ -36,97 +28,87 @@ export class SharedAnimationManager {
    */
   public registerClip(name: string, clip: THREE.AnimationClip): void {
     if (this.clips.has(name)) return
-    
     this.clips.set(name, clip)
-    
-    // Create the group for this animation
-    const group = new THREE.AnimationObjectGroup()
-    this.groups.set(name, group)
-    
-    // Create ONE action for this animation using the group
-    const action = this.mixer.clipAction(clip, group)
-    action.play()
-    action.weight = 1.0 // Always full weight - we control visibility via group membership
-    this.actions.set(name, action)
-  }
-  
-  /**
-   * Add a model to an animation (starts playing it)
-   */
-  public addToAnimation(model: THREE.Object3D, animationName: string): void {
-    const group = this.groups.get(animationName)
-    if (group) {
-      group.add(model)
-    }
-  }
-  
-  /**
-   * Remove a model from an animation (stops playing it)
-   */
-  public removeFromAnimation(model: THREE.Object3D, animationName: string): void {
-    const group = this.groups.get(animationName)
-    if (group) {
-      group.remove(model)
-    }
-  }
-  
-  /**
-   * Remove model from all animations
-   */
-  public removeFromAll(model: THREE.Object3D): void {
-    for (const group of this.groups.values()) {
-      group.remove(model)
-    }
-  }
-  
-  /**
-   * Update the single mixer
-   */
-  public update(deltaTime: number): void {
-    this.mixer.update(deltaTime)
   }
   
   public getClip(name: string): THREE.AnimationClip | undefined {
     return this.clips.get(name)
   }
-}
-
-/**
- * Lightweight per-character controller
- * Just manages which animations the character is in
- */
-export class CharacterAnimationController {
-  private model: THREE.Object3D
-  private manager: SharedAnimationManager
-  private currentAnimation: string | null = null
   
-  constructor(model: THREE.Object3D, manager: SharedAnimationManager) {
-    this.model = model
-    this.manager = manager
+  public getRegisteredClipNames(): string[] {
+    return [...this.clips.keys()]
   }
   
   /**
-   * Play a single animation (simple case)
+   * No-op for backward compatibility
+   * Per-character mixers update themselves
+   */
+  public update(_deltaTime: number): void {
+    // Each character's controller updates its own mixer
+  }
+}
+
+/**
+ * Per-character animation controller with its own mixer
+ * Uses shared clips from SharedAnimationManager for memory efficiency
+ */
+export class CharacterAnimationController {
+  private manager: SharedAnimationManager
+  private mixer: THREE.AnimationMixer
+  private actions: Map<string, THREE.AnimationAction> = new Map()
+  private currentAnimation: string | null = null
+  
+  constructor(model: THREE.Object3D, manager: SharedAnimationManager) {
+    this.manager = manager
+    this.mixer = new THREE.AnimationMixer(model)
+  }
+  
+  /**
+   * Play a single animation
    */
   public playAnimation(name: string): void {
-    // Don't do anything if already playing this animation
-    if (this.currentAnimation === name) {
+    if (this.currentAnimation === name) return
+    
+    const clip = this.manager.getClip(name)
+    if (!clip) {
+      console.warn(`[CharacterAnimController] Animation '${name}' not registered!`)
       return
     }
     
-    // IMPORTANT: Remove from ALL animations first to ensure clean state
-    this.manager.removeFromAll(this.model)
+    // Stop current animation
+    if (this.currentAnimation) {
+      const currentAction = this.actions.get(this.currentAnimation)
+      if (currentAction) {
+        currentAction.stop()
+      }
+    }
     
-    // Add to the new animation
-    this.manager.addToAnimation(this.model, name)
+    // Get or create action for this clip
+    let action = this.actions.get(name)
+    if (!action) {
+      action = this.mixer.clipAction(clip)
+      this.actions.set(name, action)
+    }
+    
+    action.reset()
+    action.play()
     this.currentAnimation = name
+  }
+  
+  /**
+   * Update the mixer - MUST be called every frame
+   */
+  public update(deltaTime: number): void {
+    this.mixer.update(deltaTime)
   }
   
   /**
    * Stop all animations
    */
   public stopAll(): void {
-    this.manager.removeFromAll(this.model)
+    for (const action of this.actions.values()) {
+      action.stop()
+    }
     this.currentAnimation = null
   }
   
@@ -134,7 +116,7 @@ export class CharacterAnimationController {
    * Cleanup
    */
   public dispose(): void {
-    this.manager.removeFromAll(this.model)
-    this.currentAnimation = null
+    this.stopAll()
+    this.mixer.stopAllAction()
   }
 }
