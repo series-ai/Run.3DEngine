@@ -18,6 +18,9 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
 
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
     "allowJs": true,
 
     "baseUrl": ".",

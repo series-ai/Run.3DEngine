@@ -50,9 +50,6 @@
         "tsup": "^8.5.0",
         "typescript": "^5.3.3"
     },
-    "peerDependencies": {
-        "@rollup/rollup-win32-x64-msvc": "^4.52.5"
-    },
     "files": [
         "dist"
     ]
