@@ -11,6 +11,12 @@ export type ParticleSystem = {
   setOrigin: (origin: THREE.Vector3) => void
   config: EmitterConfig
   setTexture?: (texture: THREE.Texture) => void
+  // Playback controls
+  play: () => void
+  stop: () => void
+  restart: () => void
+  isPlaying: () => boolean
+  getElapsed: () => number
 }
 
 export type NumRange = number | readonly [number, number]
@@ -78,11 +84,31 @@ export const EmitterShape = {
 } as const
 export type EmitterShapeKey = (typeof EmitterShape)[keyof typeof EmitterShape]
 
+export type BurstConfig = {
+  time: number              // When to burst (seconds from start)
+  count: number             // How many particles to spawn
+  cycles?: number           // How many times to repeat (1 = once, default)
+  interval?: number         // Time between cycles
+}
+
+export type EmissionConfig = {
+  mode: 'constant' | 'burst'
+  rateOverTime?: number     // For constant mode (particles per second)
+  bursts?: BurstConfig[]    // For burst mode
+}
+
 export type EmitterConfig = {
-  position?: THREE.Vector3
-  spawnRate?: number
   maxParticles?: number
 
+  // Playback control
+  duration?: number         // System duration in seconds (0 = infinite)
+  looping?: boolean         // Restart after duration ends
+  playOnAwake?: boolean     // Start playing immediately on creation
+
+  // Emission
+  emission?: EmissionConfig
+
+  // Shape
   shape?: EmitterShapeKey
   coneAngle?: NumRange
   coneDirection?: THREE.Vector3
@@ -90,6 +116,7 @@ export type EmitterConfig = {
   boxSize?: THREE.Vector3
   sphereRadius?: number
 
+  // Particle properties
   lifetime?: NumRange
   size?: { start: NumRange; end: NumRange }
   speed?: NumRange
@@ -102,11 +129,13 @@ export type EmitterConfig = {
 
   rotation?: { angle?: NumRange; velocity?: NumRange }
 
+  // Rendering
   color?: { start: Vec4Range; mid?: Vec4Range; end: Vec4Range }
   blending?: THREE.Blending
   premultipliedAlpha?: boolean
   maskFromLuminance?: boolean
 
+  // Collision
   collision?: {
     enabled?: boolean
     planeY?: number
@@ -115,6 +144,7 @@ export type EmitterConfig = {
     killAfterBounces?: number
   }
 
+  // Sprite sheets
   spriteSheet?: {
     rows: number
     columns: number
@@ -292,7 +322,11 @@ export function createParticleEmitter(
     ? cfg.gravity.clone()
     : new THREE.Vector3(0, -9.8, 0)
   const emitterRadius = cfg.radius ?? 0.25
-  let currentSpawnRate = cfg.spawnRate ?? 0
+
+  // Emission config
+  const emission = cfg.emission ?? { mode: 'constant' as const, rateOverTime: 50 }
+  let currentSpawnRate = emission.mode === 'constant' ? (emission.rateOverTime ?? 50) : 0
+
   const shape: EmitterShapeKey = cfg.shape ?? EmitterShape.CONE
   const coneDirection = (cfg.coneDirection ?? new THREE.Vector3(0, 1, 0))
     .clone()
@@ -317,8 +351,25 @@ export function createParticleEmitter(
   const floorFriction = collisionCfg.friction ?? 0.5
   const killAfterBounces = collisionCfg.killAfterBounces ?? 2
 
-  let burstOrigin = (cfg.position ?? new THREE.Vector3()).clone()
+  let burstOrigin = new THREE.Vector3()
   let spawnAccumulator = 0
+
+  // Playback state
+  let isPlayingState = cfg.playOnAwake ?? true
+  let elapsed = 0
+  let systemComplete = false
+
+  // Burst tracking (for burst mode with cycles)
+  const bursts = emission.mode === 'burst' ? (emission.bursts ?? []) : []
+  const burstCycleCount: number[] = bursts.map(() => 0)
+  const nextBurstTime: number[] = bursts.map(b => b.time)
+
+  function resetBurstTracking() {
+    for (let i = 0; i < bursts.length; i++) {
+      burstCycleCount[i] = 0
+      nextBurstTime[i] = bursts[i].time
+    }
+  }
 
   let currentVelocityScale = velocityScaleFactor
 
@@ -551,6 +602,22 @@ export function createParticleEmitter(
     lifetimes[i] = 0
   }
 
+  // Check if all particles are dead
+  function allParticlesDead(): boolean {
+    for (let i = 0; i < particleCount; i++) {
+      if (ages[i] < lifetimes[i]) return false
+    }
+    return true
+  }
+
+  // Kill all particles (used by stop)
+  function despawnAll(): void {
+    for (let i = 0; i < particleCount; i++) {
+      ages[i] = lifetimes[i] + 1
+    }
+    mesh.count = 0
+  }
+
   const update = (dt: number, camera: THREE.Camera) => {
     if (debugGroup) debugGroup.position.copy(burstOrigin)
     if (debugVelSegments) {
@@ -580,17 +647,65 @@ export function createParticleEmitter(
       for (; w < arr.length; w++) arr[w] = 0
       attr.needsUpdate = true
     }
-    if (currentSpawnRate > 0) {
-      spawnAccumulator += currentSpawnRate * dt
-      const toSpawn = Math.floor(spawnAccumulator)
-      if (toSpawn > 0) {
-        spawnAccumulator -= toSpawn
-        // Spawn without resetting sprite animation timeline
-        let spawned = 0
-        for (let i = 0; i < particleCount && spawned < toSpawn; i++) {
-          if (ages[i] >= lifetimes[i]) {
-            respawn(i, burstOrigin)
-            spawned++
+
+    // Handle playback state
+    const duration = cfg.duration ?? 0
+    const withinDuration = duration <= 0 || elapsed < duration
+
+    if (isPlayingState && !systemComplete) {
+      elapsed += dt
+
+      // Handle emission based on mode
+      if (emission.mode === 'constant' && withinDuration) {
+        // Constant emission - spawn over time
+        if (currentSpawnRate > 0) {
+          spawnAccumulator += currentSpawnRate * dt
+          const toSpawn = Math.floor(spawnAccumulator)
+          if (toSpawn > 0) {
+            spawnAccumulator -= toSpawn
+            let spawned = 0
+            for (let i = 0; i < particleCount && spawned < toSpawn; i++) {
+              if (ages[i] >= lifetimes[i]) {
+                respawn(i, burstOrigin)
+                spawned++
+              }
+            }
+          }
+        }
+      } else if (emission.mode === 'burst' && withinDuration) {
+        // Burst emission - process burst triggers
+        for (let bi = 0; bi < bursts.length; bi++) {
+          const b = bursts[bi]
+          const cyclesCompleted = burstCycleCount[bi]
+          const maxCycles = b.cycles ?? 1
+
+          if (cyclesCompleted >= maxCycles) continue
+
+          if (elapsed >= nextBurstTime[bi]) {
+            // Trigger burst
+            burst(burstOrigin, b.count)
+
+            // Schedule next cycle
+            burstCycleCount[bi]++
+            if (burstCycleCount[bi] < maxCycles) {
+              nextBurstTime[bi] = elapsed + (b.interval ?? 0)
+            }
+          }
+        }
+      }
+
+      // Check for system completion (only when duration is set)
+      if (duration > 0 && elapsed >= duration) {
+        if (cfg.looping) {
+          // Restart the system immediately - don't wait for particles to die
+          elapsed = 0
+          resetBurstTracking()
+        } else if (!withinDuration) {
+          // Non-looping system past duration - stop spawning but let particles live
+          // Only mark complete when all particles are dead
+          if (allParticlesDead()) {
+            systemComplete = true
+            isPlayingState = false
           }
         }
       }
@@ -819,6 +934,30 @@ export function createParticleEmitter(
     burstOrigin.copy(origin)
   }
 
+  // Playback controls
+  const play = () => {
+    isPlayingState = true
+    systemComplete = false
+  }
+
+  const stop = () => {
+    isPlayingState = false
+    elapsed = 0
+    systemComplete = false
+    spawnAccumulator = 0
+    resetBurstTracking()
+    despawnAll()
+  }
+
+  const restart = () => {
+    stop()
+    play()
+  }
+
+  const isPlaying = () => isPlayingState
+
+  const getElapsed = () => elapsed
+
   return {
     object: mesh,
     update,
@@ -827,5 +966,11 @@ export function createParticleEmitter(
     setOrigin,
     config: cfg,
     setTexture,
+    // Playback controls
+    play,
+    stop,
+    restart,
+    isPlaying,
+    getElapsed,
   }
 }
