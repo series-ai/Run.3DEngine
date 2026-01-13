@@ -17,6 +17,10 @@ export type ParticleSystem = {
   restart: () => void
   isPlaying: () => boolean
   getElapsed: () => number
+  // Internal methods (no cascade) - used by parent cascade
+  playInternal?: () => void
+  stopInternal?: () => void
+  restartInternal?: () => void
 }
 
 export type NumRange = number | readonly [number, number]
@@ -980,13 +984,13 @@ export function createParticleEmitter(
     burstOrigin.copy(origin)
   }
 
-  // Playback controls
-  const play = () => {
+  // Internal playback controls (no cascade - used by parent's cascade)
+  const playInternal = () => {
     isPlayingState = true
     systemComplete = false
   }
 
-  const stop = () => {
+  const stopInternal = () => {
     isPlayingState = false
     elapsed = 0
     systemComplete = false
@@ -995,9 +999,46 @@ export function createParticleEmitter(
     despawnAll()
   }
 
+  const restartInternal = () => {
+    stopInternal()
+    playInternal()
+  }
+
+  // Helper to cascade action to child particle emitters
+  const cascadeToChildren = (action: 'play' | 'stop' | 'restart') => {
+    // Get the parent object (the one that owns this particle system)
+    const parent = mesh.parent
+    if (!parent) return
+
+    // Traverse all descendants and trigger INTERNAL action (no re-cascade)
+    parent.traverse((child) => {
+      // Skip self (the mesh itself)
+      if (child === mesh) return
+      // Check if child has a particle emitter
+      const childEmitter = child.userData.__particleEmitter as ParticleSystem | undefined
+      if (childEmitter) {
+        // Call internal methods to avoid infinite recursion
+        if (action === 'play') childEmitter.playInternal?.()
+        else if (action === 'stop') childEmitter.stopInternal?.()
+        else if (action === 'restart') childEmitter.restartInternal?.()
+      }
+    })
+  }
+
+  // Playback controls - cascade to children
+  const play = () => {
+    playInternal()
+    cascadeToChildren('play')
+  }
+
+  const stop = () => {
+    stopInternal()
+    cascadeToChildren('stop')
+  }
+
   const restart = () => {
-    stop()
-    play()
+    restartInternal()
+    cascadeToChildren('restart')
   }
 
   const isPlaying = () => isPlayingState
@@ -1018,5 +1059,9 @@ export function createParticleEmitter(
     restart,
     isPlaying,
     getElapsed,
+    // Internal methods (no cascade) - used by parent cascade
+    playInternal,
+    stopInternal,
+    restartInternal,
   }
 }
