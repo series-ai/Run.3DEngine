@@ -130,7 +130,13 @@ export type EmitterConfig = {
   rotation?: { angle?: NumRange; velocity?: NumRange }
 
   // Rendering
-  color?: { start: Vec4Range; mid?: Vec4Range; end: Vec4Range }
+  color?: {
+    start: Vec4Range
+    startList?: THREE.Vector4[]  // Random start colors to pick from
+    useStartAsEnd?: boolean      // If true, end color matches start (for no-fade when using random colors)
+    mid?: Vec4Range
+    end: Vec4Range
+  }
   blending?: THREE.Blending
   premultipliedAlpha?: boolean
   maskFromLuminance?: boolean
@@ -149,8 +155,10 @@ export type EmitterConfig = {
     rows: number
     columns: number
     frameCount?: number
+    timeMode?: 'fps' | 'startLifetime'  // fps = animate at fps rate, startLifetime = fixed frame based on lifetime value
     fps?: number
     loop?: boolean
+    randomStartFrame?: boolean  // If true, each particle starts at a random frame in the animation
   }
 
   debug?: boolean
@@ -262,10 +270,16 @@ export function createParticleEmitter(
           vec2 tileSize = vec2(1.0 / tilesX, 1.0 / tilesY);
           vec2 pad = spritePad * tileSize;
           vec2 offset = vec2(col, row) * tileSize + pad;
-          vec2 uvInTile = vUv * (tileSize - 2.0 * pad);
+          // Flip V within tile to correct sprite orientation
+          vec2 uvInTile = vec2(vUv.x, 1.0 - vUv.y) * (tileSize - 2.0 * pad);
           uvFrame = offset + uvInTile;
+        } else {
+          // Flip V coordinate for regular (non-sprite-sheet) textures
+          uvFrame = vec2(vUv.x, 1.0 - vUv.y);
         }
         vec4 texel = texture2D(map, uvFrame);
+        // Decode sRGB to linear space for correct color blending
+        texel.rgb = pow(texel.rgb, vec3(2.2));
         float alpha = texel.a;
         if (useMaskFromLuminance > 0.5) {
           // Use luminance as alpha mask (ignore texel RGB for color)
@@ -314,6 +328,7 @@ export function createParticleEmitter(
   const sizeEnd = new Float32Array(particleCount)
   const spinAngle = new Float32Array(particleCount)
   const spinVelocity = new Float32Array(particleCount)
+  const frameOffset = new Float32Array(particleCount) // Random start frame offset per particle
   const color0 = new Float32Array(particleCount * 4)
   const color1 = new Float32Array(particleCount * 4)
   const color2 = new Float32Array(particleCount * 4)
@@ -336,10 +351,13 @@ export function createParticleEmitter(
   const lifeRange: NumRange = cfg.lifetime ?? [1.5, 3.0]
   const sizeRangeStart: NumRange = cfg.size?.start ?? [0.8, 1.2]
   const sizeRangeEnd: NumRange = cfg.size?.end ?? [0.2, 0.5]
-  const rotAngleRange: NumRange = cfg.rotation?.angle ?? [0, Math.PI * 2]
-  const rotVelRange: NumRange = cfg.rotation?.velocity ?? [-6.0, 6.0]
+  // When rotation is disabled (undefined), use zero angle and velocity so particles don't rotate
+  const rotAngleRange: NumRange = cfg.rotation ? (cfg.rotation.angle ?? [0, Math.PI * 2]) : [0, 0]
+  const rotVelRange: NumRange = cfg.rotation ? (cfg.rotation.velocity ?? [-6.0, 6.0]) : [0, 0]
   const colorStartRange: Vec4Range =
     cfg.color?.start ?? new THREE.Vector4(1, 0.8, 0.2, 1)
+  const colorStartList: THREE.Vector4[] | undefined = cfg.color?.startList
+  const colorUseStartAsEnd: boolean = cfg.color?.useStartAsEnd ?? false
   const colorMidRange: Vec4Range | undefined = cfg.color?.mid
   const colorEndRange: Vec4Range =
     cfg.color?.end ?? new THREE.Vector4(0.8, 0.1, 0.02, 0)
@@ -540,6 +558,9 @@ export function createParticleEmitter(
     : 1
   const spriteFps = cfg.spriteSheet?.fps ?? 15
   const spriteLoop = cfg.spriteSheet?.loop ?? true
+  const spriteTimeMode = cfg.spriteSheet?.timeMode ?? 'fps'
+  const spriteRandomStartFrame = cfg.spriteSheet?.randomStartFrame ?? false
+
 
   function respawn(i: number, origin: THREE.Vector3 = burstOrigin) {
     const idx = i * 3
@@ -556,12 +577,6 @@ export function createParticleEmitter(
 
     ages[i] = 0
     lifetimes[i] = Math.max(0.0001, randRange(lifeRange))
-    // Randomize starting frame a bit so not all particles are in sync
-    if (cfg.spriteSheet) {
-      instanceFrame[i] = Math.floor(Math.random() * spriteTotalFrames)
-    } else {
-      instanceFrame[i] = 0
-    }
     bounceCount[i] = 0
 
     sizeStart[i] = randRange(sizeRangeStart)
@@ -569,9 +584,18 @@ export function createParticleEmitter(
     spinAngle[i] = randRange(rotAngleRange)
     spinVelocity[i] = randRange(rotVelRange)
 
+    // Set random start frame offset if enabled
+    frameOffset[i] = spriteRandomStartFrame ? Math.random() * spriteTotalFrames : 0
+
     // Write colors directly to typed arrays without allocating Vector4
     const base = i * 4
-    randVec4(colorStartRange, tmp4a)
+    // If startList exists and has colors, pick one randomly; otherwise use start range
+    if (colorStartList && colorStartList.length > 0) {
+      const picked = colorStartList[Math.floor(Math.random() * colorStartList.length)]
+      tmp4a.copy(picked)
+    } else {
+      randVec4(colorStartRange, tmp4a)
+    }
     color0[base + 0] = tmp4a.x
     color0[base + 1] = tmp4a.y
     color0[base + 2] = tmp4a.z
@@ -590,11 +614,20 @@ export function createParticleEmitter(
       color1[base + 3] = tmp4a.w
     }
     
-    randVec4(colorEndRange, tmp4c)
-    color2[base + 0] = tmp4c.x
-    color2[base + 1] = tmp4c.y
-    color2[base + 2] = tmp4c.z
-    color2[base + 3] = tmp4c.w
+    // If useStartAsEnd is true, copy start color to end (no fade effect)
+    // This ensures random start colors stay constant when colorOverLifetime is disabled
+    if (colorUseStartAsEnd) {
+      color2[base + 0] = tmp4a.x
+      color2[base + 1] = tmp4a.y
+      color2[base + 2] = tmp4a.z
+      color2[base + 3] = tmp4a.w
+    } else {
+      randVec4(colorEndRange, tmp4c)
+      color2[base + 0] = tmp4c.x
+      color2[base + 1] = tmp4c.y
+      color2[base + 2] = tmp4c.z
+      color2[base + 3] = tmp4c.w
+    }
   }
 
   for (let i = 0; i < particleCount; i++) {
@@ -861,13 +894,26 @@ export function createParticleEmitter(
       )
       mesh.setMatrixAt(writeIdx, m4)
 
-      // Per-particle sprite frame from lifetime
+      // Per-particle sprite frame
       if (cfg.spriteSheet) {
-        let frameF = ages[i] * spriteFps
-        if (spriteLoop) {
-          frameF = frameF % spriteTotalFrames
+        let frameF: number
+        if (spriteTimeMode === 'startLifetime') {
+          // Frame is fixed based on particle's assigned lifetime value (normalized within range)
+          // Particles with shorter lifetimes get lower frames, longer lifetimes get higher frames
+          const lifeMin = Array.isArray(lifeRange) ? lifeRange[0] : lifeRange as number
+          const lifeMax = Array.isArray(lifeRange) ? lifeRange[1] : lifeRange as number
+          const normalizedLife = lifeMax > lifeMin
+            ? (lifetimes[i] - lifeMin) / (lifeMax - lifeMin)
+            : 0
+          frameF = normalizedLife * (spriteTotalFrames - 1)
         } else {
-          frameF = Math.min(frameF, spriteTotalFrames - 0.01)
+          // FPS-based animation with optional random start offset
+          frameF = ages[i] * spriteFps + frameOffset[i]
+          if (spriteLoop) {
+            frameF = frameF % spriteTotalFrames
+          } else {
+            frameF = Math.min(frameF, spriteTotalFrames - 0.01)
+          }
         }
         instanceFrame[writeIdx] = frameF
       }
