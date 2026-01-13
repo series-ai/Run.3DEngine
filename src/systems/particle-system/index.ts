@@ -5,7 +5,7 @@ export { Particle } from "./Particle"
 
 export type ParticleSystem = {
   object: THREE.InstancedMesh
-  update: (dt: number, camera: THREE.Camera) => void
+  update: (dt: number, camera: THREE.Camera, emitterWorldMatrix?: THREE.Matrix4) => void
   burst: (origin: THREE.Vector3, count?: number) => void
   setSpawnRate: (rate: number) => void
   setOrigin: (origin: THREE.Vector3) => void
@@ -340,6 +340,8 @@ export type FlipConfig = {
   y?: number                  // Probability (0-1) of flipping particle vertically
 }
 
+export type RenderMode = 'billboard' | 'quad'
+
 export type EmitterConfig = {
   maxParticles?: number
 
@@ -387,6 +389,7 @@ export type EmitterConfig = {
   premultipliedAlpha?: boolean
   maskFromLuminance?: boolean
   flip?: FlipConfig             // Probability of flipping particles on X/Y axes
+  renderMode?: RenderMode       // 'billboard' (default) or 'quad' (uses emitter rotation)
 
   // Collision
   collision?: {
@@ -927,7 +930,15 @@ export function createParticleEmitter(
     mesh.count = 0
   }
 
-  const update = (dt: number, camera: THREE.Camera) => {
+  // Render mode configuration
+  const renderMode = cfg.renderMode ?? 'billboard'
+
+  // Reusable vectors for emitter orientation (quad mode)
+  const emitterRight = new THREE.Vector3()
+  const emitterUp = new THREE.Vector3()
+  const emitterForward = new THREE.Vector3()
+
+  const update = (dt: number, camera: THREE.Camera, emitterWorldMatrix?: THREE.Matrix4) => {
     if (debugGroup) debugGroup.position.copy(burstOrigin)
     if (debugVelSegments) {
       const attr = debugVelSegments.geometry.getAttribute(
@@ -1020,10 +1031,21 @@ export function createParticleEmitter(
       }
     }
 
+    // Extract camera vectors (always needed for billboard mode and velocity alignment)
     right.setFromMatrixColumn(camera.matrixWorld, 0).normalize()
     up.setFromMatrixColumn(camera.matrixWorld, 1).normalize()
     forward.setFromMatrixColumn(camera.matrixWorld, 2).normalize()
     viewDir.copy(forward).negate()
+
+    // For quad mode, use local/identity vectors since the parent hierarchy
+    // already applies the emitter's world transform to the instanced mesh
+    const isQuadMode = renderMode === 'quad'
+    if (isQuadMode) {
+      // Use identity axes - parent transform handles the rotation
+      emitterRight.set(1, 0, 0)
+      emitterUp.set(0, 1, 0)
+      emitterForward.set(0, 0, 1)
+    }
 
     // Cache alignment config lookups
     const velAlign = cfg.alignment?.enableVelocityAlignment ?? false
@@ -1117,7 +1139,8 @@ export function createParticleEmitter(
       }
 
       let angle = 0
-      if (velAlign) {
+      if (velAlign && !isQuadMode) {
+        // Velocity alignment only makes sense in billboard mode
         prevPos.set(
           positions[idx + 0] - velocities[idx + 0] * dt,
           positions[idx + 1] - velocities[idx + 1] * dt,
@@ -1133,16 +1156,31 @@ export function createParticleEmitter(
       const cosA = Math.cos(angle)
       const sinA = Math.sin(angle)
 
-      rightRot.set(
-        right.x * cosA + up.x * sinA,
-        right.y * cosA + up.y * sinA,
-        right.z * cosA + up.z * sinA,
-      )
-      upRot.set(
-        -right.x * sinA + up.x * cosA,
-        -right.y * sinA + up.y * cosA,
-        -right.z * sinA + up.z * cosA,
-      )
+      if (isQuadMode) {
+        // Quad mode: use emitter's orientation, apply spin around local forward axis
+        rightRot.set(
+          emitterRight.x * cosA + emitterUp.x * sinA,
+          emitterRight.y * cosA + emitterUp.y * sinA,
+          emitterRight.z * cosA + emitterUp.z * sinA,
+        )
+        upRot.set(
+          -emitterRight.x * sinA + emitterUp.x * cosA,
+          -emitterRight.y * sinA + emitterUp.y * cosA,
+          -emitterRight.z * sinA + emitterUp.z * cosA,
+        )
+      } else {
+        // Billboard mode: use camera's orientation
+        rightRot.set(
+          right.x * cosA + up.x * sinA,
+          right.y * cosA + up.y * sinA,
+          right.z * cosA + up.z * sinA,
+        )
+        upRot.set(
+          -right.x * sinA + up.x * cosA,
+          -right.y * sinA + up.y * cosA,
+          -right.z * sinA + up.z * cosA,
+        )
+      }
 
       currentVelocityScale = velStretchEnabled ? velScaleConfig : 0
       const vmag = Math.hypot(
@@ -1199,7 +1237,8 @@ export function createParticleEmitter(
       mesh.setColorAt(writeIdx, tmpColor)
       instanceOpacity[writeIdx] = tmp4a.w
 
-      const normal = viewDir
+      // Use emitter forward for quad mode, camera view direction for billboard
+      const normal = isQuadMode ? emitterForward : viewDir
       m4.set(
         rightRot.x * sx,
         upRot.x * sy,
