@@ -154,4 +154,15 @@ export class UIUtils {
     BACKGROUND: "rgba(0, 0, 0, 0.4)",
     BORDER: "#ffffff",
   }
+
+  // Default font family for game UI - single source of truth
+  public static readonly FONT_FAMILY = "'Palanquin Dark', sans-serif"
+
+  /**
+   * Initialize CSS variables for UI styling
+   * Call this once at app startup (UISystem.initialize() calls this automatically)
+   */
+  public static initializeCSSVariables(): void {
+    document.documentElement.style.setProperty("--game-font", UIUtils.FONT_FAMILY)
+  }
 }
