@@ -366,6 +366,7 @@ export type EmitterConfig = {
   size?: { start: NumRange; end: NumRange }
   speed?: NumRange
   gravity?: THREE.Vector3
+  damping?: number          // Velocity damping over lifetime (0 = no damping, higher = more drag)
   alignment?: {
     velocityScale?: number
     enableVelocityStretch?: boolean
@@ -604,6 +605,7 @@ export function createParticleEmitter(
   const gravity = cfg.gravity
     ? cfg.gravity.clone()
     : new THREE.Vector3(0, -9.8, 0)
+  const damping = cfg.damping ?? 0
   const emitterRadius = cfg.radius ?? 0.25
 
   // Emission config
@@ -1065,6 +1067,16 @@ export function createParticleEmitter(
       velocities[idx + 0] += gravity.x * dt
       velocities[idx + 1] += gravity.y * dt
       velocities[idx + 2] += gravity.z * dt
+
+      // Apply damping (velocity reduction over time)
+      if (damping > 0) {
+        const dampFactor = 1 - damping * dt
+        const clampedDamp = Math.max(0, dampFactor)
+        velocities[idx + 0] *= clampedDamp
+        velocities[idx + 1] *= clampedDamp
+        velocities[idx + 2] *= clampedDamp
+      }
+
       positions[idx + 0] += velocities[idx + 0] * dt
       positions[idx + 1] += velocities[idx + 1] * dt
       positions[idx + 2] += velocities[idx + 2] * dt
@@ -1270,7 +1282,9 @@ export function createParticleEmitter(
           const normalizedLife = lifeMax > lifeMin
             ? (lifetimes[i] - lifeMin) / (lifeMax - lifeMin)
             : 0
-          frameF = normalizedLife * (spriteTotalFrames - 1)
+          // Use spriteTotalFrames (not -1) because normalizedLife is in [0,1) due to Math.random()
+          // This ensures all frames including the last one can be selected
+          frameF = normalizedLife * spriteTotalFrames
         } else {
           // FPS-based animation with optional random start offset
           frameF = ages[i] * spriteFps + frameOffset[i]
