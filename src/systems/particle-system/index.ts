@@ -3,6 +3,22 @@ import * as THREE from "three"
 // Re-export the ParticleEmitterComponent
 export { Particle } from "./Particle"
 
+// Import curve types and evaluation functions
+export type { CurveKeyframe, AnimationCurve, CurveableValue } from "./curve"
+export {
+  evaluateCurve,
+  evaluateCurveableValue,
+  createKeyframe,
+  createCurveFromPoints,
+  CurvePresets,
+  cloneCurve,
+  addKeyframe,
+  removeKeyframe,
+  updateKeyframe,
+} from "./curve"
+import type { CurveableValue } from "./curve"
+import { evaluateCurveableValue } from "./curve"
+
 export type ParticleSystem = {
   object: THREE.InstancedMesh
   update: (dt: number, camera: THREE.Camera, emitterWorldMatrix?: THREE.Matrix4) => void
@@ -367,6 +383,13 @@ export type EmitterConfig = {
   speed?: NumRange
   gravity?: THREE.Vector3
   damping?: number          // Velocity damping over lifetime (0 = no damping, higher = more drag)
+
+  // Orbital velocity - particles orbit around axes (radians per second)
+  orbital?: {
+    x?: number  // Orbit around X axis (rotation in YZ plane)
+    y?: number  // Orbit around Y axis (rotation in XZ plane)
+    z?: number  // Orbit around Z axis (rotation in XY plane)
+  }
   alignment?: {
     velocityScale?: number
     enableVelocityStretch?: boolean
@@ -374,6 +397,12 @@ export type EmitterConfig = {
   }
 
   rotation?: { angle?: NumRange; velocity?: NumRange }
+
+  // Curves - "over lifetime" multipliers (all default to 1.0 constant)
+  sizeOverLifetime?: CurveableValue     // Multiplier applied to interpolated size
+  speedOverLifetime?: CurveableValue    // Multiplier applied to velocity magnitude
+  opacityOverLifetime?: CurveableValue  // Direct alpha value (0-1), overrides color alpha
+  rotationOverLifetime?: CurveableValue // Multiplier applied to angular velocity
 
   // Noise - affects position, rotation, and size over lifetime
   noise?: NoiseConfig
@@ -606,6 +635,13 @@ export function createParticleEmitter(
     ? cfg.gravity.clone()
     : new THREE.Vector3(0, -9.8, 0)
   const damping = cfg.damping ?? 0
+
+  // Orbital velocity (radians per second around each axis)
+  const orbitalX = cfg.orbital?.x ?? 0
+  const orbitalY = cfg.orbital?.y ?? 0
+  const orbitalZ = cfg.orbital?.z ?? 0
+  const hasOrbital = orbitalX !== 0 || orbitalY !== 0 || orbitalZ !== 0
+
   const emitterRadius = cfg.radius ?? 0.25
 
   // Emission config
@@ -1063,6 +1099,13 @@ export function createParticleEmitter(
 
       const idx = i * 3
 
+      // Calculate life ratio for curve evaluation (needed early for speed/rotation curves)
+      const preLifeRatio = ages[i] / lifetimes[i]
+
+      // Evaluate speed and rotation curves
+      const speedCurveMultiplier = evaluateCurveableValue(cfg.speedOverLifetime, preLifeRatio, 1)
+      const rotationCurveMultiplier = evaluateCurveableValue(cfg.rotationOverLifetime, preLifeRatio, 1)
+
       // Physics update
       velocities[idx + 0] += gravity.x * dt
       velocities[idx + 1] += gravity.y * dt
@@ -1077,11 +1120,68 @@ export function createParticleEmitter(
         velocities[idx + 2] *= clampedDamp
       }
 
-      positions[idx + 0] += velocities[idx + 0] * dt
-      positions[idx + 1] += velocities[idx + 1] * dt
-      positions[idx + 2] += velocities[idx + 2] * dt
+      // Apply orbital velocity (rotation around axes)
+      // This rotates both position and velocity around each axis, creating orbital motion
+      // Velocity must also be rotated so alignment to velocity works correctly
+      if (hasOrbital) {
+        // Orbital X: rotate in YZ plane around X axis
+        if (orbitalX !== 0) {
+          const cosX = Math.cos(orbitalX * dt)
+          const sinX = Math.sin(orbitalX * dt)
+          // Rotate position
+          const py = positions[idx + 1]
+          const pz = positions[idx + 2]
+          positions[idx + 1] = py * cosX - pz * sinX
+          positions[idx + 2] = py * sinX + pz * cosX
+          // Rotate velocity
+          const vy = velocities[idx + 1]
+          const vz = velocities[idx + 2]
+          velocities[idx + 1] = vy * cosX - vz * sinX
+          velocities[idx + 2] = vy * sinX + vz * cosX
+        }
+
+        // Orbital Y: rotate in XZ plane around Y axis
+        if (orbitalY !== 0) {
+          const cosY = Math.cos(orbitalY * dt)
+          const sinY = Math.sin(orbitalY * dt)
+          // Rotate position
+          const px = positions[idx + 0]
+          const pz = positions[idx + 2]
+          positions[idx + 0] = px * cosY + pz * sinY
+          positions[idx + 2] = -px * sinY + pz * cosY
+          // Rotate velocity
+          const vx = velocities[idx + 0]
+          const vz = velocities[idx + 2]
+          velocities[idx + 0] = vx * cosY + vz * sinY
+          velocities[idx + 2] = -vx * sinY + vz * cosY
+        }
+
+        // Orbital Z: rotate in XY plane around Z axis
+        if (orbitalZ !== 0) {
+          const cosZ = Math.cos(orbitalZ * dt)
+          const sinZ = Math.sin(orbitalZ * dt)
+          // Rotate position
+          const px = positions[idx + 0]
+          const py = positions[idx + 1]
+          positions[idx + 0] = px * cosZ - py * sinZ
+          positions[idx + 1] = px * sinZ + py * cosZ
+          // Rotate velocity
+          const vx = velocities[idx + 0]
+          const vy = velocities[idx + 1]
+          velocities[idx + 0] = vx * cosZ - vy * sinZ
+          velocities[idx + 1] = vx * sinZ + vy * cosZ
+        }
+      }
+
+      // Apply speed curve multiplier to position update
+      const effectiveSpeedMult = speedCurveMultiplier
+      positions[idx + 0] += velocities[idx + 0] * dt * effectiveSpeedMult
+      positions[idx + 1] += velocities[idx + 1] * dt * effectiveSpeedMult
+      positions[idx + 2] += velocities[idx + 2] * dt * effectiveSpeedMult
       ages[i] += dt
-      spinAngle[i] += spinVelocity[i] * dt
+
+      // Apply rotation curve multiplier to angular velocity
+      spinAngle[i] += spinVelocity[i] * dt * rotationCurveMultiplier
 
       // Floor collision
       if (
@@ -1153,10 +1253,37 @@ export function createParticleEmitter(
       let angle = 0
       if (velAlign && !isQuadMode) {
         // Velocity alignment only makes sense in billboard mode
+        // Calculate effective velocity including orbital tangential velocity
+        let effVelX = velocities[idx + 0]
+        let effVelY = velocities[idx + 1]
+        let effVelZ = velocities[idx + 2]
+
+        // Add orbital tangential velocity: v_tangent = ω × position
+        // For rotation around X axis: vy += -ωX * z, vz += ωX * y
+        // For rotation around Y axis: vx += ωY * z, vz += -ωY * x
+        // For rotation around Z axis: vx += -ωZ * y, vy += ωZ * x
+        if (hasOrbital) {
+          const px = positions[idx + 0]
+          const py = positions[idx + 1]
+          const pz = positions[idx + 2]
+          if (orbitalX !== 0) {
+            effVelY += -orbitalX * pz
+            effVelZ += orbitalX * py
+          }
+          if (orbitalY !== 0) {
+            effVelX += orbitalY * pz
+            effVelZ += -orbitalY * px
+          }
+          if (orbitalZ !== 0) {
+            effVelX += -orbitalZ * py
+            effVelY += orbitalZ * px
+          }
+        }
+
         prevPos.set(
-          positions[idx + 0] - velocities[idx + 0] * dt,
-          positions[idx + 1] - velocities[idx + 1] * dt,
-          positions[idx + 2] - velocities[idx + 2] * dt,
+          positions[idx + 0] - effVelX * dt,
+          positions[idx + 1] - effVelY * dt,
+          positions[idx + 2] - effVelZ * dt,
         )
         prevNdc.copy(prevPos).project(camera)
         currNdc.copy(pos).project(camera)
@@ -1205,7 +1332,14 @@ export function createParticleEmitter(
       const attenuation = 1 / (1 + distance * 0.25)
 
       const lifeRatio = ages[i] / lifetimes[i]
-      const s = lerp(sizeStart[i], sizeEnd[i], lifeRatio) * noiseSizeMultiplier
+
+      // Evaluate curve multipliers for this particle's lifetime
+      const sizeCurveMultiplier = evaluateCurveableValue(cfg.sizeOverLifetime, lifeRatio, 1)
+      const opacityCurveValue = cfg.opacityOverLifetime !== undefined
+        ? evaluateCurveableValue(cfg.opacityOverLifetime, lifeRatio, 1)
+        : null // null means use color alpha interpolation
+
+      const s = lerp(sizeStart[i], sizeEnd[i], lifeRatio) * noiseSizeMultiplier * sizeCurveMultiplier
       let sx = baseSizeX * s * attenuation
       let sy = baseSizeY * s * attenuation * stretch
 
@@ -1247,7 +1381,8 @@ export function createParticleEmitter(
       // Write GPU data at writeIdx (packed contiguously)
       tmpColor.setRGB(tmp4a.x, tmp4a.y, tmp4a.z)
       mesh.setColorAt(writeIdx, tmpColor)
-      instanceOpacity[writeIdx] = tmp4a.w
+      // Use opacity curve if defined, otherwise use interpolated color alpha
+      instanceOpacity[writeIdx] = opacityCurveValue !== null ? opacityCurveValue : tmp4a.w
 
       // Use emitter forward for quad mode, camera view direction for billboard
       const normal = isQuadMode ? emitterForward : viewDir
