@@ -2,7 +2,6 @@ import * as THREE from "three"
 import { NavigationGrid, Footprint } from "./NavigationGrid"
 import { NavGridDebugDisplayThree } from "./NavGridDebugDisplayThree"
 import { GameObject } from "@engine/core"
-import { ObjRenderer } from "@engine/render"
 import { RigidBodyComponentThree } from "@systems/physics"
 
 export interface Waypoint {
@@ -284,31 +283,6 @@ export class DynamicNavSystem {
     // Add obstacle to navigation system
     DynamicNavSystem.addBoxObstacle(worldPos.x, worldPos.z, width, depth)
     // Navigation obstacle added (logging disabled)
-  }
-
-  /**
-   * Add a box obstacle from a GameObject with ObjRenderer component
-   * Automatically gets bounds from the renderer
-   * @param gameObject The GameObject with ObjRenderer component
-   */
-  public static addBoxObstacleFromRenderer(gameObject: GameObject): boolean {
-    // Find ObjRenderer component
-    const renderer = gameObject.getComponent(ObjRenderer)
-    if (!renderer) {
-      console.warn(`GameObject ${gameObject.name} has no ObjRenderer component`)
-      return false
-    }
-
-    // Get bounds from renderer
-    const bounds = renderer.getBounds()
-    if (!bounds) {
-      console.warn(`Could not get bounds for ${gameObject.name}`)
-      return false
-    }
-
-    // Add obstacle using bounds
-    DynamicNavSystem.addBoxObstacleFromBounds(gameObject, bounds)
-    return true
   }
 
   /**

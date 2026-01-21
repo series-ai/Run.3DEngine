@@ -6,6 +6,7 @@ import { TweenSystem } from "@systems/math"
 import VenusAPI from "@series-inc/venus-sdk/api"
 import { AudioSystem } from "@systems/audio"
 import { UISystem } from "@systems/ui"
+import { InstancedMeshManager } from "@engine/render/InstancedMeshManager"
 
 /**
  * Three.js version of VenusGame
@@ -117,6 +118,9 @@ export abstract class VenusGame {
 
     // Initialize component updater
     ComponentUpdater.initialize(instance.scene)
+
+    // Initialize instanced mesh manager
+    InstancedMeshManager.getInstance().initialize(instance.scene)
 
     // Call the custom implementation's onInitialize method
     await instance.onStart()
@@ -281,6 +285,9 @@ export abstract class VenusGame {
 
         // Late update components
         ComponentUpdater.lateUpdate(deltaTime)
+
+        // Update instanced mesh matrices
+        InstancedMeshManager.getInstance().updateAllBatches()
       }
 
       // Pre-render hook
@@ -373,6 +380,7 @@ export abstract class VenusGame {
     PhysicsSystem.dispose()
     LightingSystem.dispose()
     ComponentUpdater.dispose()
+    InstancedMeshManager.getInstance().dispose()
 
     // Remove event listeners
     window.removeEventListener("resize", this.resizeListener)
