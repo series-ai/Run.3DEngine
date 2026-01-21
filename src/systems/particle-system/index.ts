@@ -772,6 +772,7 @@ export function createParticleEmitter(
   }
 
   const m4 = new THREE.Matrix4()
+  const invWorldMatrix = new THREE.Matrix4()
   const pos = new THREE.Vector3()
   const right = new THREE.Vector3()
   const up = new THREE.Vector3()
@@ -1078,6 +1079,16 @@ export function createParticleEmitter(
     forward.setFromMatrixColumn(camera.matrixWorld, 2).normalize()
     viewDir.copy(forward).negate()
 
+    // Transform billboard vectors from world space to emitter's local space
+    // This ensures billboards face the camera correctly even when emitter has rotated parents
+    if (emitterWorldMatrix) {
+      invWorldMatrix.copy(emitterWorldMatrix).invert()
+      right.transformDirection(invWorldMatrix)
+      up.transformDirection(invWorldMatrix)
+      forward.transformDirection(invWorldMatrix)
+      viewDir.transformDirection(invWorldMatrix)
+    }
+
     // For quad mode, use local/identity vectors since the parent hierarchy
     // already applies the emitter's world transform to the instanced mesh
     const isQuadMode = renderMode === 'quad'
@@ -1331,8 +1342,7 @@ export function createParticleEmitter(
         velocities[idx + 2],
       )
       const stretch = 1 + vmag * currentVelocityScale
-      const distance = camera.position.distanceTo(pos)
-      const attenuation = 1 / (1 + distance * 0.25)
+      // No artificial attenuation - perspective camera handles depth scaling naturally
 
       const lifeRatio = ages[i] / lifetimes[i]
 
@@ -1343,8 +1353,8 @@ export function createParticleEmitter(
         : null // null means use color alpha interpolation
 
       const s = lerp(sizeStart[i], sizeEnd[i], lifeRatio) * noiseSizeMultiplier * sizeCurveMultiplier
-      let sx = baseSizeX * s * attenuation
-      let sy = baseSizeY * s * attenuation * stretch
+      let sx = baseSizeX * s
+      let sy = baseSizeY * s * stretch
 
       // Apply flip (negate scale to flip the particle)
       const flip = flipState[i]

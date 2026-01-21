@@ -63,6 +63,7 @@ export class UIUtils {
 
     // Create texture
     const texture = new THREE.CanvasTexture(canvas)
+    texture.colorSpace = THREE.SRGBColorSpace // Canvas content is sRGB
     texture.minFilter = THREE.LinearFilter
     texture.magFilter = THREE.LinearFilter
     texture.wrapS = THREE.ClampToEdgeWrapping
