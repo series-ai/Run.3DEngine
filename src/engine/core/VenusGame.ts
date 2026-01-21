@@ -1,4 +1,7 @@
 import * as THREE from "three"
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js"
 import { PhysicsSystem } from "@systems/physics/PhysicsSystem.ts"
 import { ComponentUpdater } from "./ComponentUpdater"
 import { InputManager } from "@systems/input"
@@ -7,6 +10,38 @@ import VenusAPI from "@series-inc/venus-sdk/api"
 import { AudioSystem } from "@systems/audio"
 import { UISystem } from "@systems/ui"
 import { InstancedMeshManager } from "@engine/render/InstancedMeshManager"
+
+/**
+ * Configuration interface for VenusGame.
+ * Override getConfig() in your game class to customize these settings.
+ */
+export interface VenusGameConfig {
+  /** Background color as hex number (default: 0x000000) */
+  backgroundColor?: number
+  /** Enable shadow mapping (default: true) */
+  shadowMapEnabled?: boolean
+  /** Shadow map type: 'vsm' for smoother shadows, 'pcf_soft' for softer edges (default: 'vsm') */
+  shadowMapType?: "vsm" | "pcf_soft"
+  /** Tone mapping: 'aces' for filmic, 'linear' for basic, 'none' to disable (default: 'aces') */
+  toneMapping?: "aces" | "linear" | "none"
+  /** Tone mapping exposure (default: 1.0) */
+  toneMappingExposure?: number
+  /** Enable post-processing pipeline with EffectComposer (default: false) */
+  postProcessing?: boolean
+  /** Enable audio system and auto-create listener (default: true) */
+  audioEnabled?: boolean
+}
+
+/** Default configuration values */
+const DEFAULT_CONFIG: Required<VenusGameConfig> = {
+  backgroundColor: 0x000000,
+  shadowMapEnabled: true,
+  shadowMapType: "vsm",
+  toneMapping: "aces",
+  toneMappingExposure: 1.0,
+  postProcessing: false,
+  audioEnabled: true,
+}
 
 /**
  * Three.js version of VenusGame
@@ -30,6 +65,15 @@ export abstract class VenusGame {
   private clock: THREE.Clock // Made private to prevent delta time issues
   private maxDeltaTime: number = 1 / 30 // Cap delta time at 33ms (30 FPS minimum)
 
+  // Configuration
+  protected config: Required<VenusGameConfig>
+
+  // Post-processing (optional, enabled via config)
+  protected composer: EffectComposer | null = null
+
+  // Audio listener (auto-created if audioEnabled)
+  protected audioListener: THREE.AudioListener | null = null
+
   /**
    * Get the current elapsed time (not delta time)
    * NOTE: For delta time, use the parameter passed to preRender() method
@@ -37,6 +81,21 @@ export abstract class VenusGame {
    */
   protected getElapsedTime(): number {
     return this.clock.getElapsedTime()
+  }
+
+  /**
+   * Override this method to provide game-specific configuration.
+   * The returned config is merged with DEFAULT_CONFIG.
+   * @example
+   * protected getConfig(): VenusGameConfig {
+   *   return {
+   *     backgroundColor: 0x0077b6,
+   *     postProcessing: true,
+   *   }
+   * }
+   */
+  protected getConfig(): VenusGameConfig {
+    return {}
   }
 
   /**
@@ -122,6 +181,12 @@ export abstract class VenusGame {
     // Initialize instanced mesh manager
     InstancedMeshManager.getInstance().initialize(instance.scene)
 
+    // Set up audio listener (before game code runs so it can use audio)
+    instance.setupAudioListener()
+
+    // Set up post-processing pipeline if enabled
+    instance.setupPostProcessingIfEnabled()
+
     // Call the custom implementation's onInitialize method
     await instance.onStart()
 
@@ -151,6 +216,9 @@ export abstract class VenusGame {
    * Create a new VenusGame
    */
   constructor() {
+    // Merge game config with defaults
+    this.config = { ...DEFAULT_CONFIG, ...this.getConfig() }
+
     // Look for an existing canvas
     const existingCanvas = document.getElementById("renderCanvas")
 
@@ -193,13 +261,14 @@ export abstract class VenusGame {
       `[VenusGame] Device pixel ratio: ${window.devicePixelRatio}, Using: ${cappedPixelRatio} (iPhone: ${this.isIPhone()})`,
     )
 
-    this.renderer.shadowMap.enabled = true
-    this.renderer.shadowMap.type = THREE.VSMShadowMap // Better shadow quality
-    this.renderer.shadowMap.autoUpdate = true
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace
+    // Apply rendering configuration from config
+    this.applyRenderingConfig()
 
     // Create the Three.js scene
     this.scene = new THREE.Scene()
+
+    // Apply background color from config
+    this.scene.background = new THREE.Color(this.config.backgroundColor)
 
     // Create the Three.js camera
     this.camera = new THREE.PerspectiveCamera(
@@ -229,8 +298,76 @@ export abstract class VenusGame {
       }
       const cappedPixelRatio = Math.min(window.devicePixelRatio, maxPixelRatio)
       this.renderer.setPixelRatio(cappedPixelRatio)
+
+      // Update composer size if post-processing is enabled
+      if (this.composer) {
+        this.composer.setSize(window.innerWidth, window.innerHeight)
+        this.composer.setPixelRatio(this.renderer.getPixelRatio())
+      }
     }
     window.addEventListener("resize", this.resizeListener)
+  }
+
+  /**
+   * Apply rendering configuration from config
+   */
+  private applyRenderingConfig(): void {
+    // Shadow map configuration
+    this.renderer.shadowMap.enabled = this.config.shadowMapEnabled
+    this.renderer.shadowMap.type =
+      this.config.shadowMapType === "pcf_soft"
+        ? THREE.PCFSoftShadowMap
+        : THREE.VSMShadowMap
+    this.renderer.shadowMap.autoUpdate = true
+
+    // Color space
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace
+
+    // Tone mapping
+    if (this.config.toneMapping === "none") {
+      this.renderer.toneMapping = THREE.NoToneMapping
+    } else if (this.config.toneMapping === "linear") {
+      this.renderer.toneMapping = THREE.LinearToneMapping
+      this.renderer.toneMappingExposure = this.config.toneMappingExposure
+    } else {
+      // Default: ACES filmic
+      this.renderer.toneMapping = THREE.ACESFilmicToneMapping
+      this.renderer.toneMappingExposure = this.config.toneMappingExposure
+    }
+  }
+
+  /**
+   * Set up post-processing pipeline if enabled in config.
+   * Called after scene and camera are ready.
+   */
+  private setupPostProcessingIfEnabled(): void {
+    if (!this.config.postProcessing) return
+
+    this.composer = new EffectComposer(this.renderer)
+    this.composer.setPixelRatio(this.renderer.getPixelRatio())
+    this.composer.setSize(window.innerWidth, window.innerHeight)
+
+    const renderPass = new RenderPass(this.scene, this.camera)
+    this.composer.addPass(renderPass)
+
+    const outputPass = new OutputPass()
+    this.composer.addPass(outputPass)
+
+    console.log("[VenusGame] Post-processing pipeline initialized")
+  }
+
+  /**
+   * Set up audio listener if enabled in config.
+   * Attaches listener to camera and sets AudioSystem.mainListener.
+   */
+  private setupAudioListener(): void {
+    if (!this.config.audioEnabled) return
+
+    this.audioListener = new THREE.AudioListener()
+    this.camera.add(this.audioListener)
+    AudioSystem.mainListener = this.audioListener
+
+    console.log("[VenusGame] Audio listener initialized and attached to camera")
   }
 
   /**
@@ -333,10 +470,15 @@ export abstract class VenusGame {
   }
 
   /**
-   * Render method - can be overridden for custom rendering (e.g., post-processing)
+   * Render method - uses EffectComposer if post-processing is enabled.
+   * Can be overridden for custom rendering pipelines.
    */
   protected render(): void {
-    this.renderer.render(this.scene, this.camera)
+    if (this.composer) {
+      this.composer.render()
+    } else {
+      this.renderer.render(this.scene, this.camera)
+    }
   }
 
   /**
