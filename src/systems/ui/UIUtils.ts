@@ -63,6 +63,7 @@ export class UIUtils {
 
     // Create texture
     const texture = new THREE.CanvasTexture(canvas)
+    texture.colorSpace = THREE.SRGBColorSpace // Canvas content is sRGB
     texture.minFilter = THREE.LinearFilter
     texture.magFilter = THREE.LinearFilter
     texture.wrapS = THREE.ClampToEdgeWrapping
@@ -153,5 +154,16 @@ export class UIUtils {
     GRAY: "#6b7280",
     BACKGROUND: "rgba(0, 0, 0, 0.4)",
     BORDER: "#ffffff",
+  }
+
+  // Default font family for game UI - single source of truth
+  public static readonly FONT_FAMILY = "'Palanquin Dark', sans-serif"
+
+  /**
+   * Initialize CSS variables for UI styling
+   * Call this once at app startup (UISystem.initialize() calls this automatically)
+   */
+  public static initializeCSSVariables(): void {
+    document.documentElement.style.setProperty("--game-font", UIUtils.FONT_FAMILY)
   }
 }

@@ -501,8 +501,8 @@ export function createParticleEmitter(
       },
     },
     vertexShader: `
-      precision mediump float;
-      precision mediump int;
+      precision highp float;
+      precision highp int;
       uniform mat4 modelViewMatrix;
       uniform mat4 projectionMatrix;
       attribute vec3 position;
@@ -524,7 +524,7 @@ export function createParticleEmitter(
       }
     `,
     fragmentShader: `
-      precision mediump float;
+      precision highp float;
       uniform sampler2D map;
       uniform float spriteSheetEnabled;
       uniform vec2 spriteGrid;
@@ -558,18 +558,21 @@ export function createParticleEmitter(
           uvFrame = vec2(vUv.x, 1.0 - vUv.y);
         }
         vec4 texel = texture2D(map, uvFrame);
-        // Decode sRGB to linear space for correct color blending
+        // Decode sRGB texture to linear for correct blending
         texel.rgb = pow(texel.rgb, vec3(2.2));
+        // vColor is also sRGB, convert to linear
+        vec3 colorLinear = pow(vColor, vec3(2.2));
         float alpha = texel.a;
         if (useMaskFromLuminance > 0.5) {
           // Use luminance as alpha mask (ignore texel RGB for color)
           alpha = dot(texel.rgb, vec3(0.299, 0.587, 0.114));
           float outA = alpha * vOpacity;
-          vec3 outRGB = vColor * outA; // premultiply
+          vec3 outRGB = colorLinear * outA; // premultiply
           gl_FragColor = vec4(outRGB, outA);
         } else {
-          gl_FragColor = vec4(texel.rgb * vColor, alpha * vOpacity);
+          gl_FragColor = vec4(texel.rgb * colorLinear, alpha * vOpacity);
         }
+        // Output is linear - OutputPass will convert to sRGB
       }
     `,
     transparent: true,
@@ -769,6 +772,7 @@ export function createParticleEmitter(
   }
 
   const m4 = new THREE.Matrix4()
+  const invWorldMatrix = new THREE.Matrix4()
   const pos = new THREE.Vector3()
   const right = new THREE.Vector3()
   const up = new THREE.Vector3()
@@ -1075,6 +1079,16 @@ export function createParticleEmitter(
     forward.setFromMatrixColumn(camera.matrixWorld, 2).normalize()
     viewDir.copy(forward).negate()
 
+    // Transform billboard vectors from world space to emitter's local space
+    // This ensures billboards face the camera correctly even when emitter has rotated parents
+    if (emitterWorldMatrix) {
+      invWorldMatrix.copy(emitterWorldMatrix).invert()
+      right.transformDirection(invWorldMatrix)
+      up.transformDirection(invWorldMatrix)
+      forward.transformDirection(invWorldMatrix)
+      viewDir.transformDirection(invWorldMatrix)
+    }
+
     // For quad mode, use local/identity vectors since the parent hierarchy
     // already applies the emitter's world transform to the instanced mesh
     const isQuadMode = renderMode === 'quad'
@@ -1328,8 +1342,7 @@ export function createParticleEmitter(
         velocities[idx + 2],
       )
       const stretch = 1 + vmag * currentVelocityScale
-      const distance = camera.position.distanceTo(pos)
-      const attenuation = 1 / (1 + distance * 0.25)
+      // No artificial attenuation - perspective camera handles depth scaling naturally
 
       const lifeRatio = ages[i] / lifetimes[i]
 
@@ -1340,8 +1353,8 @@ export function createParticleEmitter(
         : null // null means use color alpha interpolation
 
       const s = lerp(sizeStart[i], sizeEnd[i], lifeRatio) * noiseSizeMultiplier * sizeCurveMultiplier
-      let sx = baseSizeX * s * attenuation
-      let sy = baseSizeY * s * attenuation * stretch
+      let sx = baseSizeX * s
+      let sy = baseSizeY * s * stretch
 
       // Apply flip (negate scale to flip the particle)
       const flip = flipState[i]

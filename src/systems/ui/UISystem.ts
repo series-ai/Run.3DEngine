@@ -1,4 +1,5 @@
 import * as THREE from "three"
+import { UIUtils } from "./UIUtils"
 
 /**
  * HTML/CSS-based UI system for Three.js
@@ -74,6 +75,9 @@ export class UISystem {
     if (UISystem.isInitialized) {
       return
     }
+
+    // Initialize CSS variables (font family, etc.)
+    UIUtils.initializeCSSVariables()
 
     // Create the main UI container (for HUD, menus, etc. - respects safe areas)
     UISystem.container = document.createElement("div")
@@ -191,7 +195,7 @@ export class UISystem {
         font-size: 20px;
         font-weight: 700;
         box-shadow: 0 6px 0 #16a34a, 0 8px 20px rgba(34, 197, 94, 0.4);
-        font-family: 'Fredoka', 'Comic Sans MS', cursive;
+        font-family: var(--game-font);
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
         opacity: 0.9;
@@ -663,7 +667,7 @@ export class UISystem {
         display: flex !important;
         align-items: center !important;
         gap: 10px !important;
-        font-family: 'Fredoka', 'Comic Sans MS', cursive !important;
+        font-family: var(--game-font) !important;
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3) !important;
         /* No animation - stable money display */
         transform-origin: center !important;
