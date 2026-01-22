@@ -1585,3 +1585,5 @@ export function createParticleEmitter(
     restartInternal,
   }
 }
+
+export * from "./ParticleSystemPrefabComponent"
