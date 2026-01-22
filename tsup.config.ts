@@ -2,7 +2,7 @@
 
 export default defineConfig({
   entry: ['src/index.ts', 'src/systems/index.ts'],
-  format: ['cjs', 'esm'],
+  format: ['esm'],
   dts: true,
   clean: true,          // optional: clears the output folder before build
   sourcemap: true,      // optional: generates source maps
