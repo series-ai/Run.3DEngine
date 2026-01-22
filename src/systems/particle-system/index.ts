@@ -558,21 +558,18 @@ export function createParticleEmitter(
           uvFrame = vec2(vUv.x, 1.0 - vUv.y);
         }
         vec4 texel = texture2D(map, uvFrame);
-        // Decode sRGB texture to linear for correct blending
+        // RawShaderMaterial bypasses Three.js color management, so we must convert sRGB to linear manually
         texel.rgb = pow(texel.rgb, vec3(2.2));
-        // vColor is also sRGB, convert to linear
-        vec3 colorLinear = pow(vColor, vec3(2.2));
         float alpha = texel.a;
         if (useMaskFromLuminance > 0.5) {
           // Use luminance as alpha mask (ignore texel RGB for color)
           alpha = dot(texel.rgb, vec3(0.299, 0.587, 0.114));
           float outA = alpha * vOpacity;
-          vec3 outRGB = colorLinear * outA; // premultiply
+          vec3 outRGB = vColor * outA; // premultiply
           gl_FragColor = vec4(outRGB, outA);
         } else {
-          gl_FragColor = vec4(texel.rgb * colorLinear, alpha * vOpacity);
+          gl_FragColor = vec4(texel.rgb * vColor, alpha * vOpacity);
         }
-        // Output is linear - OutputPass will convert to sRGB
       }
     `,
     transparent: true,

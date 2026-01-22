@@ -4,19 +4,24 @@ import { PerfLogger } from "@stowkit/reader"
 import * as THREE from "three"
 import { AudioSystem } from "@systems/audio"
 import { InstancedMeshManager } from "@engine/render/InstancedMeshManager"
-import type { PrefabCollection, PrefabNode } from "@systems/prefabs"
+import { PrefabCollection, PrefabNode } from "@systems/prefabs"
 
 /**
- * Configuration for StowKitSystem.
- * Game provides this to customize material handling and decoder paths.
+ * Configuration for loading from build.json.
  */
-export interface StowKitConfig {
+export interface StowKitLoadConfig {
   /**
    * Material converter function - called when cloning meshes.
    * Game provides this to apply custom materials (e.g., toon shaders).
-   * If not provided, materials are used as-is from the StowKit pack.
+   * If not provided, materials are used as-is.
    */
   materialConverter?: (material: THREE.Material) => THREE.Material
+
+  /**
+   * Function to fetch blob data from CDN.
+   * Required for loading packs from mount paths.
+   */
+  fetchBlob: (path: string) => Promise<Blob>
 
   /**
    * Decoder paths for StowKit loaders.
@@ -28,14 +33,6 @@ export interface StowKitConfig {
   }
 }
 
-/**
- * Mount point definition from prefab collection.
- */
-export interface PackMount {
-  alias: string
-  path: string
-}
-
 const DEFAULT_DECODER_PATHS = {
   basis: "basis/",
   draco: "stowkit/draco/",
@@ -43,35 +40,30 @@ const DEFAULT_DECODER_PATHS = {
 }
 
 /**
- * StowKitSystem - Engine-level singleton for loading and managing StowKit assets.
- *
- * Games configure this system with a material converter and then load packs.
- * The system provides a clean API for accessing meshes, textures, animations, and audio.
+ * StowKitSystem - Simple asset loading from build.json.
  *
  * Usage:
  * ```typescript
- * // 1. Configure with material converter (optional)
- * StowKitSystem.getInstance().configure({
- *   materialConverter: (mat) => MaterialUtils.convertToToon(mat, "path/to/gradient.jpg")
+ * // Load everything from build.json - that's it!
+ * const prefabs = await StowKitSystem.getInstance().loadFromBuildJson(buildJson, {
+ *   materialConverter: (mat) => MaterialUtils.convertToToon(mat),
+ *   fetchBlob: (path) => VenusAPI.cdn.fetchBlob(path)
  * })
  *
- * // 2. Load packs
- * await StowKitSystem.getInstance().loadPack("Core", coreArrayBuffer)
+ * // Register instancing batches (optional, for frequently spawned items)
+ * await StowKitSystem.getInstance().registerMeshForInstancing("burger", "restaurant_display_Burger", 100)
  *
- * // 3. Preload specific assets
- * await StowKitSystem.getInstance().preloadTextures("Core", ["texture1", "texture2"])
- *
- * // 4. Use assets
- * const texture = StowKitSystem.getInstance().getTexture("texture1")
- * const mesh = StowKitSystem.getInstance().cloneMesh("meshName")
+ * // Use prefabs - meshes load automatically
+ * const burgerStation = PrefabLoader.instantiate(prefabs.getPrefabByName("burger_station"))
  * ```
  */
 export class StowKitSystem {
   private static _instance: StowKitSystem | null = null
 
   // Configuration
-  private config: StowKitConfig = {}
+  private materialConverter?: (material: THREE.Material) => THREE.Material
   private decoderPaths = { ...DEFAULT_DECODER_PATHS }
+  private fetchBlob?: (path: string) => Promise<Blob>
 
   // Loaded packs by alias
   private packs: Map<string, StowKitPack> = new Map()
@@ -82,12 +74,14 @@ export class StowKitSystem {
   private animations: Map<string, THREE.AnimationClip> = new Map()
   private audioFiles: Map<string, THREE.Audio> = new Map()
 
-  // Prefab collection (set by game when loading prefabs)
+  // Prefab collection
   private _prefabCollection: PrefabCollection | null = null
 
   // Loading state
-  private loadMeshPromises: Map<string, Promise<void>> = new Map()
-  private loadTexturePromises: Map<string, Promise<THREE.Texture | null>> = new Map()
+  private loadMeshPromises: Map<string, Promise<THREE.Group>> = new Map()
+  private loadTexturePromises: Map<string, Promise<THREE.Texture>> = new Map()
+  private loadAudioPromises: Map<string, Promise<THREE.Audio>> = new Map()
+  private loadAnimationPromises: Map<string, Promise<THREE.AnimationClip>> = new Map()
 
   private constructor() {}
 
@@ -99,46 +93,111 @@ export class StowKitSystem {
   }
 
   /**
-   * Configure the StowKit system.
-   * Call this before loading any packs.
-   */
-  public configure(config: StowKitConfig): void {
-    this.config = config
-    if (config.decoderPaths) {
-      this.decoderPaths = { ...DEFAULT_DECODER_PATHS, ...config.decoderPaths }
-    }
-  }
-
-  /**
    * Get the material converter function (if configured).
    */
   public getMaterialConverter(): ((material: THREE.Material) => THREE.Material) | undefined {
-    return this.config.materialConverter
+    return this.materialConverter
+  }
+
+  // ============================================
+  // Main Loading API
+  // ============================================
+
+  /**
+   * Load everything from build.json.
+   * This is the main entry point - loads prefab collection and all packs from mounts.
+   *
+   * @param buildJson The build.json content (import directly or fetch)
+   * @param config Configuration including material converter and CDN fetch function
+   * @returns The loaded PrefabCollection
+   */
+  public async loadFromBuildJson(
+    buildJson: unknown,
+    config: StowKitLoadConfig
+  ): Promise<PrefabCollection> {
+    // Store config
+    this.materialConverter = config.materialConverter
+    this.fetchBlob = config.fetchBlob
+    if (config.decoderPaths) {
+      this.decoderPaths = { ...DEFAULT_DECODER_PATHS, ...config.decoderPaths }
+    }
+
+    // Load prefab collection
+    const prefabCollection = PrefabCollection.createFromJSON(buildJson as Parameters<typeof PrefabCollection.createFromJSON>[0])
+    this._prefabCollection = prefabCollection
+
+    // Load all packs from mounts
+    const mounts = prefabCollection.getMounts()
+    console.log(`[StowKitSystem] Loading ${mounts.length} packs from mounts...`)
+
+    PerfLogger.disable()
+
+    for (const mount of mounts) {
+      if (this.packs.has(mount.alias)) {
+        continue // Already loaded
+      }
+
+      console.log(`[StowKitSystem] Loading pack "${mount.alias}" from ${mount.path}`)
+      const blob = await config.fetchBlob(mount.path)
+      const arrayBuffer = await blob.arrayBuffer()
+
+      const pack = await StowKitLoader.loadFromMemory(arrayBuffer, {
+        basisPath: this.decoderPaths.basis,
+        dracoPath: this.decoderPaths.draco,
+        wasmPath: this.decoderPaths.wasm,
+      })
+
+      this.packs.set(mount.alias, pack)
+    }
+
+    console.log(`[StowKitSystem] All packs loaded`)
+    return prefabCollection
   }
 
   /**
-   * Set the prefab collection (called by game after loading prefabs).
+   * Load an additional pack by path.
+   * Use this for packs not referenced in prefab mounts (e.g., character packs).
+   *
+   * @param alias Unique alias for this pack
+   * @param path CDN path to the .stow file
    */
-  public setPrefabCollection(collection: PrefabCollection): void {
-    this._prefabCollection = collection
+  public async loadPack(alias: string, path: string): Promise<void> {
+    if (this.packs.has(alias)) {
+      console.log(`[StowKitSystem] Pack "${alias}" already loaded, skipping`)
+      return
+    }
+
+    if (!this.fetchBlob) {
+      throw new Error("StowKitSystem: fetchBlob not configured. Call loadFromBuildJson first.")
+    }
+
+    console.log(`[StowKitSystem] Loading pack "${alias}" from ${path}`)
+    const blob = await this.fetchBlob(path)
+    const arrayBuffer = await blob.arrayBuffer()
+
+    const pack = await StowKitLoader.loadFromMemory(arrayBuffer, {
+      basisPath: this.decoderPaths.basis,
+      dracoPath: this.decoderPaths.draco,
+      wasmPath: this.decoderPaths.wasm,
+    })
+
+    this.packs.set(alias, pack)
+    console.log(`[StowKitSystem] Pack "${alias}" loaded`)
   }
 
   /**
    * Get the prefab collection.
-   * @throws Error if prefab collection not set
    */
   public getPrefabCollection(): PrefabCollection {
     if (!this._prefabCollection) {
-      throw new Error("StowKitSystem: PrefabCollection not set. Call setPrefabCollection() first.")
+      throw new Error("StowKitSystem: Not loaded. Call loadFromBuildJson() first.")
     }
     return this._prefabCollection
   }
 
   /**
    * Get a prefab node by path from the "restaurant" prefab.
-   * This is a convenience method for game code that uses the restaurant prefab hierarchy.
-   * @param path Path to the prefab node (e.g., "/burger_station_0")
-   * @throws Error if prefab not found
+   * Convenience method for game code.
    */
   public getPrefab(path: string): PrefabNode {
     const collection = this.getPrefabCollection()
@@ -155,31 +214,8 @@ export class StowKitSystem {
   }
 
   // ============================================
-  // Pack Loading
+  // Pack Access
   // ============================================
-
-  /**
-   * Load a StowKit pack from an ArrayBuffer.
-   * @param alias Unique alias for this pack (e.g., "Core", "Character", "VFX")
-   * @param arrayBuffer The .stow file contents
-   */
-  public async loadPack(alias: string, arrayBuffer: ArrayBuffer): Promise<void> {
-    if (this.packs.has(alias)) {
-      console.warn(`StowKitSystem: Pack "${alias}" already loaded, skipping`)
-      return
-    }
-
-    PerfLogger.disable()
-
-    const pack = await StowKitLoader.loadFromMemory(arrayBuffer, {
-      basisPath: this.decoderPaths.basis,
-      dracoPath: this.decoderPaths.draco,
-      wasmPath: this.decoderPaths.wasm,
-    })
-
-    this.packs.set(alias, pack)
-    console.log(`[StowKitSystem] Pack "${alias}" loaded successfully`)
-  }
 
   /**
    * Get a loaded pack by alias.
@@ -196,166 +232,40 @@ export class StowKitSystem {
   }
 
   // ============================================
-  // Texture Loading & Access
+  // Mesh Access (On-Demand Loading)
   // ============================================
 
   /**
-   * Preload textures from a pack.
-   * @param packAlias The pack to load from
-   * @param textureNames Array of texture names to preload
-   * @param configureTexture Optional function to configure each texture (e.g., set colorSpace)
+   * Get a mesh by name. Loads on-demand if not cached.
+   * For synchronous access, use getMeshSync() after ensuring it's loaded.
    */
-  public async preloadTextures(
-    packAlias: string,
-    textureNames: string[],
-    configureTexture?: (tex: THREE.Texture) => THREE.Texture
-  ): Promise<void> {
-    const pack = this.packs.get(packAlias)
-    if (!pack) {
-      throw new Error(`StowKitSystem: Pack "${packAlias}" not loaded`)
-    }
+  public async getMesh(name: string): Promise<THREE.Group> {
+    // Return cached
+    const cached = this.meshes.get(name)
+    if (cached) return cached
 
-    const defaultConfigure = (tex: THREE.Texture) => {
-      tex.colorSpace = THREE.SRGBColorSpace
-      tex.anisotropy = 8
-      return tex
-    }
+    // Check in-flight
+    const existing = this.loadMeshPromises.get(name)
+    if (existing) return existing
 
-    const configure = configureTexture ?? defaultConfigure
+    // Load from packs
+    const promise = this.loadMeshFromPacks(name)
+    this.loadMeshPromises.set(name, promise)
 
-    for (const name of textureNames) {
-      const tex = await pack.loadTexture(name)
-      this.textures.set(name, configure(tex))
-    }
-  }
-
-  /**
-   * Get a preloaded texture by name.
-   * @throws Error if texture not preloaded
-   */
-  public getTexture(name: string): THREE.Texture {
-    const texture = this.textures.get(name)
-    if (!texture) {
-      throw new Error(`StowKitSystem: Texture "${name}" not preloaded`)
-    }
-    return texture
-  }
-
-  /**
-   * Try to get a texture (returns null if not found).
-   */
-  public tryGetTexture(name: string): THREE.Texture | null {
-    return this.textures.get(name) ?? null
-  }
-
-  /**
-   * Load a texture on-demand from a pack.
-   * Caches the texture for future use.
-   * @param packAlias The pack to load from
-   * @param assetId The texture asset ID
-   * @param configure Optional function to configure the texture
-   */
-  public async loadTexture(
-    packAlias: string,
-    assetId: string,
-    configure?: (tex: THREE.Texture) => THREE.Texture
-  ): Promise<THREE.Texture | null> {
-    // Return cached texture if available
-    const cached = this.textures.get(assetId)
-    if (cached) {
-      return cached
-    }
-
-    // Check for in-flight request
-    const cacheKey = `${packAlias}:${assetId}`
-    const existing = this.loadTexturePromises.get(cacheKey)
-    if (existing) {
-      return existing
-    }
-
-    const pack = this.packs.get(packAlias)
-    if (!pack) {
-      console.warn(`StowKitSystem: Pack "${packAlias}" not loaded`)
-      return null
-    }
-
-    const promise = (async () => {
-      try {
-        const tex = await pack.loadTexture(assetId)
-        if (configure) {
-          configure(tex)
-        }
-        this.textures.set(assetId, tex)
-        return tex
-      } catch (error) {
-        console.warn(`StowKitSystem: Failed to load texture "${assetId}":`, error)
-        return null
-      } finally {
-        this.loadTexturePromises.delete(cacheKey)
-      }
-    })()
-
-    this.loadTexturePromises.set(cacheKey, promise)
-    return promise
-  }
-
-  // ============================================
-  // Mesh Loading & Access
-  // ============================================
-
-  /**
-   * Preload meshes from a pack.
-   * @param packAlias The pack to load from
-   * @param meshNames Array of mesh names to preload
-   */
-  public async preloadMeshes(packAlias: string, meshNames: string[]): Promise<void> {
-    const pack = this.packs.get(packAlias)
-    if (!pack) {
-      throw new Error(`StowKitSystem: Pack "${packAlias}" not loaded`)
-    }
-
-    for (const name of meshNames) {
-      const mesh = await pack.loadMesh(name)
+    try {
+      const mesh = await promise
       this.meshes.set(name, mesh)
+      return mesh
+    } finally {
+      this.loadMeshPromises.delete(name)
     }
   }
 
   /**
-   * Preload skinned meshes (characters) from a pack.
-   * @param packAlias The pack to load from
-   * @param meshNames Array of mesh names to preload
-   * @param scale Optional scale to apply (default: 1)
+   * Get a mesh synchronously. Returns null if not loaded yet.
    */
-  public async preloadSkinnedMeshes(
-    packAlias: string,
-    meshNames: string[],
-    scale: number = 1
-  ): Promise<void> {
-    const pack = this.packs.get(packAlias)
-    if (!pack) {
-      throw new Error(`StowKitSystem: Pack "${packAlias}" not loaded`)
-    }
-
-    for (const name of meshNames) {
-      const mesh = await pack.loadSkinnedMesh(name)
-      if (scale !== 1) {
-        mesh.scale.setScalar(scale)
-        mesh.updateMatrixWorld(true)
-      }
-      this.meshes.set(name, mesh)
-    }
-  }
-
-  /**
-   * Get a preloaded mesh by name (original, not cloned).
-   * @throws Error if mesh not preloaded
-   */
-  public getMesh(name: string): THREE.Group {
-    const mesh = this.meshes.get(name)
-    if (!mesh) {
-      throw new Error(`StowKitSystem: Mesh "${name}" not preloaded`)
-    }
-    return mesh
+  public getMeshSync(name: string): THREE.Group | null {
+    return this.meshes.get(name) ?? null
   }
 
   /**
@@ -365,87 +275,92 @@ export class StowKitSystem {
     return this.meshes.has(name)
   }
 
-  /**
-   * Load a mesh on-demand.
-   * @param packAlias The pack to load from (searches all packs if not specified)
-   * @param meshName The mesh name
-   */
-  public async loadMesh(meshName: string, packAlias?: string): Promise<void> {
-    if (this.meshes.has(meshName)) {
-      return
-    }
-
-    // Check for in-flight request
-    const existing = this.loadMeshPromises.get(meshName)
-    if (existing) {
-      return existing
-    }
-
-    const promise = (async () => {
-      // If pack alias specified, use that pack
-      if (packAlias) {
-        const pack = this.packs.get(packAlias)
-        if (!pack) {
-          throw new Error(`StowKitSystem: Pack "${packAlias}" not loaded`)
-        }
-        const mesh = await pack.loadMesh(meshName)
-        this.meshes.set(meshName, mesh)
-        return
+  private async loadMeshFromPacks(name: string): Promise<THREE.Group> {
+    for (const [, pack] of this.packs) {
+      try {
+        return await pack.loadMesh(name)
+      } catch {
+        // Try next pack
       }
-
-      // Otherwise, try each pack until we find the mesh
-      for (const [alias, pack] of this.packs) {
-        try {
-          const mesh = await pack.loadMesh(meshName)
-          this.meshes.set(meshName, mesh)
-          return
-        } catch {
-          // Try next pack
-        }
-      }
-
-      throw new Error(`StowKitSystem: Mesh "${meshName}" not found in any pack`)
-    })()
-
-    this.loadMeshPromises.set(meshName, promise)
-    try {
-      await promise
-    } finally {
-      this.loadMeshPromises.delete(meshName)
     }
+    throw new Error(`StowKitSystem: Mesh "${name}" not found in any pack`)
   }
 
   /**
-   * Clone a mesh with material conversion and shadow settings applied.
-   * This is the main method for getting a renderable mesh instance.
-   *
-   * @param meshName The mesh to clone
-   * @param castShadow Whether the mesh should cast shadows (default: true)
-   * @param receiveShadow Whether the mesh should receive shadows (default: true)
+   * Load a skinned mesh (for characters).
    */
-  public cloneMesh(
+  public async getSkinnedMesh(name: string, scale: number = 1): Promise<THREE.Group> {
+    // Return cached
+    const cached = this.meshes.get(name)
+    if (cached) return cached
+
+    // Check in-flight
+    const existing = this.loadMeshPromises.get(name)
+    if (existing) return existing
+
+    // Load from packs
+    const promise = this.loadSkinnedMeshFromPacks(name, scale)
+    this.loadMeshPromises.set(name, promise)
+
+    try {
+      const mesh = await promise
+      this.meshes.set(name, mesh)
+      return mesh
+    } finally {
+      this.loadMeshPromises.delete(name)
+    }
+  }
+
+  private async loadSkinnedMeshFromPacks(name: string, scale: number): Promise<THREE.Group> {
+    for (const [, pack] of this.packs) {
+      try {
+        const mesh = await pack.loadSkinnedMesh(name)
+        if (scale !== 1) {
+          mesh.scale.setScalar(scale)
+          mesh.updateMatrixWorld(true)
+        }
+        return mesh
+      } catch {
+        // Try next pack
+      }
+    }
+    throw new Error(`StowKitSystem: Skinned mesh "${name}" not found in any pack`)
+  }
+
+  /**
+   * Clone a mesh with material conversion and shadow settings.
+   */
+  public async cloneMesh(
     meshName: string,
     castShadow: boolean = true,
     receiveShadow: boolean = true
-  ): THREE.Group {
-    const original = this.getMesh(meshName)
-    const cloned = original.clone()
+  ): Promise<THREE.Group> {
+    const original = await this.getMesh(meshName)
+    return this.cloneMeshSync(original, castShadow, receiveShadow)
+  }
 
-    const materialConverter = this.config.materialConverter
+  /**
+   * Clone an already-loaded mesh synchronously.
+   */
+  public cloneMeshSync(
+    original: THREE.Group,
+    castShadow: boolean = true,
+    receiveShadow: boolean = true
+  ): THREE.Group {
+    const cloned = original.clone()
 
     cloned.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh
 
         // Apply material conversion if configured
-        if (materialConverter) {
+        if (this.materialConverter) {
           const originalMaterial = mesh.material as THREE.Material
           if (originalMaterial) {
-            mesh.material = materialConverter(originalMaterial)
+            mesh.material = this.materialConverter(originalMaterial)
           }
         }
 
-        // Apply shadow settings
         mesh.castShadow = castShadow
         mesh.receiveShadow = receiveShadow
       }
@@ -455,115 +370,183 @@ export class StowKitSystem {
   }
 
   // ============================================
-  // Animation Loading & Access
+  // Texture Access (On-Demand Loading)
   // ============================================
 
   /**
-   * Preload animations from a pack.
-   * @param packAlias The pack to load from
-   * @param meshName The mesh to use for loading animations
-   * @param animationNames Array of animation names to preload
+   * Get a texture by name. Loads on-demand if not cached.
    */
-  public async preloadAnimations(
-    packAlias: string,
-    meshName: string,
-    animationNames: string[]
-  ): Promise<void> {
-    const pack = this.packs.get(packAlias)
-    if (!pack) {
-      throw new Error(`StowKitSystem: Pack "${packAlias}" not loaded`)
+  public async getTexture(name: string): Promise<THREE.Texture> {
+    // Return cached
+    const cached = this.textures.get(name)
+    if (cached) return cached
+
+    // Check in-flight
+    const existing = this.loadTexturePromises.get(name)
+    if (existing) return existing
+
+    // Load from packs
+    const promise = this.loadTextureFromPacks(name)
+    this.loadTexturePromises.set(name, promise)
+
+    try {
+      const texture = await promise
+      this.textures.set(name, texture)
+      return texture
+    } finally {
+      this.loadTexturePromises.delete(name)
+    }
+  }
+
+  /**
+   * Get a texture synchronously. Returns null if not loaded yet.
+   */
+  public getTextureSync(name: string): THREE.Texture | null {
+    return this.textures.get(name) ?? null
+  }
+
+  private async loadTextureFromPacks(name: string): Promise<THREE.Texture> {
+    for (const [, pack] of this.packs) {
+      try {
+        const tex = await pack.loadTexture(name)
+        // colorSpace is set by stowkit-three-loader (sRGB for color textures, linear for data)
+        tex.anisotropy = 8
+        return tex
+      } catch {
+        // Try next pack
+      }
+    }
+    throw new Error(`StowKitSystem: Texture "${name}" not found in any pack`)
+  }
+
+  // ============================================
+  // Animation Access (On-Demand Loading)
+  // ============================================
+
+  /**
+   * Get an animation by name. Loads on-demand if not cached.
+   * @param name Animation name
+   * @param meshName Mesh to load animation with (required for first load)
+   */
+  public async getAnimation(name: string, meshName?: string): Promise<THREE.AnimationClip> {
+    // Return cached
+    const cached = this.animations.get(name)
+    if (cached) return cached
+
+    // Check in-flight
+    const existing = this.loadAnimationPromises.get(name)
+    if (existing) return existing
+
+    if (!meshName) {
+      throw new Error(`StowKitSystem: Animation "${name}" not loaded. Provide meshName to load it.`)
     }
 
-    const mesh = this.meshes.get(meshName)
-    if (!mesh) {
-      throw new Error(`StowKitSystem: Mesh "${meshName}" must be loaded before animations`)
-    }
+    // Load
+    const promise = this.loadAnimationFromPacks(name, meshName)
+    this.loadAnimationPromises.set(name, promise)
 
-    for (const name of animationNames) {
-      const { clip } = await pack.loadAnimation(mesh, name)
+    try {
+      const clip = await promise
       this.animations.set(name, clip)
+      return clip
+    } finally {
+      this.loadAnimationPromises.delete(name)
     }
   }
 
   /**
-   * Get a preloaded animation by name.
-   * @throws Error if animation not preloaded
+   * Get an animation synchronously. Returns null if not loaded yet.
    */
-  public getAnimation(name: string): THREE.AnimationClip {
-    const animation = this.animations.get(name)
-    if (!animation) {
-      throw new Error(`StowKitSystem: Animation "${name}" not preloaded`)
-    }
-    return animation
+  public getAnimationSync(name: string): THREE.AnimationClip | null {
+    return this.animations.get(name) ?? null
   }
 
   /**
-   * Get all preloaded animations.
+   * Get all loaded animations.
    */
   public getAllAnimations(): Map<string, THREE.AnimationClip> {
     return this.animations
   }
 
+  private async loadAnimationFromPacks(name: string, meshName: string): Promise<THREE.AnimationClip> {
+    const mesh = await this.getMesh(meshName)
+
+    for (const [, pack] of this.packs) {
+      try {
+        const { clip } = await pack.loadAnimation(mesh, name)
+        return clip
+      } catch {
+        // Try next pack
+      }
+    }
+    throw new Error(`StowKitSystem: Animation "${name}" not found in any pack`)
+  }
+
   // ============================================
-  // Audio Loading & Access
+  // Audio Access (On-Demand Loading)
   // ============================================
 
   /**
-   * Preload audio from a pack.
-   * Requires AudioSystem.mainListener to be set (VenusGame does this automatically).
-   *
-   * @param packAlias The pack to load from
-   * @param audioNames Array of audio names to preload
+   * Get audio by name. Loads on-demand if not cached.
    */
-  public async preloadAudio(packAlias: string, audioNames: string[]): Promise<void> {
-    const pack = this.packs.get(packAlias)
-    if (!pack) {
-      throw new Error(`StowKitSystem: Pack "${packAlias}" not loaded`)
-    }
+  public async getAudio(name: string): Promise<THREE.Audio> {
+    // Return cached
+    const cached = this.audioFiles.get(name)
+    if (cached) return cached
 
-    const audioListener = AudioSystem.mainListener
-    if (!audioListener) {
-      throw new Error("StowKitSystem: AudioSystem.mainListener not set")
-    }
+    // Check in-flight
+    const existing = this.loadAudioPromises.get(name)
+    if (existing) return existing
 
-    for (const name of audioNames) {
-      const audio = await pack.loadAudio(name, audioListener)
+    // Load from packs
+    const promise = this.loadAudioFromPacks(name)
+    this.loadAudioPromises.set(name, promise)
+
+    try {
+      const audio = await promise
       this.audioFiles.set(name, audio)
+      return audio
+    } finally {
+      this.loadAudioPromises.delete(name)
     }
   }
 
   /**
-   * Get a preloaded audio by name.
-   * @throws Error if audio not preloaded
+   * Get audio synchronously. Returns null if not loaded yet.
    */
-  public getAudio(name: string): THREE.Audio {
-    const audio = this.audioFiles.get(name)
-    if (!audio) {
-      throw new Error(`StowKitSystem: Audio "${name}" not preloaded`)
-    }
-    return audio
+  public getAudioSync(name: string): THREE.Audio | null {
+    return this.audioFiles.get(name) ?? null
   }
 
   /**
-   * Get all preloaded audio files.
+   * Get all loaded audio.
    */
   public getAllAudio(): Map<string, THREE.Audio> {
     return this.audioFiles
   }
 
+  private async loadAudioFromPacks(name: string): Promise<THREE.Audio> {
+    const audioListener = AudioSystem.mainListener
+    if (!audioListener) {
+      throw new Error("StowKitSystem: AudioSystem.mainListener not set")
+    }
+
+    for (const [, pack] of this.packs) {
+      try {
+        return await pack.loadAudio(name, audioListener)
+      } catch {
+        // Try next pack
+      }
+    }
+    throw new Error(`StowKitSystem: Audio "${name}" not found in any pack`)
+  }
+
   // ============================================
-  // GPU Instancing Integration
+  // GPU Instancing
   // ============================================
 
   /**
    * Register a mesh for GPU instancing.
-   * Extracts geometry from the mesh and creates a batch with the material converter applied.
-   *
-   * @param batchKey Unique key for this batch (used with InstancedRenderer)
-   * @param meshName Name of the mesh to use
-   * @param maxInstances Maximum number of instances (default: 500)
-   * @param castShadow Whether instances cast shadows (default: true)
-   * @param receiveShadow Whether instances receive shadows (default: true)
    */
   public async registerMeshForInstancing(
     batchKey: string,
@@ -572,17 +555,7 @@ export class StowKitSystem {
     castShadow: boolean = true,
     receiveShadow: boolean = true
   ): Promise<boolean> {
-    // Ensure mesh is loaded
-    if (!this.isMeshLoaded(meshName)) {
-      try {
-        await this.loadMesh(meshName)
-      } catch (error) {
-        console.error(`StowKitSystem: Failed to load mesh "${meshName}" for instancing`, error)
-        return false
-      }
-    }
-
-    const meshGroup = this.getMesh(meshName)
+    const meshGroup = await this.getMesh(meshName)
 
     // Extract geometry
     const geometry = this.extractGeometry(meshGroup)
@@ -598,7 +571,7 @@ export class StowKitSystem {
       return false
     }
 
-    // Register batch with InstancedMeshManager
+    // Register batch
     const manager = InstancedMeshManager.getInstance()
     const batch = manager.getOrCreateBatch(
       batchKey,
@@ -618,9 +591,6 @@ export class StowKitSystem {
     return true
   }
 
-  /**
-   * Extract the first BufferGeometry from a mesh group.
-   */
   private extractGeometry(meshGroup: THREE.Group): THREE.BufferGeometry | null {
     let geometry: THREE.BufferGeometry | null = null
 
@@ -636,9 +606,6 @@ export class StowKitSystem {
     return geometry
   }
 
-  /**
-   * Create a material from a mesh group, applying the material converter if configured.
-   */
   private createMaterial(meshGroup: THREE.Group): THREE.Material | null {
     let material: THREE.Material | null = null
 
@@ -648,11 +615,9 @@ export class StowKitSystem {
         const originalMaterial = mesh.material as THREE.Material
 
         if (originalMaterial) {
-          // Apply material converter if configured
-          if (this.config.materialConverter) {
-            material = this.config.materialConverter(originalMaterial)
+          if (this.materialConverter) {
+            material = this.materialConverter(originalMaterial)
           } else {
-            // Clone material without conversion
             material = originalMaterial.clone()
           }
         }
@@ -733,7 +698,8 @@ export class StowKitSystem {
     this.audioFiles.clear()
     this.packs.clear()
 
-    this.config = {}
+    this.materialConverter = undefined
     this.decoderPaths = { ...DEFAULT_DECODER_PATHS }
+    this._prefabCollection = null
   }
 }

@@ -56,28 +56,32 @@ export class MeshRenderer extends Component {
     protected onCreate(): void {
         const stowkit = StowKitSystem.getInstance()
 
-        if (!stowkit.isMeshLoaded(this.meshName)) {
-            // Load async, will add mesh when ready
-            stowkit.loadMesh(this.meshName)
+        // Check if mesh is already cached
+        const cachedMesh = stowkit.getMeshSync(this.meshName)
+        if (cachedMesh) {
+            this.addMesh(cachedMesh)
         } else {
-            this.addMesh()
+            // Start async load - will add mesh in update when ready
+            stowkit.getMesh(this.meshName)
         }
     }
 
     public update(_deltaTime: number): void {
-        const stowkit = StowKitSystem.getInstance()
+        if (this.isMeshLoaded) return
 
-        if (!this.isMeshLoaded && stowkit.isMeshLoaded(this.meshName)) {
-            this.addMesh()
+        const stowkit = StowKitSystem.getInstance()
+        const cachedMesh = stowkit.getMeshSync(this.meshName)
+        if (cachedMesh) {
+            this.addMesh(cachedMesh)
         }
     }
 
-    private addMesh(): void {
+    private addMesh(original: THREE.Group): void {
         this.isMeshLoaded = true
 
-        // Use StowKitSystem to clone mesh with material conversion
-        this.mesh = StowKitSystem.getInstance().cloneMesh(
-            this.meshName,
+        // Clone mesh with material conversion
+        this.mesh = StowKitSystem.getInstance().cloneMeshSync(
+            original,
             this.castShadow,
             this.receiveShadow
         )

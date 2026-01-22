@@ -166,6 +166,7 @@ export class MaterialUtils {
    */
   static convertToToon(material: THREE.Material, gradientPath?: string): THREE.MeshToonMaterial {
     const baseMat = material as any
+
     const toon = new THREE.MeshToonMaterial({
       color: baseMat.color ? baseMat.color.clone() : new THREE.Color(0xffffff),
       map: baseMat.map ?? undefined,
