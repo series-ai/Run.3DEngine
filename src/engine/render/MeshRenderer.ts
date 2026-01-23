@@ -33,6 +33,7 @@ export class MeshRenderer extends Component {
     private readonly receiveShadow: boolean
     private _isStatic: boolean
     private isMeshLoaded: boolean = false
+    private loadFailed: boolean = false
 
     /**
      * @param meshName The name of the mesh in the StowKit pack
@@ -62,12 +63,16 @@ export class MeshRenderer extends Component {
             this.addMesh(cachedMesh)
         } else {
             // Start async load - will add mesh in update when ready
-            stowkit.getMesh(this.meshName)
+            // Catch errors to prevent crashing the game
+            stowkit.getMesh(this.meshName).catch((error) => {
+                console.warn(`[MeshRenderer] Failed to load mesh "${this.meshName}":`, error.message)
+                this.loadFailed = true
+            })
         }
     }
 
     public update(_deltaTime: number): void {
-        if (this.isMeshLoaded) return
+        if (this.isMeshLoaded || this.loadFailed) return
 
         const stowkit = StowKitSystem.getInstance()
         const cachedMesh = stowkit.getMeshSync(this.meshName)
