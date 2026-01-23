@@ -591,6 +591,38 @@ export class StowKitSystem {
     return true
   }
 
+  /**
+   * Register a batch for GPU instancing from a prefab.
+   * Extracts the mesh name from the prefab's stow_mesh component.
+   */
+  public async registerBatchFromPrefab(
+    prefabName: string,
+    maxInstances: number = 500,
+    castShadow: boolean = true,
+    receiveShadow: boolean = true
+  ): Promise<boolean> {
+    const prefabCollection = this.getPrefabCollection()
+    const prefab = prefabCollection.getPrefabByName(prefabName)
+
+    if (!prefab) {
+      console.error(`[StowKitSystem] Prefab "${prefabName}" not found`)
+      return false
+    }
+
+    // Find the stow_mesh component in the prefab root
+    const stowMeshComponent = prefab.root.components.find(
+      (c: { type: string }) => c.type === "stow_mesh"
+    ) as { type: string; asset_id?: string } | undefined
+
+    if (!stowMeshComponent || !stowMeshComponent.asset_id) {
+      console.error(`[StowKitSystem] Prefab "${prefabName}" has no stow_mesh component`)
+      return false
+    }
+
+    const meshName = stowMeshComponent.asset_id
+    return this.registerMeshForInstancing(prefabName, meshName, maxInstances, castShadow, receiveShadow)
+  }
+
   private extractGeometry(meshGroup: THREE.Group): THREE.BufferGeometry | null {
     let geometry: THREE.BufferGeometry | null = null
 
