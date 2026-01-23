@@ -116,9 +116,6 @@ export class PhysicsSystem {
 
     let numSteps = 0
     while (PhysicsSystem.accumulator >= h) {
-      // Increment step counter
-      PhysicsSystem.stepCount++
-
       // Use fixed timestep for deterministic simulation
       ;(PhysicsSystem.world as any).timestep = h
       if (PhysicsSystem.eventQueue) {
