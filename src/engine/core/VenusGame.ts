@@ -1,9 +1,4 @@
 import * as THREE from "three"
-import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
-import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
-import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js"
-import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js"
-import { FXAAShader } from "three/examples/jsm/shaders/FXAAShader.js"
 import { PhysicsSystem } from "@systems/physics/PhysicsSystem.ts"
 import { ComponentUpdater } from "./ComponentUpdater"
 import { InputManager } from "@systems/input"
@@ -30,8 +25,6 @@ export interface VenusGameConfig {
   toneMapping?: "aces" | "linear" | "none"
   /** Tone mapping exposure (default: 1.0) */
   toneMappingExposure?: number
-  /** Enable post-processing pipeline with EffectComposer (default: false) */
-  postProcessing?: boolean
   /** Enable audio system and auto-create listener (default: true) */
   audioEnabled?: boolean
 }
@@ -44,7 +37,6 @@ const DEFAULT_CONFIG: Required<VenusGameConfig> = {
   shadowMapType: "vsm",
   toneMapping: "aces",
   toneMappingExposure: 1.0,
-  postProcessing: false,
   audioEnabled: true,
 }
 
@@ -73,10 +65,6 @@ export abstract class VenusGame {
   // Configuration
   protected config: Required<VenusGameConfig>
 
-  // Post-processing (optional, enabled via config)
-  protected composer: EffectComposer | null = null
-  private fxaaPass: ShaderPass | null = null
-
   // Audio listener (auto-created if audioEnabled)
   protected audioListener: THREE.AudioListener | null = null
 
@@ -96,7 +84,7 @@ export abstract class VenusGame {
    * protected getConfig(): VenusGameConfig {
    *   return {
    *     backgroundColor: 0x0077b6,
-   *     postProcessing: true,
+   *     toneMapping: "aces",
    *   }
    * }
    */
@@ -189,9 +177,6 @@ export abstract class VenusGame {
 
     // Set up audio listener (before game code runs so it can use audio)
     instance.setupAudioListener()
-
-    // Set up post-processing pipeline if enabled
-    instance.setupPostProcessingIfEnabled()
 
     // Call the custom implementation's onInitialize method
     await instance.onStart()
@@ -304,19 +289,6 @@ export abstract class VenusGame {
       }
       const cappedPixelRatio = Math.min(window.devicePixelRatio, maxPixelRatio)
       this.renderer.setPixelRatio(cappedPixelRatio)
-
-      // Update composer size if post-processing is enabled
-      if (this.composer) {
-        this.composer.setSize(window.innerWidth, window.innerHeight)
-        this.composer.setPixelRatio(this.renderer.getPixelRatio())
-      }
-
-      // Update FXAA pass resolution if antialiasing is enabled
-      if (this.fxaaPass) {
-        const pixelRatio = this.renderer.getPixelRatio()
-        this.fxaaPass.material.uniforms["resolution"].value.x = 1 / (window.innerWidth * pixelRatio)
-        this.fxaaPass.material.uniforms["resolution"].value.y = 1 / (window.innerHeight * pixelRatio)
-      }
     }
     window.addEventListener("resize", this.resizeListener)
   }
@@ -347,37 +319,6 @@ export abstract class VenusGame {
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping
       this.renderer.toneMappingExposure = this.config.toneMappingExposure
     }
-  }
-
-  /**
-   * Set up post-processing pipeline if enabled in config.
-   * Called after scene and camera are ready.
-   */
-  private setupPostProcessingIfEnabled(): void {
-    if (!this.config.postProcessing) return
-
-    this.composer = new EffectComposer(this.renderer)
-    this.composer.setPixelRatio(this.renderer.getPixelRatio())
-    this.composer.setSize(window.innerWidth, window.innerHeight)
-
-    const renderPass = new RenderPass(this.scene, this.camera)
-    this.composer.addPass(renderPass)
-
-    // Add FXAA antialiasing pass when antialias is enabled
-    // Native WebGL MSAA doesn't work with post-processing, so we use FXAA instead
-    if (this.config.antialias) {
-      this.fxaaPass = new ShaderPass(FXAAShader)
-      const pixelRatio = this.renderer.getPixelRatio()
-      this.fxaaPass.material.uniforms["resolution"].value.x = 1 / (window.innerWidth * pixelRatio)
-      this.fxaaPass.material.uniforms["resolution"].value.y = 1 / (window.innerHeight * pixelRatio)
-      this.composer.addPass(this.fxaaPass)
-      console.log("[VenusGame] FXAA antialiasing pass added to post-processing pipeline")
-    }
-
-    const outputPass = new OutputPass()
-    this.composer.addPass(outputPass)
-
-    console.log("[VenusGame] Post-processing pipeline initialized")
   }
 
   /**
@@ -494,15 +435,10 @@ export abstract class VenusGame {
   }
 
   /**
-   * Render method - uses EffectComposer if post-processing is enabled.
-   * Can be overridden for custom rendering pipelines.
+   * Render method. Can be overridden for custom rendering pipelines.
    */
   protected render(): void {
-    if (this.composer) {
-      this.composer.render()
-    } else {
-      this.renderer.render(this.scene, this.camera)
-    }
+    this.renderer.render(this.scene, this.camera)
   }
 
   /**
