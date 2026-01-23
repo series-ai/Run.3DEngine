@@ -15,8 +15,10 @@ interface MeshColliderJSON extends ComponentJSON {
 
 interface StowMeshJSON extends ComponentJSON {
     type: "stow_mesh"
-    pack: string
-    asset_id: string
+    mesh: {
+        pack: string
+        assetId: string
+    }
 }
 
 @PrefabComponent("mesh_collider")
@@ -33,7 +35,7 @@ export class MeshColliderComponent extends Component {
             return null
         }
 
-        return new MeshColliderComponent(stowMeshComponent.asset_id)
+        return new MeshColliderComponent(stowMeshComponent.mesh.assetId)
     }
 
     private rigidBody: RigidBodyComponentThree | null = null

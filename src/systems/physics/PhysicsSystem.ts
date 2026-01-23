@@ -18,7 +18,6 @@ export class PhysicsSystem {
   private static isInitialized: boolean = false
   private static rigidBodies: Map<string, RigidBody> = new Map()
   private static colliders: Map<string, Collider> = new Map()
-  private static stepCount: number = 0 // Debug step counter
 
   // Fixed-step integration
   private static fixedTimeStep: number = 1 / 120 // 120 Hz physics for smoother motion
@@ -103,7 +102,6 @@ export class PhysicsSystem {
    */
   public static step(deltaTime: number): void {
     if (!PhysicsSystem.world) {
-      console.warn("⚠️ Physics step called but world not initialized")
       return
     }
 
