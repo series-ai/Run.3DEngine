@@ -2,6 +2,8 @@ import * as THREE from "three"
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js"
+import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js"
+import { FXAAShader } from "three/examples/jsm/shaders/FXAAShader.js"
 import { PhysicsSystem } from "@systems/physics/PhysicsSystem.ts"
 import { ComponentUpdater } from "./ComponentUpdater"
 import { InputManager } from "@systems/input"
@@ -18,6 +20,8 @@ import { InstancedMeshManager } from "@engine/render/InstancedMeshManager"
 export interface VenusGameConfig {
   /** Background color as hex number (default: 0x000000) */
   backgroundColor?: number
+  /** Enable antialiasing for smoother edges (default: true) */
+  antialias?: boolean
   /** Enable shadow mapping (default: true) */
   shadowMapEnabled?: boolean
   /** Shadow map type: 'vsm' for smoother shadows, 'pcf_soft' for softer edges (default: 'vsm') */
@@ -35,6 +39,7 @@ export interface VenusGameConfig {
 /** Default configuration values */
 const DEFAULT_CONFIG: Required<VenusGameConfig> = {
   backgroundColor: 0x000000,
+  antialias: true,
   shadowMapEnabled: true,
   shadowMapType: "vsm",
   toneMapping: "aces",
@@ -70,6 +75,7 @@ export abstract class VenusGame {
 
   // Post-processing (optional, enabled via config)
   protected composer: EffectComposer | null = null
+  private fxaaPass: ShaderPass | null = null
 
   // Audio listener (auto-created if audioEnabled)
   protected audioListener: THREE.AudioListener | null = null
@@ -239,7 +245,7 @@ export abstract class VenusGame {
     // Create the Three.js renderer
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
-      antialias: true,
+      antialias: this.config.antialias,
       powerPreference: "high-performance",
     })
     this.renderer.setSize(window.innerWidth, window.innerHeight)
@@ -304,6 +310,13 @@ export abstract class VenusGame {
         this.composer.setSize(window.innerWidth, window.innerHeight)
         this.composer.setPixelRatio(this.renderer.getPixelRatio())
       }
+
+      // Update FXAA pass resolution if antialiasing is enabled
+      if (this.fxaaPass) {
+        const pixelRatio = this.renderer.getPixelRatio()
+        this.fxaaPass.material.uniforms["resolution"].value.x = 1 / (window.innerWidth * pixelRatio)
+        this.fxaaPass.material.uniforms["resolution"].value.y = 1 / (window.innerHeight * pixelRatio)
+      }
     }
     window.addEventListener("resize", this.resizeListener)
   }
@@ -349,6 +362,17 @@ export abstract class VenusGame {
 
     const renderPass = new RenderPass(this.scene, this.camera)
     this.composer.addPass(renderPass)
+
+    // Add FXAA antialiasing pass when antialias is enabled
+    // Native WebGL MSAA doesn't work with post-processing, so we use FXAA instead
+    if (this.config.antialias) {
+      this.fxaaPass = new ShaderPass(FXAAShader)
+      const pixelRatio = this.renderer.getPixelRatio()
+      this.fxaaPass.material.uniforms["resolution"].value.x = 1 / (window.innerWidth * pixelRatio)
+      this.fxaaPass.material.uniforms["resolution"].value.y = 1 / (window.innerHeight * pixelRatio)
+      this.composer.addPass(this.fxaaPass)
+      console.log("[VenusGame] FXAA antialiasing pass added to post-processing pipeline")
+    }
 
     const outputPass = new OutputPass()
     this.composer.addPass(outputPass)
