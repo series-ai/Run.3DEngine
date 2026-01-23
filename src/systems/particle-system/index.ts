@@ -558,8 +558,6 @@ export function createParticleEmitter(
           uvFrame = vec2(vUv.x, 1.0 - vUv.y);
         }
         vec4 texel = texture2D(map, uvFrame);
-        // RawShaderMaterial bypasses Three.js color management, so we must convert sRGB to linear manually
-        texel.rgb = pow(texel.rgb, vec3(2.2));
         float alpha = texel.a;
         if (useMaskFromLuminance > 0.5) {
           // Use luminance as alpha mask (ignore texel RGB for color)
