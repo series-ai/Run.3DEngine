@@ -612,14 +612,14 @@ export class StowKitSystem {
     // Find the stow_mesh component in the prefab root
     const stowMeshComponent = prefab.root.components.find(
       (c: { type: string }) => c.type === "stow_mesh"
-    ) as { type: string; asset_id?: string } | undefined
+    ) as { type: string; mesh?: { pack?: string; assetId?: string } } | undefined
 
-    if (!stowMeshComponent || !stowMeshComponent.asset_id) {
-      console.error(`[StowKitSystem] Prefab "${prefabName}" has no stow_mesh component`)
+    if (!stowMeshComponent?.mesh?.assetId) {
+      console.error(`[StowKitSystem] Prefab "${prefabName}" has no stow_mesh component with mesh.assetId`)
       return false
     }
 
-    const meshName = stowMeshComponent.asset_id
+    const meshName = stowMeshComponent.mesh.assetId
     return this.registerMeshForInstancing(prefabName, meshName, maxInstances, castShadow, receiveShadow)
   }
 

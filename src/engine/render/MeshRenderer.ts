@@ -5,8 +5,10 @@ import { StowKitSystem } from "@systems/stowkit"
 
 interface StowMeshJSON extends ComponentJSON {
     type: "stow_mesh"
-    pack: string
-    asset_id: string
+    mesh: {
+        pack: string
+        assetId: string
+    }
 }
 
 /**
@@ -24,7 +26,11 @@ interface StowMeshJSON extends ComponentJSON {
 @PrefabComponent("stow_mesh")
 export class MeshRenderer extends Component {
     static fromPrefabJSON(json: StowMeshJSON, _node: PrefabNode): MeshRenderer {
-        return new MeshRenderer(json.asset_id)
+        if (!json.mesh?.assetId) {
+            console.error(`[MeshRenderer] stow_mesh component missing mesh.assetId:`, json)
+            return new MeshRenderer("unknown")
+        }
+        return new MeshRenderer(json.mesh.assetId)
     }
 
     private mesh: THREE.Group | null = null
