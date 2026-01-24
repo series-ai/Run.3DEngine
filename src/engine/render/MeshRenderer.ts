@@ -39,24 +39,28 @@ export class MeshRenderer extends Component {
     private readonly receiveShadow: boolean
     private _isStatic: boolean
     private isMeshLoaded: boolean = false
+    private materialOverride: THREE.Material | null = null
 
     /**
      * @param meshName The name of the mesh in the StowKit pack
      * @param castShadow Whether meshes should cast shadows (default: true)
      * @param receiveShadow Whether meshes should receive shadows (default: true)
      * @param isStatic Whether this mesh is static (default: false). Static meshes have matrixAutoUpdate disabled for better performance.
+     * @param materialOverride Optional material to use instead of the default StowKit material
      */
     constructor(
         meshName: string,
         castShadow: boolean = true,
         receiveShadow: boolean = true,
-        isStatic: boolean = false
+        isStatic: boolean = false,
+        materialOverride: THREE.Material | null = null
     ) {
         super()
         this.meshName = meshName
         this.castShadow = castShadow
         this.receiveShadow = receiveShadow
         this._isStatic = isStatic
+        this.materialOverride = materialOverride
     }
 
     protected onCreate(): void {
@@ -91,11 +95,41 @@ export class MeshRenderer extends Component {
             this.castShadow,
             this.receiveShadow
         )
+
+        // Apply material override if set
+        if (this.materialOverride) {
+            this.applyMaterialOverride()
+        }
+
         this.gameObject.add(this.mesh)
 
         // For static meshes, disable matrix auto-update to save CPU
         if (this._isStatic) {
             this.setStatic(true)
+        }
+    }
+
+    /**
+     * Apply the material override to all meshes
+     */
+    private applyMaterialOverride(): void {
+        if (!this.mesh || !this.materialOverride) return
+
+        this.mesh.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                child.material = this.materialOverride!
+            }
+        })
+    }
+
+    /**
+     * Set a material override for all meshes in this renderer.
+     * Call this after the mesh is loaded, or pass it in the constructor.
+     */
+    public setMaterial(material: THREE.Material): void {
+        this.materialOverride = material
+        if (this.mesh) {
+            this.applyMaterialOverride()
         }
     }
 
