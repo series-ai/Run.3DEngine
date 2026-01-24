@@ -2,6 +2,7 @@
     "name": "@series-ai/venus-three",
     "version": "0.2.0",
     "type": "module",
+    "types": "./dist/index.d.ts",
     "scripts": {
         "build": "tsup",
         "dev": "tsup --watch",
