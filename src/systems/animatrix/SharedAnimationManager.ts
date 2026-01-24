@@ -57,41 +57,61 @@ export class CharacterAnimationController {
   private mixer: THREE.AnimationMixer
   private actions: Map<string, THREE.AnimationAction> = new Map()
   private currentAnimation: string | null = null
-  
+  private crossfadeDuration: number = 0.2 // Default crossfade time in seconds
+
   constructor(model: THREE.Object3D, manager: SharedAnimationManager) {
     this.manager = manager
     this.mixer = new THREE.AnimationMixer(model)
   }
-  
+
   /**
-   * Play a single animation
+   * Set the crossfade duration for animation transitions
+   */
+  public setCrossfadeDuration(duration: number): void {
+    this.crossfadeDuration = Math.max(0, duration)
+  }
+
+  /**
+   * Play a single animation with crossfade transition
    */
   public playAnimation(name: string): void {
     if (this.currentAnimation === name) return
-    
+
     const clip = this.manager.getClip(name)
     if (!clip) {
       console.warn(`[CharacterAnimController] Animation '${name}' not registered!`)
       return
     }
-    
-    // Stop current animation
-    if (this.currentAnimation) {
-      const currentAction = this.actions.get(this.currentAnimation)
+
+    // Get or create action for the new animation
+    let newAction = this.actions.get(name)
+    if (!newAction) {
+      newAction = this.mixer.clipAction(clip)
+      this.actions.set(name, newAction)
+    }
+
+    // Get current action if exists
+    const currentAction = this.currentAnimation ? this.actions.get(this.currentAnimation) : null
+
+    if (currentAction && this.crossfadeDuration > 0) {
+      // Crossfade from current to new animation
+      newAction.reset()
+      newAction.setEffectiveTimeScale(1)
+      newAction.setEffectiveWeight(1)
+      newAction.play()
+      currentAction.crossFadeTo(newAction, this.crossfadeDuration, true)
+    } else {
+      // No current animation or no crossfade - just play immediately
       if (currentAction) {
-        currentAction.stop()
+        currentAction.fadeOut(0.1)
       }
+      newAction.reset()
+      newAction.setEffectiveTimeScale(1)
+      newAction.setEffectiveWeight(1)
+      newAction.fadeIn(0.1)
+      newAction.play()
     }
-    
-    // Get or create action for this clip
-    let action = this.actions.get(name)
-    if (!action) {
-      action = this.mixer.clipAction(clip)
-      this.actions.set(name, action)
-    }
-    
-    action.reset()
-    action.play()
+
     this.currentAnimation = name
   }
   

@@ -13,6 +13,9 @@ export interface MusicSystemState {
   isPaused: boolean
   volume: number
   loop: boolean
+  playlist: string[]
+  playlistIndex: number
+  playlistActive: boolean
 }
 
 export const MusicSystem: MusicSystemState = {
@@ -21,6 +24,9 @@ export const MusicSystem: MusicSystemState = {
   isPaused: false,
   volume: 0.5, // Default to 50% volume for background music
   loop: true,
+  playlist: [],
+  playlistIndex: 0,
+  playlistActive: false,
 }
 
 /**
@@ -343,5 +349,178 @@ export function StartMusicWithAutoplayHandling(
 
   console.log(
     "🎵 Music queued to start on user interaction (click, keypress, or touch)",
+  )
+}
+
+/**
+ * Play the next track in the playlist
+ * @param musicBank - The music bank
+ */
+function playNextInPlaylist(musicBank: MusicBankType): void {
+  if (!MusicSystem.playlistActive || MusicSystem.playlist.length === 0) {
+    return
+  }
+
+  // Move to next track (with wrap-around)
+  MusicSystem.playlistIndex = (MusicSystem.playlistIndex + 1) % MusicSystem.playlist.length
+  const nextTrack = MusicSystem.playlist[MusicSystem.playlistIndex]
+
+  console.log(`🎵 Playlist: playing next track (${MusicSystem.playlistIndex + 1}/${MusicSystem.playlist.length}): ${nextTrack}`)
+
+  // Play the next track without looping, set up ended handler
+  playPlaylistTrack(musicBank, nextTrack)
+}
+
+/**
+ * Play a single track from the playlist (internal helper)
+ * @param musicBank - The music bank
+ * @param trackName - Track to play
+ */
+function playPlaylistTrack(musicBank: MusicBankType, trackName: string): void {
+  if (!musicBank[trackName]) {
+    console.error(`Music track not found in bank: ${trackName}`)
+    return
+  }
+
+  if (!musicBank[trackName].buffer) {
+    console.error(`Music track not loaded yet: ${trackName}`)
+    return
+  }
+
+  // Stop current track if playing
+  if (MusicSystem.currentTrack && MusicSystem.isPlaying) {
+    const currentTrack = musicBank[MusicSystem.currentTrack]
+    if (currentTrack) {
+      // Remove any existing ended listener
+      currentTrack.source?.removeEventListener?.("ended", () => {})
+      currentTrack.stop()
+    }
+  }
+
+  // Set up new track
+  const track = musicBank[trackName]
+  track.setLoop(false) // Don't loop - we'll play next track when ended
+  track.setVolume(MusicSystem.volume)
+
+  // Set up ended listener for playlist rotation
+  const onEnded = () => {
+    if (MusicSystem.playlistActive) {
+      playNextInPlaylist(musicBank)
+    }
+  }
+
+  // Play the track
+  track.play()
+
+  // THREE.Audio fires 'ended' when the track finishes
+  if (track.source) {
+    track.source.onended = onEnded
+  }
+
+  // Update system state
+  MusicSystem.currentTrack = trackName
+  MusicSystem.isPlaying = true
+  MusicSystem.isPaused = false
+  MusicSystem.loop = false
+}
+
+/**
+ * Start playing a playlist of tracks in rotation
+ * @param musicBank - The music bank
+ * @param trackNames - Array of track names to play in rotation
+ * @param startIndex - Index to start from (default: 0)
+ */
+export function StartPlaylist(
+  musicBank: MusicBankType,
+  trackNames: string[],
+  startIndex: number = 0,
+): void {
+  if (trackNames.length === 0) {
+    console.warn("StartPlaylist called with empty track list")
+    return
+  }
+
+  // Validate all tracks exist
+  for (const trackName of trackNames) {
+    if (!musicBank[trackName]) {
+      console.error(`Music track not found in bank: ${trackName}`)
+      return
+    }
+  }
+
+  // Set up playlist state
+  MusicSystem.playlist = [...trackNames]
+  MusicSystem.playlistIndex = startIndex
+  MusicSystem.playlistActive = true
+
+  const firstTrack = MusicSystem.playlist[MusicSystem.playlistIndex]
+  console.log(`🎵 Starting playlist with ${trackNames.length} tracks: ${trackNames.join(", ")}`)
+
+  // Start playing the first track
+  playPlaylistTrack(musicBank, firstTrack)
+}
+
+/**
+ * Stop the playlist and reset state
+ * @param musicBank - The music bank
+ */
+export function StopPlaylist(musicBank: MusicBankType): void {
+  MusicSystem.playlistActive = false
+  MusicSystem.playlist = []
+  MusicSystem.playlistIndex = 0
+  StopMusic(musicBank)
+}
+
+/**
+ * Start playlist with automatic handling of browser autoplay policies
+ * @param musicBank - The music bank
+ * @param trackNames - Array of track names to play in rotation
+ */
+export function StartPlaylistWithAutoplayHandling(
+  musicBank: MusicBankType,
+  trackNames: string[],
+): void {
+  // Try to start playing playlist immediately
+  try {
+    StartPlaylist(musicBank, trackNames)
+    console.log("🎵 Playlist started immediately")
+    return
+  } catch (error) {
+    console.log(
+      "🎵 Playlist blocked by autoplay policy, will start on user interaction",
+    )
+  }
+
+  // Handle browser autoplay policy - start playlist on first user interaction
+  const startPlaylistOnInteraction = () => {
+    try {
+      // Resume audio context if suspended
+      const context = (AudioSystem.mainListener as any)?.context
+      if (context && context.state === "suspended") {
+        context.resume()
+      }
+
+      // Try to play playlist if not already playing
+      if (!MusicSystem.isPlaying) {
+        StartPlaylist(musicBank, trackNames)
+        console.log("🎵 Playlist started after user interaction")
+      }
+
+      // Remove event listeners after first successful interaction
+      document.removeEventListener("click", startPlaylistOnInteraction)
+      document.removeEventListener("keydown", startPlaylistOnInteraction)
+      document.removeEventListener("touchstart", startPlaylistOnInteraction)
+    } catch (error) {
+      console.warn("Failed to start playlist on interaction:", error)
+    }
+  }
+
+  // Add event listeners for user interaction
+  document.addEventListener("click", startPlaylistOnInteraction)
+  document.addEventListener("keydown", startPlaylistOnInteraction)
+  document.addEventListener("touchstart", startPlaylistOnInteraction)
+
+  console.log(
+    "🎵 Playlist queued to start on user interaction (click, keypress, or touch)",
   )
 }

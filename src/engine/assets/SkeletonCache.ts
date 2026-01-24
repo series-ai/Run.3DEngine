@@ -57,7 +57,7 @@ export class SkeletonCache {
   public getClone(path: string): THREE.Object3D | null {
     const original = this.originals.get(path)
     if (!original) return null
-    
+
     // Deep clone skinned meshes/skeletons safely
     const clone = SkeletonUtils.clone(original)
     return clone as THREE.Object3D

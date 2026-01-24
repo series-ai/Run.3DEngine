@@ -319,6 +319,21 @@ export class StowKitSystem {
           mesh.scale.setScalar(scale)
           mesh.updateMatrixWorld(true)
         }
+
+        // Apply material converter to skinned meshes (same as regular meshes)
+        if (this.materialConverter) {
+          mesh.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+              const meshChild = child as THREE.Mesh
+              if (Array.isArray(meshChild.material)) {
+                meshChild.material = meshChild.material.map(m => this.materialConverter!(m))
+              } else if (meshChild.material) {
+                meshChild.material = this.materialConverter!(meshChild.material)
+              }
+            }
+          })
+        }
+
         return mesh
       } catch {
         // Try next pack
