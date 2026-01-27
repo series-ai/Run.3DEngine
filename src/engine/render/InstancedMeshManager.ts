@@ -123,18 +123,18 @@ export class InstancedMeshManager {
    * @param batchKey Unique identifier for this batch (e.g., "burger", "tree_pine")
    * @param geometry BufferGeometry to use for all instances
    * @param material Material to use for all instances
-   * @param initialCapacity Starting capacity (will grow automatically). Default: 16
    * @param castShadow Whether instances cast shadows (default: false)
    * @param receiveShadow Whether instances receive shadows (default: false)
+   * @param initialCapacity Starting capacity (will grow automatically). Default: 16
    * @returns The batch, or null if manager not initialized
    */
   public getOrCreateBatch(
     batchKey: string,
     geometry: THREE.BufferGeometry,
     material: THREE.Material,
-    initialCapacity: number = InstancedMeshManager.INITIAL_CAPACITY,
     castShadow: boolean = false,
-    receiveShadow: boolean = false
+    receiveShadow: boolean = false,
+    initialCapacity: number = InstancedMeshManager.INITIAL_CAPACITY
   ): InstanceBatch | null {
     if (!this.isInitialized || !this.scene) {
       console.error("InstancedMeshManager: Not initialized. Call initialize(scene) first.")
@@ -186,9 +186,9 @@ export class InstancedMeshManager {
   public getOrCreateBatchFromGameObject(
     batchKey: string,
     gameObject: GameObject,
-    initialCapacity: number = InstancedMeshManager.INITIAL_CAPACITY,
     castShadow: boolean = false,
-    receiveShadow: boolean = false
+    receiveShadow: boolean = false,
+    initialCapacity: number = InstancedMeshManager.INITIAL_CAPACITY
   ): InstanceBatch | null {
     // Return existing batch if it exists
     const existing = this.batches.get(batchKey)
@@ -212,7 +212,7 @@ export class InstancedMeshManager {
       return null
     }
 
-    return this.getOrCreateBatch(batchKey, geometry, material, initialCapacity, castShadow, receiveShadow)
+    return this.getOrCreateBatch(batchKey, geometry, material, castShadow, receiveShadow, initialCapacity)
   }
 
   /**
@@ -325,7 +325,7 @@ export class InstancedMeshManager {
     // Auto-create batch if it doesn't exist
     let batch: InstanceBatch | null = this.batches.get(batchKey) ?? null
     if (!batch) {
-      batch = this.getOrCreateBatchFromGameObject(batchKey, gameObject, initialCapacity, castShadow, receiveShadow)
+      batch = this.getOrCreateBatchFromGameObject(batchKey, gameObject, castShadow, receiveShadow, initialCapacity)
       if (!batch) {
         return null
       }

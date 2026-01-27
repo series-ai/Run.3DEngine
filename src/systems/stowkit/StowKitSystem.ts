@@ -562,13 +562,14 @@ export class StowKitSystem {
 
   /**
    * Register a mesh for GPU instancing.
+   * Batch auto-grows as needed, so initialCapacity is optional.
    */
   public async registerMeshForInstancing(
     batchKey: string,
     meshName: string,
-    maxInstances: number = 500,
-    castShadow: boolean = true,
-    receiveShadow: boolean = true
+    castShadow: boolean = false,
+    receiveShadow: boolean = false,
+    initialCapacity: number = 16
   ): Promise<boolean> {
     const meshGroup = await this.getMesh(meshName)
 
@@ -588,33 +589,26 @@ export class StowKitSystem {
 
     // Register batch
     const manager = InstancedMeshManager.getInstance()
-    const batch = manager.getOrCreateBatch(
-      batchKey,
-      geometry,
-      material,
-      maxInstances,
-      castShadow,
-      receiveShadow
-    )
+    const batch = manager.getOrCreateBatch(batchKey, geometry, material, castShadow, receiveShadow, initialCapacity)
 
     if (!batch) {
       console.error(`StowKitSystem: Failed to create batch "${batchKey}"`)
       return false
     }
 
-    console.log(`[StowKitSystem] Registered batch "${batchKey}" for mesh "${meshName}"`)
     return true
   }
 
   /**
    * Register a batch for GPU instancing from a prefab.
    * Extracts the mesh name from the prefab's stow_mesh component.
+   * Batch auto-grows as needed, so initialCapacity is optional.
    */
   public async registerBatchFromPrefab(
     prefabName: string,
-    maxInstances: number = 500,
-    castShadow: boolean = true,
-    receiveShadow: boolean = true
+    castShadow: boolean = false,
+    receiveShadow: boolean = false,
+    initialCapacity: number = 16
   ): Promise<boolean> {
     const prefabCollection = this.getPrefabCollection()
     const prefab = prefabCollection.getPrefabByName(prefabName)
@@ -635,7 +629,7 @@ export class StowKitSystem {
     }
 
     const meshName = stowMeshComponent.mesh.assetId
-    return this.registerMeshForInstancing(prefabName, meshName, maxInstances, castShadow, receiveShadow)
+    return this.registerMeshForInstancing(prefabName, meshName, castShadow, receiveShadow, initialCapacity)
   }
 
   private extractGeometry(meshGroup: THREE.Group): THREE.BufferGeometry | null {
