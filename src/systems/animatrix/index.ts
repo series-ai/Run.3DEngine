@@ -20,6 +20,7 @@ export { AnimationVisualizerComponent } from "./AnimationVisualizerComponent"
 export { AnimationGraphComponent } from "./AnimationGraphComponent"
 
 export { SharedAnimationManager, CharacterAnimationController } from "./SharedAnimationManager"
+export { AnimationCullingManager } from "./AnimationCullingManager"
 
 export { AnimationConsoleFilter } from "./AnimationConsoleFilter"
 export { AnimationPerformance } from "./AnimationPerformance"

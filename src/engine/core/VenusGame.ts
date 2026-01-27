@@ -7,6 +7,7 @@ import VenusAPI from "@series-inc/venus-sdk/api"
 import { AudioSystem } from "@systems/audio"
 import { UISystem } from "@systems/ui"
 import { InstancedMeshManager } from "@engine/render/InstancedMeshManager"
+import { AnimationCullingManager } from "@systems/animatrix/AnimationCullingManager"
 
 /**
  * Configuration interface for VenusGame.
@@ -68,6 +69,9 @@ export abstract class VenusGame {
   // Audio listener (auto-created if audioEnabled)
   protected audioListener: THREE.AudioListener | null = null
 
+  // Animation culling
+  private animationCullingManager: AnimationCullingManager | null = null
+
   /**
    * Get the current elapsed time (not delta time)
    * NOTE: For delta time, use the parameter passed to preRender() method
@@ -118,6 +122,43 @@ export abstract class VenusGame {
    */
   public static get camera(): THREE.PerspectiveCamera {
     return VenusGame._camera
+  }
+
+  // ===== Animation Culling API =====
+
+  /**
+   * Set the camera used for animation frustum culling.
+   * When set, animation updates are skipped for characters outside the camera's view.
+   * @param camera The camera to use for culling (pass null to disable)
+   * @param frustumExpansion How much to expand the frustum (1.2 = 20% larger, avoids pop-in). Default: 1.2
+   */
+  public static setAnimationCullingCamera(
+    camera: THREE.Camera | null,
+    frustumExpansion: number = 1.2
+  ): void {
+    const instance = VenusGame._instance
+    if (!instance) return
+
+    if (camera) {
+      instance.animationCullingManager = AnimationCullingManager.getInstance()
+      instance.animationCullingManager.addCamera(camera, true)
+      instance.animationCullingManager.setFrustumCullingEnabled(true)
+      instance.animationCullingManager.setDistanceCullingEnabled(false)
+      instance.animationCullingManager.setFrustumExpansion(frustumExpansion)
+    } else {
+      // Disable culling
+      if (instance.animationCullingManager) {
+        instance.animationCullingManager.setFrustumCullingEnabled(false)
+      }
+    }
+  }
+
+  /**
+   * Get the animation culling manager for advanced configuration.
+   * Use this to enable distance culling, add multiple cameras, adjust LOD settings, etc.
+   */
+  public static getAnimationCulling(): AnimationCullingManager {
+    return AnimationCullingManager.getInstance()
   }
 
   /**
@@ -381,6 +422,10 @@ export abstract class VenusGame {
 
         // Update tween system (before component updates so tweens apply first)
         TweenSystem.update(deltaTime)
+
+        // Update animation culling frustum BEFORE component updates
+        // This allows AnimationGraphComponents to check visibility during their update()
+        this.animationCullingManager?.beginFrame()
 
         // Update components
         ComponentUpdater.update(deltaTime)

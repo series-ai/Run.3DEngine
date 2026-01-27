@@ -58,10 +58,25 @@ export class CharacterAnimationController {
   private actions: Map<string, THREE.AnimationAction> = new Map()
   private currentAnimation: string | null = null
   private crossfadeDuration: number = 0.2 // Default crossfade time in seconds
+  private isPaused: boolean = false
 
   constructor(model: THREE.Object3D, manager: SharedAnimationManager) {
     this.manager = manager
     this.mixer = new THREE.AnimationMixer(model)
+  }
+  
+  /**
+   * Pause animation updates (for off-screen or distant characters)
+   */
+  public setPaused(paused: boolean): void {
+    this.isPaused = paused
+  }
+  
+  /**
+   * Check if animation is paused
+   */
+  public getIsPaused(): boolean {
+    return this.isPaused
   }
 
   /**
@@ -117,8 +132,10 @@ export class CharacterAnimationController {
   
   /**
    * Update the mixer - MUST be called every frame
+   * Returns early if paused (for performance optimization of off-screen characters)
    */
   public update(deltaTime: number): void {
+    if (this.isPaused) return
     this.mixer.update(deltaTime)
   }
   

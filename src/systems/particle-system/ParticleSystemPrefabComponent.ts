@@ -232,6 +232,9 @@ function convertCurvePropertyToEngine(
 export class ParticleSystemPrefabComponent extends Component {
     private emitter: ParticleSystem | null = null
     private json: ParticleSystemJSON
+    
+    // Reusable vector to avoid allocation on trigger
+    private static readonly _tempOrigin = new THREE.Vector3()
 
     /**
      * Create a ParticleSystemPrefabComponent from prefab JSON
@@ -530,7 +533,7 @@ export class ParticleSystemPrefabComponent extends Component {
      */
     public trigger(count: number = 10): void {
         if (!this.emitter) return
-        const localOrigin = new THREE.Vector3(0, 0, 0)
+        const localOrigin = ParticleSystemPrefabComponent._tempOrigin.set(0, 0, 0)
         this.emitter.setOrigin(localOrigin)
         this.emitter.burst(localOrigin, count)
     }

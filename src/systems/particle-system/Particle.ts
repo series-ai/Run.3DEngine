@@ -10,6 +10,9 @@ export class Particle extends Component {
   private emitter: ParticleSystem | null = null
   private config: EmitterConfig
   private assets: EmitterAssets
+  
+  // Reusable vector to avoid allocation on trigger
+  private static readonly _tempOrigin = new THREE.Vector3()
 
   /**
    * Creates a new particle emitter component
@@ -49,7 +52,7 @@ export class Particle extends Component {
     
     // Since the particle mesh is a child of the GameObject,
     // we use local position (0,0,0) to spawn at the GameObject's position
-    const localOrigin = new THREE.Vector3(0, 0, 0)
+    const localOrigin = Particle._tempOrigin.set(0, 0, 0)
     this.emitter.setOrigin(localOrigin)
     this.emitter.burst(localOrigin, count)
   }
