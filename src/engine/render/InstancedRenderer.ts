@@ -10,6 +10,10 @@ import { InstancedMeshManager } from "./InstancedMeshManager"
  *
  * Transform is controlled by the GameObject - the manager syncs matrices every frame.
  *
+ * Performance modes:
+ * - Dynamic (default): Matrix updates every frame. Use for moving objects.
+ * - Static: Matrix only updates when markDirty() is called. Use for stationary objects.
+ *
  * Usage:
  * ```typescript
  * // 1. Create batch (once, during game setup)
@@ -17,6 +21,12 @@ import { InstancedMeshManager } from "./InstancedMeshManager"
  *
  * // 2. Add component to instances
  * gameObject.addComponent(new InstancedRenderer("burger"))
+ *
+ * // 3. For stationary objects, switch to static mode
+ * renderer.setDynamic(false)
+ *
+ * // 4. When a static object moves, mark it dirty
+ * renderer.markDirty()
  * ```
  *
  * Key differences from mesh-based renderers (ObjRenderer, etc.):
@@ -26,15 +36,18 @@ import { InstancedMeshManager } from "./InstancedMeshManager"
  */
 export class InstancedRenderer extends Component {
   private readonly batchKey: string
+  private readonly startDynamic: boolean
   private instanceId: string | null = null
 
   /**
    * Create an InstancedRenderer
    * @param batchKey The batch key to register with (must match a batch created via getOrCreateBatch)
+   * @param isDynamic If true (default), updates every frame. If false, only updates when markDirty() is called.
    */
-  constructor(batchKey: string) {
+  constructor(batchKey: string, isDynamic: boolean = true) {
     super()
     this.batchKey = batchKey
+    this.startDynamic = isDynamic
   }
 
   /**
@@ -57,7 +70,7 @@ export class InstancedRenderer extends Component {
       return
     }
 
-    this.instanceId = manager.addInstance(this.batchKey, this.gameObject)
+    this.instanceId = manager.addInstance(this.batchKey, this.gameObject, this.startDynamic)
 
     if (!this.instanceId) {
       console.error(`InstancedRenderer: Failed to add instance to batch '${this.batchKey}'`)
@@ -116,6 +129,28 @@ export class InstancedRenderer extends Component {
    */
   public getInstanceId(): string | null {
     return this.instanceId
+  }
+
+  /**
+   * Mark this instance as needing a matrix update.
+   * Only relevant for static instances - dynamic instances update every frame anyway.
+   * Call this when the transform of a static instance changes.
+   */
+  public markDirty(): void {
+    if (this.instanceId) {
+      InstancedMeshManager.getInstance().markInstanceDirty(this.batchKey, this.instanceId)
+    }
+  }
+
+  /**
+   * Set whether this instance is dynamic (updates every frame) or static (only when marked dirty).
+   * Use this to optimize performance when items transition between moving and stationary states.
+   * @param isDynamic If true, updates every frame. If false, only updates when markDirty() is called.
+   */
+  public setDynamic(isDynamic: boolean): void {
+    if (this.instanceId) {
+      InstancedMeshManager.getInstance().setInstanceDynamic(this.batchKey, this.instanceId, isDynamic)
+    }
   }
 
   /**
