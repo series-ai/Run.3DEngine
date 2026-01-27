@@ -74,7 +74,8 @@ export class InstancedMeshManager {
   private batches: Map<string, InstanceBatch> = new Map()
   private isInitialized: boolean = false
 
-  private static readonly DEFAULT_MAX_INSTANCES = 500
+  private static readonly INITIAL_CAPACITY = 16  // Start small, grow as needed
+  private static readonly GROWTH_FACTOR = 2       // Double capacity when full
 
   // Reusable temp objects to avoid per-frame allocations
   private readonly _tempPosition = new THREE.Vector3()
@@ -122,18 +123,18 @@ export class InstancedMeshManager {
    * @param batchKey Unique identifier for this batch (e.g., "burger", "tree_pine")
    * @param geometry BufferGeometry to use for all instances
    * @param material Material to use for all instances
-   * @param maxInstances Maximum number of instances in this batch (default: 500)
-   * @param castShadow Whether instances cast shadows (default: true)
-   * @param receiveShadow Whether instances receive shadows (default: true)
+   * @param initialCapacity Starting capacity (will grow automatically). Default: 16
+   * @param castShadow Whether instances cast shadows (default: false)
+   * @param receiveShadow Whether instances receive shadows (default: false)
    * @returns The batch, or null if manager not initialized
    */
   public getOrCreateBatch(
     batchKey: string,
     geometry: THREE.BufferGeometry,
     material: THREE.Material,
-    maxInstances: number = InstancedMeshManager.DEFAULT_MAX_INSTANCES,
-    castShadow: boolean = true,
-    receiveShadow: boolean = true
+    initialCapacity: number = InstancedMeshManager.INITIAL_CAPACITY,
+    castShadow: boolean = false,
+    receiveShadow: boolean = false
   ): InstanceBatch | null {
     if (!this.isInitialized || !this.scene) {
       console.error("InstancedMeshManager: Not initialized. Call initialize(scene) first.")
@@ -146,8 +147,11 @@ export class InstancedMeshManager {
       return existing
     }
 
+    // Round up to next power of 2 for efficient growth
+    const capacity = this.nextPowerOf2(initialCapacity)
+
     // Create new InstancedMesh
-    const instancedMesh = new THREE.InstancedMesh(geometry, material, maxInstances)
+    const instancedMesh = new THREE.InstancedMesh(geometry, material, capacity)
     instancedMesh.name = `instanced_${batchKey}`
     instancedMesh.castShadow = castShadow
     instancedMesh.receiveShadow = receiveShadow
@@ -164,7 +168,7 @@ export class InstancedMeshManager {
       dynamicInstances: [],
       staticInstances: [],
       instanceMap: new Map(),  // O(1) lookup
-      maxInstances,
+      maxInstances: capacity,
       geometry,
       material,
       needsRebuild: false,
@@ -173,6 +177,93 @@ export class InstancedMeshManager {
 
     this.batches.set(batchKey, batch)
     return batch
+  }
+
+  /**
+   * Create a batch automatically from a GameObject's mesh.
+   * Extracts geometry and material from the first Mesh found in the GameObject.
+   */
+  public getOrCreateBatchFromGameObject(
+    batchKey: string,
+    gameObject: GameObject,
+    initialCapacity: number = InstancedMeshManager.INITIAL_CAPACITY,
+    castShadow: boolean = false,
+    receiveShadow: boolean = false
+  ): InstanceBatch | null {
+    // Return existing batch if it exists
+    const existing = this.batches.get(batchKey)
+    if (existing) {
+      return existing
+    }
+
+    // Find the first mesh in the GameObject hierarchy
+    let geometry: THREE.BufferGeometry | null = null
+    let material: THREE.Material | null = null
+
+    gameObject.traverse((child) => {
+      if (!geometry && child instanceof THREE.Mesh) {
+        geometry = child.geometry
+        material = Array.isArray(child.material) ? child.material[0] : child.material
+      }
+    })
+
+    if (!geometry || !material) {
+      console.error(`InstancedMeshManager: No mesh found in GameObject for batch '${batchKey}'`)
+      return null
+    }
+
+    return this.getOrCreateBatch(batchKey, geometry, material, initialCapacity, castShadow, receiveShadow)
+  }
+
+  /**
+   * Round up to the next power of 2
+   */
+  private nextPowerOf2(n: number): number {
+    if (n <= 0) return 1
+    n--
+    n |= n >> 1
+    n |= n >> 2
+    n |= n >> 4
+    n |= n >> 8
+    n |= n >> 16
+    return n + 1
+  }
+
+  /**
+   * Resize a batch to a new capacity (must be larger than current)
+   */
+  private resizeBatch(batch: InstanceBatch, newCapacity: number): void {
+    if (!this.scene) return
+    
+    const capacity = this.nextPowerOf2(newCapacity)
+    if (capacity <= batch.maxInstances) return
+
+    // Create new larger InstancedMesh
+    const newInstancedMesh = new THREE.InstancedMesh(batch.geometry, batch.material, capacity)
+    newInstancedMesh.name = batch.instancedMesh.name
+    newInstancedMesh.castShadow = batch.instancedMesh.castShadow
+    newInstancedMesh.receiveShadow = batch.instancedMesh.receiveShadow
+    newInstancedMesh.frustumCulled = false
+    newInstancedMesh.count = batch.instancedMesh.count
+
+    // Copy existing matrices to new mesh
+    for (let i = 0; i < batch.instancedMesh.count; i++) {
+      const matrix = new THREE.Matrix4()
+      batch.instancedMesh.getMatrixAt(i, matrix)
+      newInstancedMesh.setMatrixAt(i, matrix)
+    }
+    newInstancedMesh.instanceMatrix.needsUpdate = true
+
+    // Swap in scene
+    this.scene.remove(batch.instancedMesh)
+    batch.instancedMesh.dispose()
+    this.scene.add(newInstancedMesh)
+
+    // Update batch
+    batch.instancedMesh = newInstancedMesh
+    batch.maxInstances = capacity
+
+    console.log(`InstancedMeshManager: Resized batch '${batch.batchKey}' to ${capacity} instances`)
   }
 
   /**
@@ -197,24 +288,52 @@ export class InstancedMeshManager {
   }
 
   /**
+   * Options for adding an instance
+   */
+  public static readonly AddInstanceOptions = {
+    isDynamic: true,
+    castShadow: false,
+    receiveShadow: false,
+    initialCapacity: undefined as number | undefined,
+  }
+
+  /**
    * Add an instance to a batch.
-   * The batch must already exist (call getOrCreateBatch first).
+   * If no batch exists, creates one automatically from the GameObject's mesh.
+   * If batch is full, automatically resizes to accommodate more instances.
    *
    * @param batchKey The batch to add to
    * @param gameObject The GameObject whose transform will be used
-   * @param isDynamic If true (default), matrix updates every frame. If false, only updates when marked dirty.
+   * @param options Configuration options (isDynamic, castShadow, receiveShadow, initialCapacity)
    * @returns Instance ID, or null if failed
    */
-  public addInstance(batchKey: string, gameObject: GameObject, isDynamic: boolean = true): string | null {
-    const batch = this.batches.get(batchKey)
+  public addInstance(
+    batchKey: string, 
+    gameObject: GameObject, 
+    options: {
+      isDynamic?: boolean
+      castShadow?: boolean
+      receiveShadow?: boolean
+      initialCapacity?: number
+    } = {}
+  ): string | null {
+    const isDynamic = options.isDynamic ?? true
+    const castShadow = options.castShadow ?? false
+    const receiveShadow = options.receiveShadow ?? false
+    const initialCapacity = options.initialCapacity ?? InstancedMeshManager.INITIAL_CAPACITY
+
+    // Auto-create batch if it doesn't exist
+    let batch: InstanceBatch | null = this.batches.get(batchKey) ?? null
     if (!batch) {
-      console.error(`InstancedMeshManager: Batch '${batchKey}' not found. Call getOrCreateBatch first.`)
-      return null
+      batch = this.getOrCreateBatchFromGameObject(batchKey, gameObject, initialCapacity, castShadow, receiveShadow)
+      if (!batch) {
+        return null
+      }
     }
 
+    // Auto-resize if full
     if (this.getTotalInstanceCount(batch) >= batch.maxInstances) {
-      console.warn(`InstancedMeshManager: Batch '${batchKey}' is full (${batch.maxInstances} instances)`)
-      return null
+      this.resizeBatch(batch, batch.maxInstances * InstancedMeshManager.GROWTH_FACTOR)
     }
 
     const instanceId = `${batchKey}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`

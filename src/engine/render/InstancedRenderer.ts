@@ -2,13 +2,24 @@ import { Component } from "@engine/core"
 import { InstancedMeshManager } from "./InstancedMeshManager"
 
 /**
+ * Options for InstancedRenderer
+ */
+export interface InstancedRendererOptions {
+  /** If true (default), matrix updates every frame. If false, only updates when markDirty() is called. */
+  isDynamic?: boolean
+  /** Whether instances cast shadows (default: false). Only used if batch is auto-created. */
+  castShadow?: boolean
+  /** Whether instances receive shadows (default: false). Only used if batch is auto-created. */
+  receiveShadow?: boolean
+  /** Initial batch capacity (default: 16, grows automatically). Only used if batch is auto-created. */
+  initialCapacity?: number
+}
+
+/**
  * Component for rendering objects using GPU instancing.
  *
- * This component registers the GameObject with an InstancedMeshManager batch.
- * The batch must be pre-created via `InstancedMeshManager.getOrCreateBatch()` before
- * adding this component.
- *
  * Transform is controlled by the GameObject - the manager syncs matrices every frame.
+ * If no batch exists for the key, one is created automatically from the GameObject's mesh.
  *
  * Performance modes:
  * - Dynamic (default): Matrix updates every frame. Use for moving objects.
@@ -16,16 +27,19 @@ import { InstancedMeshManager } from "./InstancedMeshManager"
  *
  * Usage:
  * ```typescript
- * // 1. Create batch (once, during game setup)
- * InstancedMeshManager.getInstance().getOrCreateBatch("burger", geometry, material)
- *
- * // 2. Add component to instances
+ * // Simple - batch auto-creates from GameObject's mesh
  * gameObject.addComponent(new InstancedRenderer("burger"))
  *
- * // 3. For stationary objects, switch to static mode
+ * // With options
+ * gameObject.addComponent(new InstancedRenderer("burger", { 
+ *   isDynamic: false,
+ *   castShadow: true 
+ * }))
+ *
+ * // For stationary objects, switch to static mode
  * renderer.setDynamic(false)
  *
- * // 4. When a static object moves, mark it dirty
+ * // When a static object moves, mark it dirty
  * renderer.markDirty()
  * ```
  *
@@ -36,22 +50,26 @@ import { InstancedMeshManager } from "./InstancedMeshManager"
  */
 export class InstancedRenderer extends Component {
   private readonly batchKey: string
-  private readonly startDynamic: boolean
+  private readonly options: InstancedRendererOptions
   private instanceId: string | null = null
 
   /**
    * Create an InstancedRenderer
-   * @param batchKey The batch key to register with (must match a batch created via getOrCreateBatch)
-   * @param isDynamic If true (default), updates every frame. If false, only updates when markDirty() is called.
+   * @param batchKey The batch key to register with. If no batch exists, one is auto-created.
+   * @param options Configuration options (or just pass `true`/`false` for isDynamic)
    */
-  constructor(batchKey: string, isDynamic: boolean = true) {
+  constructor(batchKey: string, options: InstancedRendererOptions | boolean = {}) {
     super()
     this.batchKey = batchKey
-    this.startDynamic = isDynamic
+    // Support legacy boolean parameter for isDynamic
+    this.options = typeof options === 'boolean' 
+      ? { isDynamic: options }
+      : options
   }
 
   /**
-   * Register with the batch when the component is created
+   * Register with the batch when the component is created.
+   * If no batch exists, one will be created automatically from this GameObject's mesh.
    */
   protected onCreate(): void {
     const manager = InstancedMeshManager.getInstance()
@@ -63,14 +81,13 @@ export class InstancedRenderer extends Component {
       return
     }
 
-    if (!manager.hasBatch(this.batchKey)) {
-      console.error(
-        `InstancedRenderer: Batch '${this.batchKey}' not found. Call getOrCreateBatch() first.`
-      )
-      return
-    }
-
-    this.instanceId = manager.addInstance(this.batchKey, this.gameObject, this.startDynamic)
+    // addInstance now auto-creates batch from GameObject if needed
+    this.instanceId = manager.addInstance(this.batchKey, this.gameObject, {
+      isDynamic: this.options.isDynamic ?? true,
+      castShadow: this.options.castShadow ?? false,
+      receiveShadow: this.options.receiveShadow ?? false,
+      initialCapacity: this.options.initialCapacity,
+    })
 
     if (!this.instanceId) {
       console.error(`InstancedRenderer: Failed to add instance to batch '${this.batchKey}'`)
