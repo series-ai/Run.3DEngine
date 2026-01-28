@@ -76,7 +76,7 @@ export class AnimationGraphComponent extends Component {
   
   // Frustum culling settings
   private useFrustumCulling: boolean = true
-  private boundingRadius: number = 2  // Character bounding sphere radius for culling
+  private boundingRadius: number = 4  // Character bounding sphere radius in world units
   private cullingManager: AnimationCullingManager
   
   constructor(model: THREE.Object3D, config: AnimationGraphConfig) {

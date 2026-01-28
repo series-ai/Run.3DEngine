@@ -111,7 +111,14 @@ export class AnimationCullingManager {
     
     // Update frustum from primary camera
     if (this.primaryCamera && this.frustumCullingEnabled) {
-      this.primaryCamera.updateMatrixWorld()
+      // Force update the entire camera hierarchy to ensure fresh matrices
+      this.primaryCamera.updateMatrixWorld(true)
+      
+      // Ensure projection matrix is current (handles resize)
+      if ((this.primaryCamera as THREE.PerspectiveCamera).isPerspectiveCamera) {
+        (this.primaryCamera as THREE.PerspectiveCamera).updateProjectionMatrix()
+      }
+      
       this.projScreenMatrix.multiplyMatrices(
         this.primaryCamera.projectionMatrix,
         this.primaryCamera.matrixWorldInverse
@@ -135,7 +142,7 @@ export class AnimationCullingManager {
       return { shouldUpdate: true, isLod: false }
     }
     
-    // Get object world position
+    // Get object world position (matrix should already be updated by scene graph)
     object.getWorldPosition(this._tempVec)
     
     // Distance culling check
