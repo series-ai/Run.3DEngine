@@ -74,7 +74,7 @@ export class CharacterAnimationController {
   /**
    * Play a single animation with crossfade transition
    */
-  public playAnimation(name: string): void {
+  public playAnimation(name: string, startTime: number = 0): void {
     if (this.currentAnimation === name) return
 
     const clip = this.manager.getClip(name)
@@ -96,6 +96,7 @@ export class CharacterAnimationController {
     if (currentAction && this.crossfadeDuration > 0) {
       // Crossfade from current to new animation
       newAction.reset()
+      newAction.time = startTime
       newAction.setEffectiveTimeScale(1)
       newAction.setEffectiveWeight(1)
       newAction.play()
@@ -106,6 +107,7 @@ export class CharacterAnimationController {
         currentAction.fadeOut(0.1)
       }
       newAction.reset()
+      newAction.time = startTime
       newAction.setEffectiveTimeScale(1)
       newAction.setEffectiveWeight(1)
       newAction.fadeIn(0.1)
