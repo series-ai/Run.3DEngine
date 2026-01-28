@@ -24,6 +24,7 @@ export interface AnimationTree {
 export interface StateConfig {
   animation?: string
   tree?: AnimationTree
+  randomizeStartTime?: boolean
 }
 
 export interface TransitionConfig {
@@ -369,7 +370,8 @@ export class AnimationGraphComponent extends Component {
       if (this.config.debug) {
         console.log(`[AnimGraph] ${this.animatorName}: ${this.currentAnimation} -> ${targetAnimation} (model: ${this.model?.name || 'unnamed'})`)
       }
-      this.controller.playAnimation(targetAnimation)
+      const startTime = this.getStateRandomizeTime(this.currentState) ? Math.random() * this.currentStateDuration : 0
+      this.controller.playAnimation(targetAnimation, startTime)
       this.currentAnimation = targetAnimation
     }
   }
@@ -403,8 +405,14 @@ export class AnimationGraphComponent extends Component {
     
     this.currentState = stateName
     this.currentAnimation = null
-    this.stateElapsedTime = 0
     this.currentStateDuration = this.getStateDuration(stateName)
+
+    if (this.getStateRandomizeTime(stateName)) {
+      this.stateElapsedTime = Math.random() * this.currentStateDuration
+    } else {
+      this.stateElapsedTime = 0
+    }
+
     this.animator?.set_state(stateName)
     this.updateAnimation()
   }
@@ -457,6 +465,12 @@ export class AnimationGraphComponent extends Component {
   private getStateDuration(stateName: string): number {
     // Use cached duration for O(1) lookup
     return this.stateDurations.get(stateName) ?? 1
+  }
+
+  private getStateRandomizeTime(stateName: string): boolean {
+    const stateConfig = this.config.states[stateName]
+    if (!stateConfig) return false
+    return stateConfig.randomizeStartTime || false
   }
   
   public addEventListener(_event: string, _callback: (data?: any) => void): void {
