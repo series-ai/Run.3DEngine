@@ -56,10 +56,9 @@ export class PrefabInstance {
 
         const instance = new PrefabInstance(prefabNode, gameObject, components, children)
 
-        // Apply shadow options to any existing meshes
-        if (options) {
-            instance.applyShadowOptions(options)
-        }
+        // NOTE: Shadow settings are now applied per-mesh by MeshRenderer using JSON properties.
+        // The applyShadowOptions() call was removed because it overwrote per-mesh settings.
+        // Use instantiate options only as a fallback when JSON doesn't specify shadow settings.
 
         // Clear options context when root call completes
         if (isRootCall) {
