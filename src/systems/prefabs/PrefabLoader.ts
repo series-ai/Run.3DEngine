@@ -2,7 +2,7 @@ import type { PrefabCollectionJSON } from "./types"
 import { PrefabCollection } from "./PrefabCollection"
 import { Prefab } from "./Prefab"
 import { PrefabNode } from "./PrefabNode"
-import { PrefabInstance } from "./PrefabInstance"
+import { PrefabInstance, type PrefabInstantiateOptions } from "./PrefabInstance"
 import { ComponentRegistry } from "./ComponentRegistry"
 import type { GameObject } from "../../engine/core/GameObject"
 
@@ -13,16 +13,18 @@ export class PrefabLoader {
 
     public static instantiate(
         prefabNode: PrefabNode,
-        parent: GameObject | null = null
+        parent: GameObject | null = null,
+        options?: PrefabInstantiateOptions
     ): PrefabInstance {
-        return PrefabInstance.instantiate(prefabNode, parent)
+        return PrefabInstance.instantiate(prefabNode, parent, options)
     }
 
     public static instantiatePrefab(
         prefab: Prefab,
-        parent: GameObject | null = null
+        parent: GameObject | null = null,
+        options?: PrefabInstantiateOptions
     ): PrefabInstance {
-        return PrefabInstance.instantiate(prefab.root, parent)
+        return PrefabInstance.instantiate(prefab.root, parent, options)
     }
 
     public static validateCollection(collection: PrefabCollection): string[] {
