@@ -1,6 +1,6 @@
 import * as THREE from "three"
 import { Component } from "@engine/core"
-import { PrefabComponent, type ComponentJSON, type PrefabNode } from "@systems/prefabs"
+import { PrefabComponent, PrefabInstance, type ComponentJSON, type PrefabNode } from "@systems/prefabs"
 import { StowKitSystem } from "@systems/stowkit"
 
 interface StowMeshJSON extends ComponentJSON {
@@ -30,7 +30,11 @@ export class MeshRenderer extends Component {
             console.error(`[MeshRenderer] stow_mesh component missing mesh.assetId:`, json)
             return new MeshRenderer("unknown")
         }
-        return new MeshRenderer(json.mesh.assetId)
+        // Check for instantiation options from PrefabInstance
+        const options = PrefabInstance.currentOptions
+        const castShadow = options?.castShadow ?? true
+        const receiveShadow = options?.receiveShadow ?? true
+        return new MeshRenderer(json.mesh.assetId, castShadow, receiveShadow)
     }
 
     private mesh: THREE.Group | null = null

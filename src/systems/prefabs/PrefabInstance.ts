@@ -1,12 +1,36 @@
+import * as THREE from "three"
 import { GameObject, Component } from "../../engine/core/GameObject"
 import { PrefabNode } from "./PrefabNode"
 import { ComponentRegistry, type ComponentJSON } from "./ComponentRegistry"
 
+/**
+ * Options for prefab instantiation
+ */
+export interface PrefabInstantiateOptions {
+    /** Whether meshes should cast shadows (default: true) */
+    castShadow?: boolean
+    /** Whether meshes should receive shadows (default: true) */
+    receiveShadow?: boolean
+}
+
 export class PrefabInstance {
+    /**
+     * Current instantiation options - used by components during creation
+     * Components like MeshRenderer can read this to apply shadow settings
+     */
+    public static currentOptions: PrefabInstantiateOptions | null = null
+
     public static instantiate(
         prefabNode: PrefabNode,
-        parent: GameObject | null = null
+        parent: GameObject | null = null,
+        options?: PrefabInstantiateOptions
     ): PrefabInstance {
+        // Set options context for components to read during creation
+        const isRootCall = PrefabInstance.currentOptions === null
+        if (isRootCall && options) {
+            PrefabInstance.currentOptions = options
+        }
+
         const gameObject = new GameObject(prefabNode.name)
         prefabNode.applyTransformTo(gameObject)
 
@@ -26,11 +50,39 @@ export class PrefabInstance {
 
         const children: PrefabInstance[] = []
         for (const childNode of prefabNode.children) {
-            const childInstance = PrefabInstance.instantiate(childNode, gameObject)
+            const childInstance = PrefabInstance.instantiate(childNode, gameObject, options)
             children.push(childInstance)
         }
 
-        return new PrefabInstance(prefabNode, gameObject, components, children)
+        const instance = new PrefabInstance(prefabNode, gameObject, components, children)
+
+        // Apply shadow options to any existing meshes
+        if (options) {
+            instance.applyShadowOptions(options)
+        }
+
+        // Clear options context when root call completes
+        if (isRootCall) {
+            PrefabInstance.currentOptions = null
+        }
+
+        return instance
+    }
+
+    /**
+     * Apply shadow options to all meshes in the prefab tree
+     */
+    private applyShadowOptions(options: PrefabInstantiateOptions): void {
+        this._gameObject.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                if (options.castShadow !== undefined) {
+                    child.castShadow = options.castShadow
+                }
+                if (options.receiveShadow !== undefined) {
+                    child.receiveShadow = options.receiveShadow
+                }
+            }
+        })
     }
 
     private static createComponent(
