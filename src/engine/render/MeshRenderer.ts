@@ -9,6 +9,8 @@ interface StowMeshJSON extends ComponentJSON {
         pack: string
         assetId: string
     }
+    castShadow?: boolean
+    receiveShadow?: boolean
 }
 
 /**
@@ -30,10 +32,10 @@ export class MeshRenderer extends Component {
             console.error(`[MeshRenderer] stow_mesh component missing mesh.assetId:`, json)
             return new MeshRenderer("unknown")
         }
-        // Check for instantiation options from PrefabInstance
+        // Priority: JSON property > context options > default (true)
         const options = PrefabInstance.currentOptions
-        const castShadow = options?.castShadow ?? true
-        const receiveShadow = options?.receiveShadow ?? true
+        const castShadow = json.castShadow ?? options?.castShadow ?? true
+        const receiveShadow = json.receiveShadow ?? options?.receiveShadow ?? true
         return new MeshRenderer(json.mesh.assetId, castShadow, receiveShadow)
     }
 

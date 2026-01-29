@@ -70,8 +70,20 @@ export class PrefabInstance {
     }
 
     /**
-     * Apply shadow options to all meshes in the prefab tree
+     * Apply shadow options to all meshes in the prefab tree.
+     * Call this after meshes have loaded if shadows aren't being applied correctly.
      */
+    public setShadows(castShadow: boolean, receiveShadow?: boolean): void {
+        this._gameObject.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                child.castShadow = castShadow
+                if (receiveShadow !== undefined) {
+                    child.receiveShadow = receiveShadow
+                }
+            }
+        })
+    }
+
     private applyShadowOptions(options: PrefabInstantiateOptions): void {
         this._gameObject.traverse((child) => {
             if (child instanceof THREE.Mesh) {
