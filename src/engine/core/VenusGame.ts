@@ -3,7 +3,7 @@ import { PhysicsSystem } from "@systems/physics/PhysicsSystem.ts"
 import { ComponentUpdater } from "./ComponentUpdater"
 import { InputManager } from "@systems/input"
 import { TweenSystem } from "@systems/math"
-import VenusAPI from "@series-inc/rundot-game-sdk/api"
+import RundotGameAPI from "@series-inc/rundot-game-sdk/api"
 import { AudioSystem } from "@systems/audio"
 import { UISystem } from "@systems/ui"
 import { InstancedMeshManager } from "@engine/render/InstancedMeshManager"
@@ -177,12 +177,12 @@ export abstract class VenusGame {
     VenusGame._renderer = instance.renderer
     VenusGame._camera = instance.camera
 
-    const context = await VenusAPI.initializeAsync({
+    const context = await RundotGameAPI.initializeAsync({
       usePreloader: true
     })
     console.log("[Venus SDK] Venus API initialized: ", context)
 
-    VenusAPI.analytics.trackFunnelStep(1, "Venus Initialized")
+    RundotGameAPI.analytics.trackFunnelStep(1, "Venus Initialized")
 
     // const insets = context?.
     // if (insets) {
@@ -190,13 +190,13 @@ export abstract class VenusGame {
     //   UISystem.setInsets(insets)
     // }
 
-    VenusAPI.lifecycles.onResume(() => {
+    RundotGameAPI.lifecycles.onResume(() => {
       console.log(`[DEBUG] OnResume()`)
       window.focus()
       instance.resume()
     })
 
-    VenusAPI.lifecycles.onPause(() => {
+    RundotGameAPI.lifecycles.onPause(() => {
       console.log(`[DEBUG] OnPause()`)
       instance.pause()
     })
@@ -225,7 +225,7 @@ export abstract class VenusGame {
     // Start the render loop
     instance.startRenderLoop()
 
-    await VenusAPI.preloader.hideLoadScreen()
+    await RundotGameAPI.preloader.hideLoadScreen()
 
     window.focus()
 
