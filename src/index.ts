@@ -4,7 +4,6 @@ export * from "./engine"
 export * from "./platform"
 export { Platform } from "./platform"
 
-// Legacy: Direct RundotGameAPI exports for backward compatibility
-// New code should use Platform instead
-export * from "@series-inc/rundot-game-sdk"
-export { default as RundotGameAPI } from "@series-inc/rundot-game-sdk/api"
+// Note: RundotGameAPI is no longer exported directly to prevent loading in Capacitor builds.
+// Use Platform instead, which auto-detects the correct implementation.
+// For Rundot builds that need direct RundotGameAPI access, import from "@series-inc/rundot-game-sdk/api" directly.

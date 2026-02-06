@@ -30,11 +30,11 @@ export type {
   PlatformPreloader,
 } from "./PlatformService"
 
-export { RundotPlatform } from "./RundotPlatform"
+// Note: We don't export RundotPlatform directly to avoid loading RundotGameAPI
+// in Capacitor builds. Use dynamic import if you need RundotPlatform explicitly.
 export { CapacitorPlatform } from "./CapacitorPlatform"
 
 import type { PlatformService } from "./PlatformService"
-import { RundotPlatform } from "./RundotPlatform"
 import { CapacitorPlatform } from "./CapacitorPlatform"
 
 /**
@@ -68,8 +68,9 @@ function detectPlatform(): PlatformType {
 
 /**
  * Create a platform instance based on type
+ * Uses dynamic import for RundotPlatform to avoid loading RundotGameAPI in Capacitor builds
  */
-function createPlatform(type: PlatformType): PlatformService {
+async function createPlatformAsync(type: PlatformType): Promise<PlatformService> {
   const resolvedType = type === "auto" ? detectPlatform() : type
   
   switch (resolvedType) {
@@ -78,13 +79,51 @@ function createPlatform(type: PlatformType): PlatformService {
       return new CapacitorPlatform()
     case "rundot":
     default:
-      console.log("[Platform] Using RundotPlatform")
+      console.log("[Platform] Using RundotPlatform (dynamic import)")
+      // Dynamic import to avoid loading RundotGameAPI in Capacitor builds
+      const { RundotPlatform } = await import("./RundotPlatform")
       return new RundotPlatform()
   }
 }
 
 /**
- * Initialize and get the platform instance
+ * Create a platform instance synchronously (for backwards compatibility)
+ * Only works for Capacitor - Rundot requires async initialization
+ */
+function createPlatformSync(type: PlatformType): PlatformService {
+  const resolvedType = type === "auto" ? detectPlatform() : type
+  
+  if (resolvedType === "capacitor") {
+    console.log("[Platform] Using CapacitorPlatform")
+    return new CapacitorPlatform()
+  }
+  
+  // For Rundot, we need async loading - throw helpful error
+  throw new Error(
+    "[Platform] RundotPlatform requires async initialization. " +
+    "Use initializePlatformAsync() instead, or set VITE_PLATFORM=capacitor for Capacitor builds."
+  )
+}
+
+/**
+ * Initialize and get the platform instance (async)
+ * 
+ * @param type - Platform type to use ("rundot", "capacitor", or "auto")
+ * @returns The platform service instance
+ */
+export async function initializePlatformAsync(type: PlatformType = "auto"): Promise<PlatformService> {
+  if (platformInstance) {
+    console.warn("[Platform] Already initialized, returning existing instance")
+    return platformInstance
+  }
+  
+  platformInstance = await createPlatformAsync(type)
+  return platformInstance
+}
+
+/**
+ * Initialize and get the platform instance (sync - Capacitor only)
+ * For backwards compatibility. Use initializePlatformAsync() for Rundot.
  * 
  * @param type - Platform type to use ("rundot", "capacitor", or "auto")
  * @returns The platform service instance
@@ -95,8 +134,19 @@ export function initializePlatform(type: PlatformType = "auto"): PlatformService
     return platformInstance
   }
   
-  platformInstance = createPlatform(type)
-  return platformInstance
+  // For Capacitor, we can initialize synchronously
+  const resolvedType = type === "auto" ? detectPlatform() : type
+  if (resolvedType === "capacitor") {
+    platformInstance = new CapacitorPlatform()
+    return platformInstance
+  }
+  
+  // For Rundot, warn and throw - must use async
+  throw new Error(
+    "[Platform] RundotPlatform requires async initialization in this build. " +
+    "The RundotGameAPI is loaded dynamically to prevent it from loading in Capacitor builds. " +
+    "Use initializePlatformAsync() for Rundot platform, or set VITE_PLATFORM=capacitor."
+  )
 }
 
 /**
@@ -133,6 +183,9 @@ export function resetPlatform(): void {
  * This is the primary way to access platform APIs throughout the codebase.
  * It auto-initializes on first access using auto-detection.
  * 
+ * For Capacitor builds: Works synchronously, auto-initializes on first access.
+ * For Rundot builds: Requires calling initializePlatformAsync() before first access.
+ * 
  * Usage:
  *   import { Platform } from "@series-ai/venus-three/platform"
  *   await Platform.storage.setItem("key", "value")
@@ -140,8 +193,17 @@ export function resetPlatform(): void {
 export const Platform: PlatformService = new Proxy({} as PlatformService, {
   get(_target, prop: keyof PlatformService) {
     if (!platformInstance) {
-      // Auto-initialize on first access
-      platformInstance = createPlatform("auto")
+      // Auto-initialize on first access - only works for Capacitor
+      const detectedType = detectPlatform()
+      if (detectedType === "capacitor") {
+        console.log("[Platform] Auto-initializing CapacitorPlatform on first access")
+        platformInstance = new CapacitorPlatform()
+      } else {
+        throw new Error(
+          "[Platform] Platform not initialized. For Rundot builds, call initializePlatformAsync() before accessing Platform. " +
+          "For Capacitor builds, set VITE_PLATFORM=capacitor in your .env file."
+        )
+      }
     }
     return platformInstance[prop]
   },

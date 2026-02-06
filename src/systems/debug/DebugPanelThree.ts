@@ -23,7 +23,7 @@ interface DebugOption {
  */
 export class DebugPanelThree {
   // Static variable to always hide debug panel for release builds
-  public static alwaysHide: boolean = false  
+  public static alwaysHide: boolean = true  
   
   protected container!: HTMLElement
   protected contentContainer!: HTMLElement
@@ -72,6 +72,7 @@ export class DebugPanelThree {
    */
   protected createPanel(): void {
     // Create main container
+    // Positioned relative to UISystem container which already handles safe area
     this.container = document.createElement("div")
     this.container.id = "debug-panel-three"
     this.container.style.cssText = `

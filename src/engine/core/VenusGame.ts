@@ -3,7 +3,7 @@ import { PhysicsSystem } from "@systems/physics/PhysicsSystem.ts"
 import { ComponentUpdater } from "./ComponentUpdater"
 import { InputManager } from "@systems/input"
 import { TweenSystem } from "@systems/math"
-import { Platform, initializePlatform, type PlatformType } from "../../platform"
+import { Platform, initializePlatformAsync, type PlatformType } from "../../platform"
 import { AudioSystem } from "@systems/audio"
 import { UISystem } from "@systems/ui"
 import { InstancedMeshManager } from "@engine/render/InstancedMeshManager"
@@ -180,7 +180,7 @@ export abstract class VenusGame {
     VenusGame._camera = instance.camera
 
     // Initialize the platform abstraction layer
-    const platform = initializePlatform(platformType)
+    const platform = await initializePlatformAsync(platformType)
     const context = await platform.initializeAsync({
       usePreloader: true
     })

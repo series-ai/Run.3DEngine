@@ -3,18 +3,12 @@
  * 
  * Implements the PlatformService interface using Capacitor plugins.
  * Used for standalone APK/iOS builds.
- * 
- * Required Capacitor plugins (install when ready):
- *   npm install @capacitor/core @capacitor/cli
- *   npm install @capacitor/preferences        # For storage
- *   npm install @capacitor/app                # For lifecycle
- *   npm install @capacitor/local-notifications # For notifications
- *   npm install @capacitor-community/admob    # For ads (optional)
- *   
- * Then:
- *   npx cap init
- *   npx cap add android
  */
+
+import { Preferences } from "@capacitor/preferences"
+import { LocalNotifications } from "@capacitor/local-notifications"
+import { App } from "@capacitor/app"
+import { SplashScreen } from "@capacitor/splash-screen"
 
 import type {
   PlatformService,
@@ -33,11 +27,19 @@ import type {
 // Logging prefix for all Capacitor platform calls
 const LOG_PREFIX = "[Capacitor]"
 
+// Helper to generate numeric notification IDs from string IDs
+function stringToNotificationId(str: string): number {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32bit integer
+  }
+  return Math.abs(hash)
+}
+
 /**
- * CapacitorPlatform - Implementation using Capacitor plugins
- * 
- * This is a stub implementation. Uncomment and implement sections
- * as you add the corresponding Capacitor plugins.
+ * CapacitorPlatform - Implementation using real Capacitor plugins
  */
 export class CapacitorPlatform implements PlatformService {
   readonly platformId = "capacitor" as const
@@ -46,129 +48,84 @@ export class CapacitorPlatform implements PlatformService {
   readonly storage: PlatformStorage = {
     getItem: async (key: string): Promise<string | null> => {
       console.log(`${LOG_PREFIX} storage.getItem("${key}")`)
-      // Uncomment when @capacitor/preferences is installed:
-      // import { Preferences } from "@capacitor/preferences"
-      // const { value } = await Preferences.get({ key })
-      // return value
-      
-      // Fallback to localStorage for now
-      const value = localStorage.getItem(key)
+      const { value } = await Preferences.get({ key })
       console.log(`${LOG_PREFIX} storage.getItem("${key}") =>`, value ? `"${value.substring(0, 50)}${value.length > 50 ? '...' : ''}"` : 'null')
       return value
     },
     setItem: async (key: string, value: string): Promise<void> => {
       console.log(`${LOG_PREFIX} storage.setItem("${key}", "${value.substring(0, 50)}${value.length > 50 ? '...' : ''}")`)
-      // Uncomment when @capacitor/preferences is installed:
-      // import { Preferences } from "@capacitor/preferences"
-      // await Preferences.set({ key, value })
-      
-      localStorage.setItem(key, value)
+      await Preferences.set({ key, value })
     },
     removeItem: async (key: string): Promise<void> => {
       console.log(`${LOG_PREFIX} storage.removeItem("${key}")`)
-      // Uncomment when @capacitor/preferences is installed:
-      // import { Preferences } from "@capacitor/preferences"
-      // await Preferences.remove({ key })
-      
-      localStorage.removeItem(key)
+      await Preferences.remove({ key })
     },
     length: async (): Promise<number> => {
-      const len = localStorage.length
-      console.log(`${LOG_PREFIX} storage.length() => ${len}`)
-      return len
+      // Preferences doesn't have a length method, so we get all keys
+      const { keys } = await Preferences.keys()
+      console.log(`${LOG_PREFIX} storage.length() => ${keys.length}`)
+      return keys.length
     },
     key: async (index: number): Promise<string | null> => {
-      const key = localStorage.key(index)
+      const { keys } = await Preferences.keys()
+      const key = keys[index] ?? null
       console.log(`${LOG_PREFIX} storage.key(${index}) => "${key}"`)
       return key
     },
   }
 
-  // Cache implementation (same as storage for Capacitor)
+  // Cache implementation (same as storage for Capacitor, but with prefix)
   readonly cache: PlatformCache = {
     getItem: async (key: string): Promise<string | null> => {
       console.log(`${LOG_PREFIX} cache.getItem("${key}")`)
-      const value = localStorage.getItem(`cache_${key}`)
+      const { value } = await Preferences.get({ key: `cache_${key}` })
       console.log(`${LOG_PREFIX} cache.getItem("${key}") =>`, value ? `"${value.substring(0, 50)}..."` : 'null')
       return value
     },
     setItem: async (key: string, value: string): Promise<void> => {
       console.log(`${LOG_PREFIX} cache.setItem("${key}", "${value.substring(0, 50)}...")`)
-      localStorage.setItem(`cache_${key}`, value)
+      await Preferences.set({ key: `cache_${key}`, value })
     },
     removeItem: async (key: string): Promise<void> => {
       console.log(`${LOG_PREFIX} cache.removeItem("${key}")`)
-      localStorage.removeItem(`cache_${key}`)
+      await Preferences.remove({ key: `cache_${key}` })
     },
   }
 
   // Analytics implementation
-  // For production, integrate with Firebase Analytics or similar
+  // For production, integrate with Firebase Analytics
+  // For now, just log to console
   readonly analytics: PlatformAnalytics = {
     trackFunnelStep: (step: number, name: string) => {
       console.log(`${LOG_PREFIX} analytics.trackFunnelStep(${step}, "${name}")`)
-      // Uncomment when @capacitor-community/firebase-analytics is installed:
-      // import { FirebaseAnalytics } from "@capacitor-community/firebase-analytics"
-      // FirebaseAnalytics.logEvent({ name: "funnel_step", params: { step, name } })
+      // TODO: Add @capacitor-community/firebase-analytics when ready
     },
     recordCustomEvent: (eventName: string, params?: Record<string, unknown>) => {
       console.log(`${LOG_PREFIX} analytics.recordCustomEvent("${eventName}")`, params)
-      // Uncomment when @capacitor-community/firebase-analytics is installed:
-      // import { FirebaseAnalytics } from "@capacitor-community/firebase-analytics"
-      // FirebaseAnalytics.logEvent({ name: eventName, params })
+      // TODO: Add @capacitor-community/firebase-analytics when ready
     },
   }
 
   // Ads implementation
-  // Requires @capacitor-community/admob
+  // TODO: Add @capacitor-community/admob when ready for monetization
   readonly ads: PlatformAds = {
     showRewardedAdAsync: async (): Promise<boolean> => {
-      console.log(`${LOG_PREFIX} ads.showRewardedAdAsync() - returning true (stub)`)
-      // Uncomment when @capacitor-community/admob is installed:
-      // import { AdMob, RewardAdOptions } from "@capacitor-community/admob"
-      // const options: RewardAdOptions = {
-      //   adId: "YOUR_REWARDED_AD_ID",
-      // }
-      // try {
-      //   await AdMob.prepareRewardVideoAd(options)
-      //   const result = await AdMob.showRewardVideoAd()
-      //   return result.type === "earned"
-      // } catch (e) {
-      //   console.error("Failed to show rewarded ad:", e)
-      //   return false
-      // }
-      
+      console.log(`${LOG_PREFIX} ads.showRewardedAdAsync() - returning true (no ads configured)`)
       // Return true for testing so the game flow continues
       return true
     },
     showInterstitialAd: async (): Promise<boolean> => {
-      console.log(`${LOG_PREFIX} ads.showInterstitialAd() - returning true (stub)`)
-      // Uncomment when @capacitor-community/admob is installed:
-      // import { AdMob, InterstitialAdOptions } from "@capacitor-community/admob"
-      // const options: InterstitialAdOptions = {
-      //   adId: "YOUR_INTERSTITIAL_AD_ID",
-      // }
-      // try {
-      //   await AdMob.prepareInterstitial(options)
-      //   await AdMob.showInterstitial()
-      //   return true
-      // } catch (e) {
-      //   console.error("Failed to show interstitial ad:", e)
-      //   return false
-      // }
-      
+      console.log(`${LOG_PREFIX} ads.showInterstitialAd() - returning true (no ads configured)`)
       return true
     },
   }
 
-  // IAP implementation
-  // Requires @capacitor-community/in-app-purchases or similar
+  // IAP implementation using Preferences for local currency storage
+  // TODO: Add real IAP plugin when ready for monetization
   readonly iap: PlatformIAP = {
     getHardCurrencyBalance: async (): Promise<number> => {
-      // For standalone builds, you might store currency locally
-      // or integrate with a backend service
-      const stored = localStorage.getItem("premium_currency")
-      const balance = stored ? parseInt(stored, 10) : 0
+      const { value } = await Preferences.get({ key: "premium_currency" })
+      const balance = value ? parseInt(value, 10) : 0
       console.log(`${LOG_PREFIX} iap.getHardCurrencyBalance() => ${balance}`)
       return balance
     },
@@ -178,12 +135,11 @@ export class CapacitorPlatform implements PlatformService {
       if (current < amount) {
         throw new Error("Insufficient currency")
       }
-      localStorage.setItem("premium_currency", (current - amount).toString())
+      await Preferences.set({ key: "premium_currency", value: (current - amount).toString() })
     },
     openStore: async (): Promise<void> => {
-      console.log(`${LOG_PREFIX} iap.openStore() - not implemented (stub)`)
-      // Uncomment when @capacitor-community/in-app-purchases is installed:
-      // Show your custom store UI or open native purchase flow
+      console.log(`${LOG_PREFIX} iap.openStore() - not implemented yet`)
+      // TODO: Show custom store UI or integrate with native purchase flow
     },
   }
 
@@ -201,16 +157,12 @@ export class CapacitorPlatform implements PlatformService {
       // 4. Already prefixed with cdn-assets/ - just add ./
       // 5. Other relative paths - prepend ./cdn-assets/
       if (path.startsWith('http://') || path.startsWith('https://')) {
-        // Absolute URL, use as-is
         fetchPath = path
       } else if (path.startsWith('/')) {
-        // Absolute path from root
         fetchPath = path
       } else if (path.startsWith('./')) {
-        // Already relative, use as-is
         fetchPath = path
       } else if (path.startsWith('cdn-assets/')) {
-        // Already has cdn-assets prefix, just add ./
         fetchPath = `./${path}`
       } else {
         // Relative path (like "Core.stow" or "shared3d/VFX/VFX_Core.stow")
@@ -239,8 +191,33 @@ export class CapacitorPlatform implements PlatformService {
     },
   }
 
-  // Notifications implementation
-  // Requires @capacitor/local-notifications
+  // Notification channel for Android 8+
+  private notificationChannelCreated = false
+
+  private async ensureNotificationChannel(): Promise<void> {
+    if (this.notificationChannelCreated) return
+    
+    try {
+      // Create notification channel for Android 8+ (API 26+)
+      await LocalNotifications.createChannel({
+        id: 'game_notifications',
+        name: 'Game Notifications',
+        description: 'Notifications from Burger Shop Rush',
+        importance: 4, // High importance
+        visibility: 1, // Public
+        sound: 'default',
+        vibration: true,
+      })
+      this.notificationChannelCreated = true
+      console.log(`${LOG_PREFIX} notifications: channel created`)
+    } catch (error) {
+      // Channel creation might fail on iOS or older Android, that's OK
+      console.log(`${LOG_PREFIX} notifications: channel creation skipped (not needed on this platform)`)
+      this.notificationChannelCreated = true
+    }
+  }
+
+  // Notifications implementation using @capacitor/local-notifications
   readonly notifications: PlatformNotifications = {
     scheduleAsync: async (
       title: string,
@@ -248,34 +225,65 @@ export class CapacitorPlatform implements PlatformService {
       delaySeconds: number,
       notificationId?: string
     ): Promise<void> => {
-      console.log(`${LOG_PREFIX} notifications.scheduleAsync("${title}", "${body}", ${delaySeconds}s, id=${notificationId || 'auto'})`)
-      // Uncomment when @capacitor/local-notifications is installed:
-      // import { LocalNotifications } from "@capacitor/local-notifications"
-      // await LocalNotifications.schedule({
-      //   notifications: [
-      //     {
-      //       id: notificationId ? parseInt(notificationId) : Date.now(),
-      //       title,
-      //       body,
-      //       schedule: { at: new Date(Date.now() + delaySeconds * 1000) },
-      //     },
-      //   ],
-      // })
+      const id = notificationId ? stringToNotificationId(notificationId) : Date.now()
+      console.log(`${LOG_PREFIX} notifications.scheduleAsync("${title}", "${body}", ${delaySeconds}s, id=${id})`)
+      
+      try {
+        // Request permission first
+        const permission = await LocalNotifications.requestPermissions()
+        console.log(`${LOG_PREFIX} notifications: permission status =`, permission.display)
+        
+        if (permission.display !== 'granted') {
+          console.warn(`${LOG_PREFIX} notifications: permission not granted (${permission.display})`)
+          return
+        }
+
+        // Ensure notification channel exists (Android 8+)
+        await this.ensureNotificationChannel()
+
+        const scheduledTime = new Date(Date.now() + delaySeconds * 1000)
+        console.log(`${LOG_PREFIX} notifications: scheduling for ${scheduledTime.toISOString()}`)
+
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              id,
+              title,
+              body,
+              schedule: { at: scheduledTime },
+              channelId: 'game_notifications', // Required for Android 8+
+              smallIcon: 'ic_stat_icon_config_sample', // Uses default if not found
+              largeIcon: 'ic_launcher',
+            },
+          ],
+        })
+        
+        // Verify it was scheduled
+        const pending = await LocalNotifications.getPending()
+        console.log(`${LOG_PREFIX} notifications.scheduleAsync() => scheduled successfully, pending count: ${pending.notifications.length}`)
+      } catch (error) {
+        console.error(`${LOG_PREFIX} notifications.scheduleAsync() => error:`, error)
+      }
     },
     cancelNotification: async (notificationId: string): Promise<void> => {
-      console.log(`${LOG_PREFIX} notifications.cancelNotification("${notificationId}")`)
-      // Uncomment when @capacitor/local-notifications is installed:
-      // import { LocalNotifications } from "@capacitor/local-notifications"
-      // await LocalNotifications.cancel({
-      //   notifications: [{ id: parseInt(notificationId) }],
-      // })
+      const id = stringToNotificationId(notificationId)
+      console.log(`${LOG_PREFIX} notifications.cancelNotification("${notificationId}") => id=${id}`)
+      
+      try {
+        await LocalNotifications.cancel({
+          notifications: [{ id }],
+        })
+        console.log(`${LOG_PREFIX} notifications.cancelNotification() => cancelled successfully`)
+      } catch (error) {
+        console.error(`${LOG_PREFIX} notifications.cancelNotification() => error:`, error)
+      }
     },
   }
 
-  // Lifecycles implementation
-  // Uses @capacitor/app
+  // Lifecycles implementation using @capacitor/app
   private resumeCallbacks: (() => void)[] = []
   private pauseCallbacks: (() => void)[] = []
+  private appListenerSetup = false
 
   readonly lifecycles: PlatformLifecycles = {
     onResume: (callback: () => void) => {
@@ -288,16 +296,18 @@ export class CapacitorPlatform implements PlatformService {
     },
   }
 
-  // Preloader implementation
+  // Preloader implementation using @capacitor/splash-screen
   readonly preloader: PlatformPreloader = {
     hideLoadScreen: async (): Promise<void> => {
       console.log(`${LOG_PREFIX} preloader.hideLoadScreen()`)
-      // For Capacitor, you might use @capacitor/splash-screen
-      // Uncomment when @capacitor/splash-screen is installed:
-      // import { SplashScreen } from "@capacitor/splash-screen"
-      // await SplashScreen.hide()
+      try {
+        await SplashScreen.hide()
+        console.log(`${LOG_PREFIX} preloader.hideLoadScreen() => splash screen hidden`)
+      } catch (error) {
+        console.log(`${LOG_PREFIX} preloader.hideLoadScreen() => no splash screen to hide (web mode)`)
+      }
       
-      // Or just hide a custom loading element
+      // Also hide any custom loading element
       const loader = document.getElementById("loading-screen")
       if (loader) {
         loader.style.display = "none"
@@ -311,26 +321,34 @@ export class CapacitorPlatform implements PlatformService {
     console.log(`${LOG_PREFIX} initializeAsync()`, options)
     
     // Set up lifecycle listeners using Capacitor App plugin
-    // Uncomment when @capacitor/app is installed:
-    // import { App } from "@capacitor/app"
-    // App.addListener("appStateChange", ({ isActive }) => {
-    //   if (isActive) {
-    //     this.resumeCallbacks.forEach(cb => cb())
-    //   } else {
-    //     this.pauseCallbacks.forEach(cb => cb())
-    //   }
-    // })
-
-    // Fallback using visibility API
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) {
-        console.log(`${LOG_PREFIX} visibility: hidden - calling pause callbacks`)
-        this.pauseCallbacks.forEach(cb => cb())
-      } else {
-        console.log(`${LOG_PREFIX} visibility: visible - calling resume callbacks`)
-        this.resumeCallbacks.forEach(cb => cb())
+    if (!this.appListenerSetup) {
+      this.appListenerSetup = true
+      
+      try {
+        App.addListener("appStateChange", ({ isActive }) => {
+          if (isActive) {
+            console.log(`${LOG_PREFIX} app state: active - calling ${this.resumeCallbacks.length} resume callbacks`)
+            this.resumeCallbacks.forEach(cb => cb())
+          } else {
+            console.log(`${LOG_PREFIX} app state: inactive - calling ${this.pauseCallbacks.length} pause callbacks`)
+            this.pauseCallbacks.forEach(cb => cb())
+          }
+        })
+        console.log(`${LOG_PREFIX} App lifecycle listener registered`)
+      } catch (error) {
+        console.log(`${LOG_PREFIX} App plugin not available (web mode), using visibility API fallback`)
+        // Fallback using visibility API for web testing
+        document.addEventListener("visibilitychange", () => {
+          if (document.hidden) {
+            console.log(`${LOG_PREFIX} visibility: hidden - calling pause callbacks`)
+            this.pauseCallbacks.forEach(cb => cb())
+          } else {
+            console.log(`${LOG_PREFIX} visibility: visible - calling resume callbacks`)
+            this.resumeCallbacks.forEach(cb => cb())
+          }
+        })
       }
-    })
+    }
 
     console.log(`${LOG_PREFIX} ✅ Platform initialized successfully`)
     

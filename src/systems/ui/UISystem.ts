@@ -80,14 +80,16 @@ export class UISystem {
     UIUtils.initializeCSSVariables()
 
     // Create the main UI container (for HUD, menus, etc. - respects safe areas)
+    // Using top/left/right/bottom offsets (not padding) so absolutely positioned
+    // children are automatically within the safe area
     UISystem.container = document.createElement("div")
     UISystem.container.id = "ui-system-three"
     UISystem.container.style.cssText = `
       position: absolute;
-      top: 0px;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: env(safe-area-inset-top, 0px);
+      left: env(safe-area-inset-left, 0px);
+      right: env(safe-area-inset-right, 0px);
+      bottom: env(safe-area-inset-bottom, 0px);
       pointer-events: none;
       z-index: 1000;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;

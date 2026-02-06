@@ -35,15 +35,44 @@
     "dependencies": {
         "@dimforge/rapier3d": "^0.11.2",
         "@dimforge/rapier3d-compat": "^0.11.2",
+        "@series-inc/rundot-game-sdk": "5.0.4",
         "@stowkit/reader": "^0.1.39",
         "@stowkit/three-loader": "^0.1.40",
         "three": "^0.180.0",
-        "three-stdlib": "^2.36.0",
-        "@series-inc/rundot-game-sdk": "5.0.4"
+        "three-stdlib": "^2.36.0"
+    },
+    "peerDependencies": {
+        "@capacitor/app": ">=6.0.0",
+        "@capacitor/core": ">=6.0.0",
+        "@capacitor/local-notifications": ">=6.0.0",
+        "@capacitor/preferences": ">=6.0.0",
+        "@capacitor/splash-screen": ">=6.0.0"
+    },
+    "peerDependenciesMeta": {
+        "@capacitor/app": {
+            "optional": true
+        },
+        "@capacitor/core": {
+            "optional": true
+        },
+        "@capacitor/local-notifications": {
+            "optional": true
+        },
+        "@capacitor/preferences": {
+            "optional": true
+        },
+        "@capacitor/splash-screen": {
+            "optional": true
+        }
     },
     "devDependencies": {
-        "@types/three": "^0.180.0",
+        "@capacitor/app": "^8.0.0",
+        "@capacitor/core": "^8.0.2",
+        "@capacitor/local-notifications": "^8.0.0",
+        "@capacitor/preferences": "^8.0.0",
+        "@capacitor/splash-screen": "^8.0.0",
         "@types/node": "^20.11.16",
+        "@types/three": "^0.180.0",
         "@typescript-eslint/eslint-plugin": "^8.32.1",
         "@typescript-eslint/parser": "^8.32.1",
         "eslint": "^8.56.0",
