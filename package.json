@@ -1,5 +1,5 @@
 {
-    "name": "@series-ai/venus-three",
+    "name": "@series-ai/rundot-3d-engine",
     "version": "0.2.0",
     "type": "module",
     "types": "./dist/index.d.ts",
@@ -13,7 +13,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/series-ai/job-sim-babylon.git",
+        "url": "git+https://github.com/series-ai/Run.3DEngine.git",
         "directory": "."
     },
     "publishConfig": {
