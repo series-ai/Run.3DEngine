@@ -21,22 +21,22 @@ A Three.js-based game engine with ECS architecture, physics, navigation, and com
 ```json
 {
   "dependencies": {
-    "@series-ai/venus-three": "^0.2.0"
+    "@series-ai/rundot-3d-engine": "^0.2.0"
   }
 }
 ```
 
 ### As git submodule
 ```bash
-git submodule add git@github.com:series-ai/venus-three-engine.git venus-three
+git submodule add https://github.com/series-ai/Run.3DEngine.git rundot-3D-engine
 git submodule update --init --recursive
 ```
 
 ## Usage
 
 ```typescript
-import { VenusGame, GameObject, Component } from "@series-ai/venus-three"
-import { PhysicsSystem, UISystem } from "@series-ai/venus-three/systems"
+import { VenusGame, GameObject, Component } from "@series-ai/rundot-3d-engine"
+import { PhysicsSystem, UISystem } from "@series-ai/rundot-3d-engine/systems"
 
 class MyGame extends VenusGame {
   async onCreate(): Promise<void> {
@@ -53,7 +53,9 @@ class MyGame extends VenusGame {
 
 - **three** ^0.180.0
 - **@dimforge/rapier3d** ^0.11.2
-- **venus-sdk** (tarball dependency)
+- **@series-inc/rundot-game-sdk** 5.0.4
+- **@stowkit/reader** ^0.1.39
+- **@stowkit/three-loader** ^0.1.40
 
 ## Development
 
