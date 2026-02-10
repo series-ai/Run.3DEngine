@@ -1,10 +1,12 @@
 /**
  * Capacitor Platform Implementation
- * 
+ *
  * Implements the PlatformService interface using Capacitor plugins.
  * Used for standalone APK/iOS builds.
+ * Includes AppsFlyer for retention/analytics on native (Android/iOS).
  */
 
+import { Capacitor } from "@capacitor/core"
 import { Preferences } from "@capacitor/preferences"
 import { LocalNotifications } from "@capacitor/local-notifications"
 import { App } from "@capacitor/app"
@@ -92,18 +94,24 @@ export class CapacitorPlatform implements PlatformService {
     },
   }
 
-  // Analytics implementation
-  // For production, integrate with Firebase Analytics
-  // For now, just log to console
+  // AppsFlyer module (lazy-loaded, only on native)
+  private appsFlyerModule: { AppsFlyer: { initSDK: (config: any) => Promise<unknown>; logEvent: (event: { eventName: string; eventValue?: Record<string, unknown> }) => Promise<unknown> } } | null = null
+
+  // Analytics implementation - AppsFlyer on native, console fallback otherwise
   readonly analytics: PlatformAnalytics = {
     trackFunnelStep: (step: number, name: string) => {
       console.log(`${LOG_PREFIX} analytics.trackFunnelStep(${step}, "${name}")`)
-      // TODO: Add @capacitor-community/firebase-analytics when ready
+      this.sendAppsFlyerEvent(`funnel_step_${step}`, { af_content: name })
     },
     recordCustomEvent: (eventName: string, params?: Record<string, unknown>) => {
       console.log(`${LOG_PREFIX} analytics.recordCustomEvent("${eventName}")`, params)
-      // TODO: Add @capacitor-community/firebase-analytics when ready
+      this.sendAppsFlyerEvent(eventName, params ?? {})
     },
+  }
+
+  private sendAppsFlyerEvent(eventName: string, eventValue: Record<string, unknown>): void {
+    if (!this.appsFlyerModule) return
+    this.appsFlyerModule.AppsFlyer.logEvent({ eventName, eventValue }).catch(() => {})
   }
 
   // Ads implementation
@@ -252,7 +260,7 @@ export class CapacitorPlatform implements PlatformService {
               body,
               schedule: { at: scheduledTime },
               channelId: 'game_notifications', // Required for Android 8+
-              smallIcon: 'ic_stat_icon_config_sample', // Uses default if not found
+              smallIcon: 'ic_launcher_background', // Must exist in res/drawable (avoids Invalid resource ID)
               largeIcon: 'ic_launcher',
             },
           ],
@@ -296,6 +304,42 @@ export class CapacitorPlatform implements PlatformService {
     },
   }
 
+  private async initAppsFlyerAsync(): Promise<void> {
+    console.log(`${LOG_PREFIX} AppsFlyer: initAppsFlyerAsync() called (native platform)`)
+
+    const devKey = (import.meta as any).env?.VITE_APPSFLYER_DEV_KEY as string | undefined
+    if (!devKey || devKey === "your_dev_key_here") {
+      console.warn(`${LOG_PREFIX} AppsFlyer: VITE_APPSFLYER_DEV_KEY not set or placeholder, skipping init`)
+      return
+    }
+    console.log(`${LOG_PREFIX} AppsFlyer: dev key present (length ${devKey.length})`)
+
+    try {
+      const { AppsFlyer } = await import("appsflyer-capacitor-plugin")
+      this.appsFlyerModule = { AppsFlyer }
+      console.log(`${LOG_PREFIX} AppsFlyer: plugin loaded`)
+
+      const appID = (import.meta as any).env?.VITE_APPSFLYER_APP_ID as string | undefined
+      const isDebug = (import.meta as any).env?.VITE_APPSFLYER_DEBUG === "true" || (import.meta as any).env?.DEV === true
+
+      await AppsFlyer.initSDK({
+        devKey,
+        appID: appID || "",
+        isDebug,
+        waitForATTUserAuthorization: 10,
+        registerConversionListener: true,
+        registerOnDeepLink: true,
+      })
+      console.log(`${LOG_PREFIX} AppsFlyer: initSDK() completed`)
+
+      // Send login event to verify AppsFlyer is working (visible in In-app events)
+      await AppsFlyer.logEvent({ eventName: "af_login", eventValue: { af_timestamp: Date.now().toString() } })
+      console.log(`${LOG_PREFIX} AppsFlyer: af_login event sent`)
+    } catch (err) {
+      console.error(`${LOG_PREFIX} AppsFlyer init failed:`, err)
+    }
+  }
+
   // Preloader implementation using @capacitor/splash-screen
   readonly preloader: PlatformPreloader = {
     hideLoadScreen: async (): Promise<void> => {
@@ -319,7 +363,12 @@ export class CapacitorPlatform implements PlatformService {
   // Initialize
   async initializeAsync(options?: { usePreloader?: boolean }): Promise<PlatformContext> {
     console.log(`${LOG_PREFIX} initializeAsync()`, options)
-    
+
+    // Init AppsFlyer on native only (Android/iOS) - enables retention, installs, sessions
+    if (Capacitor.isNativePlatform()) {
+      await this.initAppsFlyerAsync()
+    }
+
     // Set up lifecycle listeners using Capacitor App plugin
     if (!this.appListenerSetup) {
       this.appListenerSetup = true
