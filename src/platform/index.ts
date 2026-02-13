@@ -51,6 +51,16 @@ let platformInstance: PlatformService | null = null
  * Detect which platform to use based on environment
  */
 function detectPlatform(): PlatformType {
+  // When running on Run dot (e.g. getreel.com), we must use RundotPlatform so
+  // cdn.fetchAsset() goes through RundotGameAPI.cdn (correct CDN URLs). If we
+  // used Capacitor here, fetch would hit relative ./cdn-assets/ and 404.
+  if (typeof window !== "undefined" && typeof window.location?.hostname === "string") {
+    const host = window.location.hostname.toLowerCase()
+    if (host.includes("getreel.com") || host.includes("h5-apps.getreel.com")) {
+      return "rundot"
+    }
+  }
+
   // Check for Capacitor
   if (typeof window !== "undefined" && (window as any).Capacitor) {
     return "capacitor"
