@@ -5,7 +5,7 @@ RigidBodyComponentThree adds Rapier physics to GameObjects with automatic positi
 ## Quick Start
 
 ```typescript
-import { RigidBodyComponentThree, RigidBodyType, ColliderShape } from "@series-ai/rundot-3d-engine/systems"
+import { RigidBodyComponentThree, RigidBodyType, ColliderShape } from "@series-inc/rundot-3d-engine/systems"
 
 // Dynamic physics object
 const ball = new GameObject("Ball")

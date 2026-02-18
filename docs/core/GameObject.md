@@ -5,7 +5,7 @@ GameObject is the base entity class in the Rundot 3D Engine, extending THREE.Obj
 ## Quick Start
 
 ```typescript
-import { GameObject } from "@series-ai/rundot-3d-engine"
+import { GameObject } from "@series-inc/rundot-3d-engine"
 
 // Create a GameObject (automatically added to scene)
 const player = new GameObject("Player")

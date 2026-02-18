@@ -21,7 +21,7 @@ A Three.js-based game engine with ECS architecture, physics, navigation, and com
 ```json
 {
   "dependencies": {
-    "@series-ai/rundot-3d-engine": "^0.2.0"
+    "@series-inc/rundot-3d-engine": "^0.2.0"
   }
 }
 ```
@@ -35,8 +35,8 @@ git submodule update --init --recursive
 ## Usage
 
 ```typescript
-import { VenusGame, GameObject, Component } from "@series-ai/rundot-3d-engine"
-import { PhysicsSystem, UISystem } from "@series-ai/rundot-3d-engine/systems"
+import { VenusGame, GameObject, Component } from "@series-inc/rundot-3d-engine"
+import { PhysicsSystem, UISystem } from "@series-inc/rundot-3d-engine/systems"
 
 class MyGame extends VenusGame {
   async onCreate(): Promise<void> {

@@ -5,7 +5,7 @@ StowKitSystem loads assets from .stow pack files with automatic caching, prefab 
 ## Quick Start
 
 ```typescript
-import { StowKitSystem } from "@series-ai/rundot-3d-engine/systems"
+import { StowKitSystem } from "@series-inc/rundot-3d-engine/systems"
 import RundotGameAPI from "@series-inc/rundot-game-sdk/api"
 
 // Load from build.json (includes all packs and prefabs)

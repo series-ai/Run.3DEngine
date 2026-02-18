@@ -5,7 +5,7 @@ Advanced animation system with state machines, blending, retargeting, and frustu
 ## Quick Start
 
 ```typescript
-import { AnimationControllerComponent } from "@series-ai/rundot-3d-engine/systems"
+import { AnimationControllerComponent } from "@series-inc/rundot-3d-engine/systems"
 
 // Add to character with SkeletalRenderer
 const character = new GameObject("Character")

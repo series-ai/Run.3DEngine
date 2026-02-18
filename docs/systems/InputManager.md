@@ -5,7 +5,7 @@ Cross-platform input system for keyboard, mouse, and touch with mobile support.
 ## Quick Start
 
 ```typescript
-import { InputManager } from "@series-ai/rundot-3d-engine/systems"
+import { InputManager } from "@series-inc/rundot-3d-engine/systems"
 
 // Check keyboard input
 if (InputManager.isKeyDown("w")) {

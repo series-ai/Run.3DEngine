@@ -35,7 +35,7 @@ private createMeshRenderer(): void {
 ## Complete Example
 
 ```typescript
-import { Component, GameObject, MeshRenderer } from "@series-ai/rundot-3d-engine"
+import { Component, GameObject, MeshRenderer } from "@series-inc/rundot-3d-engine"
 
 class Pickup extends Component {
     private rendererObject: GameObject | null = null
@@ -162,8 +162,8 @@ InstancedRenderer uses GPU instancing to render hundreds or thousands of the sam
 ### Basic Example
 
 ```typescript
-import { Component, GameObject } from "@series-ai/rundot-3d-engine"
-import { InstancedRenderer } from "@series-ai/rundot-3d-engine/rendering"
+import { Component, GameObject } from "@series-inc/rundot-3d-engine"
+import { InstancedRenderer } from "@series-inc/rundot-3d-engine/rendering"
 import * as THREE from "three"
 
 class CoinSpawner extends Component {

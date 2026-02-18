@@ -5,8 +5,8 @@ VenusGame is the base class for your game application. It manages the Three.js r
 ## Quick Start
 
 ```typescript
-import { VenusGame } from "@series-ai/rundot-3d-engine"
-import { GameObject, Component } from "@series-ai/rundot-3d-engine"
+import { VenusGame } from "@series-inc/rundot-3d-engine"
+import { GameObject, Component } from "@series-inc/rundot-3d-engine"
 
 class MyGame extends VenusGame {
     protected async onStart(): Promise<void> {
@@ -62,7 +62,7 @@ class MyGame extends VenusGame {
 
 ```typescript
 // From anywhere in your code after game initialization
-import { VenusGame } from "@series-ai/rundot-3d-engine"
+import { VenusGame } from "@series-inc/rundot-3d-engine"
 
 // Access the scene
 const scene = VenusGame.scene

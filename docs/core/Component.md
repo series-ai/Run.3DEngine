@@ -5,7 +5,7 @@ Component is the base class for all behaviors that can be attached to GameObject
 ## Quick Start
 
 ```typescript
-import { Component } from "@series-ai/rundot-3d-engine"
+import { Component } from "@series-inc/rundot-3d-engine"
 
 class RotateComponent extends Component {
     private speed: number = 1

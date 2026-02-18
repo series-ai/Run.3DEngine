@@ -5,7 +5,7 @@
 ## Quick Start
 
 ```typescript
-import { AudioSystem, Audio2D } from "@series-ai/rundot-3d-engine/systems"
+import { AudioSystem, Audio2D } from "@series-inc/rundot-3d-engine/systems"
 
 // Play 2D sound effect
 const sfx = new Audio2D("SFX/click.ogg")

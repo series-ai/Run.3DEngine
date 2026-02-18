@@ -5,7 +5,7 @@ PhysicsSystem manages Rapier3D physics simulation with fixed-step integration, c
 ## Quick Start
 
 ```typescript
-import { PhysicsSystem } from "@series-ai/rundot-3d-engine/systems"
+import { PhysicsSystem } from "@series-inc/rundot-3d-engine/systems"
 
 // Initialize (done automatically by VenusGame)
 await PhysicsSystem.initialize()
@@ -19,7 +19,7 @@ await PhysicsSystem.initialize()
 ### Adding Physics to GameObject
 
 ```typescript
-import { RigidBodyComponentThree, RigidBodyType } from "@series-ai/rundot-3d-engine/systems"
+import { RigidBodyComponentThree, RigidBodyType } from "@series-inc/rundot-3d-engine/systems"
 
 // Dynamic body (affected by gravity, forces)
 const box = new GameObject("Box")

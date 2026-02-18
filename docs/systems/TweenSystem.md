@@ -5,7 +5,7 @@ Property animation system with easing functions for smooth transitions.
 ## Quick Start
 
 ```typescript
-import { TweenSystem, Easing } from "@series-ai/rundot-3d-engine/systems"
+import { TweenSystem, Easing } from "@series-inc/rundot-3d-engine/systems"
 
 // Animate object property
 TweenSystem.tween(

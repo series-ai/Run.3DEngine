@@ -140,7 +140,7 @@ class PickupZone extends Component {
 Filter which objects collide with each other:
 
 ```typescript
-import { createCollisionGroup } from "@series-ai/rundot-3d-engine/systems"
+import { createCollisionGroup } from "@series-inc/rundot-3d-engine/systems"
 
 // Define groups (16-bit bitmasks)
 const PLAYER_GROUP = 0x0001

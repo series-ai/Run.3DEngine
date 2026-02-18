@@ -5,7 +5,7 @@ MeshRenderer is a Component that loads and displays 3D meshes from the StowKit a
 ## Quick Start
 
 ```typescript
-import { GameObject, MeshRenderer } from "@series-ai/rundot-3d-engine"
+import { GameObject, MeshRenderer } from "@series-inc/rundot-3d-engine"
 
 // The correct pattern: MeshRenderer + child GameObject
 const renderer = new MeshRenderer("restaurant_display_Money")

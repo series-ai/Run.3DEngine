@@ -5,7 +5,7 @@ UI utilities and loading screen management.
 ## Quick Start
 
 ```typescript
-import { UISystem } from "@series-ai/rundot-3d-engine/systems"
+import { UISystem } from "@series-inc/rundot-3d-engine/systems"
 
 // Show loading screen
 UISystem.showLoadingScreen()

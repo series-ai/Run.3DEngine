@@ -5,8 +5,8 @@ InstancedRenderer uses GPU instancing to efficiently render many copies of the s
 ## Quick Start
 
 ```typescript
-import { GameObject, InstancedRenderer } from "@series-ai/rundot-3d-engine"
-import { InstancedMeshManager } from "@series-ai/rundot-3d-engine/render"
+import { GameObject, InstancedRenderer } from "@series-inc/rundot-3d-engine"
+import { InstancedMeshManager } from "@series-inc/rundot-3d-engine/render"
 
 // 1. Pre-register a batch (optional - auto-creates if not done)
 await InstancedMeshManager.getInstance().registerMeshForInstancing(
@@ -246,7 +246,7 @@ tree.getComponent(InstancedRenderer)?.markDirty()
 ### Creating Batches Explicitly
 
 ```typescript
-import { InstancedMeshManager } from "@series-ai/rundot-3d-engine/render"
+import { InstancedMeshManager } from "@series-inc/rundot-3d-engine/render"
 
 // Initialize manager (done automatically by VenusGame)
 const manager = InstancedMeshManager.getInstance()

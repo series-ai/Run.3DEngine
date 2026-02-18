@@ -15,8 +15,8 @@ When loading meshes, you need to decide between:
 The simplest approach - automatically fit the collider to the mesh bounds:
 
 ```typescript
-import { Component, GameObject, MeshRenderer } from "@series-ai/rundot-3d-engine"
-import { RigidBodyComponentThree, RigidBodyType, ColliderShape } from "@series-ai/rundot-3d-engine/systems"
+import { Component, GameObject, MeshRenderer } from "@series-inc/rundot-3d-engine"
+import { RigidBodyComponentThree, RigidBodyType, ColliderShape } from "@series-inc/rundot-3d-engine/systems"
 
 class Crate extends Component {
     private rendererObject: GameObject | null = null
@@ -53,8 +53,8 @@ class Crate extends Component {
 Wait for mesh to load before calculating bounds:
 
 ```typescript
-import { Component, GameObject, MeshRenderer } from "@series-ai/rundot-3d-engine"
-import { RigidBodyComponentThree, RigidBodyType, ColliderShape } from "@series-ai/rundot-3d-engine/systems"
+import { Component, GameObject, MeshRenderer } from "@series-inc/rundot-3d-engine"
+import { RigidBodyComponentThree, RigidBodyType, ColliderShape } from "@series-inc/rundot-3d-engine/systems"
 
 class ComplexObject extends Component {
     private rendererObject: GameObject | null = null
@@ -251,8 +251,8 @@ for (let i = 0; i < 100; i++) {
 Combining mesh loading with auto-fitted trigger collision:
 
 ```typescript
-import { Component, GameObject, MeshRenderer } from "@series-ai/rundot-3d-engine"
-import { RigidBodyComponentThree, RigidBodyType, ColliderShape } from "@series-ai/rundot-3d-engine/systems"
+import { Component, GameObject, MeshRenderer } from "@series-inc/rundot-3d-engine"
+import { RigidBodyComponentThree, RigidBodyType, ColliderShape } from "@series-inc/rundot-3d-engine/systems"
 
 class CoinPickup extends Component {
     private rendererObject: GameObject | null = null

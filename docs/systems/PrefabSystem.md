@@ -5,7 +5,7 @@ Prefab system for instantiating pre-configured GameObjects with components from 
 ## Quick Start
 
 ```typescript
-import { PrefabLoader, PrefabCollection } from "@series-ai/rundot-3d-engine/systems"
+import { PrefabLoader, PrefabCollection } from "@series-inc/rundot-3d-engine/systems"
 
 // Load prefabs (done via StowKitSystem)
 const prefabs = await StowKitSystem.getInstance().loadFromBuildJson(buildJson, config)

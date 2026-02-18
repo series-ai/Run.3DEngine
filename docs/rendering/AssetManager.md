@@ -5,7 +5,7 @@ AssetManager handles loading and caching of 3D assets (FBX, GLB, OBJ) with suppo
 ## Quick Start
 
 ```typescript
-import { AssetManager } from "@series-ai/rundot-3d-engine/assets"
+import { AssetManager } from "@series-inc/rundot-3d-engine/assets"
 import * as THREE from "three"
 
 // Initialize (done automatically by VenusGame)

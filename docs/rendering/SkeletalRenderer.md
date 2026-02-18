@@ -5,8 +5,8 @@ SkeletalRenderer loads and displays animated character meshes with skeletal anim
 ## Quick Start
 
 ```typescript
-import { GameObject, SkeletalRenderer } from "@series-ai/rundot-3d-engine"
-import { AssetManager } from "@series-ai/rundot-3d-engine/assets"
+import { GameObject, SkeletalRenderer } from "@series-inc/rundot-3d-engine"
+import { AssetManager } from "@series-inc/rundot-3d-engine/assets"
 
 // 1. Preload skeletal model
 await AssetManager.preloadSkeletalModel("Character/character_main.fbx")
@@ -62,7 +62,7 @@ const renderer = new SkeletalRenderer(
 ### Integration with Animation System
 
 ```typescript
-import { AnimationControllerComponent } from "@series-ai/rundot-3d-engine/systems"
+import { AnimationControllerComponent } from "@series-inc/rundot-3d-engine/systems"
 
 class AnimatedCharacter extends Component {
     protected async onCreate(): Promise<void> {

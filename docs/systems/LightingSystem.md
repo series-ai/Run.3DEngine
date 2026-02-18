@@ -5,7 +5,7 @@ Lighting components for Three.js scenes with directional and ambient lights.
 ## Quick Start
 
 ```typescript
-import { DirectionalLightComponentThree, AmbientLightComponentThree } from "@series-ai/rundot-3d-engine/systems"
+import { DirectionalLightComponentThree, AmbientLightComponentThree } from "@series-inc/rundot-3d-engine/systems"
 import * as THREE from "three"
 
 // Add directional light (sun)

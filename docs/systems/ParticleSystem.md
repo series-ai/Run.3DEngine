@@ -5,7 +5,7 @@ Flexible particle system for visual effects like smoke, fire, explosions, and ma
 ## Quick Start
 
 ```typescript
-import { ParticleSystemPrefabComponent } from "@series-ai/rundot-3d-engine/systems"
+import { ParticleSystemPrefabComponent } from "@series-inc/rundot-3d-engine/systems"
 
 // Particles are typically created from prefabs
 // See prefab documentation for particle configuration
