@@ -7,18 +7,15 @@
         "build": "tsup",
         "dev": "tsup --watch",
         "publish": "npm publish",
-        "lint": "eslint . --ext .ts",
-        "lint:deps": "eslint src/systems --ext .ts --no-eslintrc --config .eslintrc.json",
-        "format": "prettier --write ."
+        "lint": "eslint src",
+        "lint:fix": "eslint src --fix",
+        "format": "prettier --write .",
+        "format:check": "prettier --check ."
     },
     "repository": {
         "type": "git",
         "url": "git+https://github.com/series-ai/Run.3DEngine.git",
         "directory": "."
-    },
-    "publishConfig": {
-        "access": "restricted",
-        "registry": "https://npm.pkg.github.com/"
     },
     "exports": {
         ".": {
