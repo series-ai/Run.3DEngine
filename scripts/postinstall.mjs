@@ -10,19 +10,36 @@ if (!existsSync(docsSource)) {
   process.exit(0);
 }
 
-// Walk up from the package root to find the consuming project root.
-// If we're inside node_modules, exit out of it. Otherwise (e.g. local dev), use packageRoot.
+// Find the project root where docs and .gitignore should live.
+// 1. INIT_CWD — set by npm/yarn/pnpm to where `npm install` was invoked (best for monorepos)
+// 2. Walk up to find .git directory (reliable fallback)
+// 3. Walk up to exit node_modules (legacy fallback)
+// 4. Local dev — packageRoot itself
 function findProjectRoot() {
+  // INIT_CWD is the directory where the user ran `npm install`
+  if (process.env.INIT_CWD && existsSync(process.env.INIT_CWD)) {
+    return resolve(process.env.INIT_CWD);
+  }
+
+  // Walk up looking for .git (repo root)
   let dir = packageRoot;
   while (true) {
+    if (existsSync(join(dir, ".git"))) return dir;
     const parent = dirname(dir);
     if (parent === dir) break; // filesystem root
-    const baseName = dir.split(/[\\/]/).pop();
-    if (baseName === "node_modules") {
-      return parent;
-    }
     dir = parent;
   }
+
+  // Legacy: walk up to exit node_modules
+  dir = packageRoot;
+  while (true) {
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    const baseName = dir.split(/[\\/]/).pop();
+    if (baseName === "node_modules") return parent;
+    dir = parent;
+  }
+
   // Not inside node_modules — running locally in the package itself
   return packageRoot;
 }
@@ -61,3 +78,11 @@ if (existsSync(gitignorePath)) {
     appendFileSync(gitignorePath, (needsNewline ? "\n" : "") + entry + "\n");
   }
 }
+
+// Generate docs index from the copied docs and splice into the consumer's AGENTS.md/CLAUDE.md
+const { genDocsIndex } = await import("./gen-docs-index.mjs");
+const { updateDocsIndex } = await import("./update-docs-index.mjs");
+
+const indexPath = join(projectRoot, "docs-index.txt");
+genDocsIndex("Run.3DEngine Docs Index", ".rundot/3d-engine-docs", docsDest, indexPath);
+updateDocsIndex(projectRoot);
