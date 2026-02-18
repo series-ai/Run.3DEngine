@@ -6,7 +6,6 @@
     "scripts": {
         "build": "tsup",
         "dev": "tsup --watch",
-        "publish": "npm publish",
         "lint": "eslint src",
         "lint:fix": "eslint src --fix",
         "format": "prettier --write .",
