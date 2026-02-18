@@ -1,2 +1,13 @@
-**
-!src/**
+dist/
+node_modules/
+*.tsbuildinfo
+docs/
+.rundot-docs/
+AGENTS.md
+CLAUDE.md
+LICENSE.txt
+package.json
+package-lock.json
+README.md
+tsconfig.json
+tsup.config.ts
