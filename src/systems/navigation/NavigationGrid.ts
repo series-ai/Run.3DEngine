@@ -57,7 +57,7 @@ export class NavigationGrid {
 
     if (NavigationGrid.DEBUG_MODE) {
       console.log(
-        `NavigationGrid: Initialized ${this.cols}x${this.rows} grid, cellSize=${gridSize}`,
+        `NavigationGrid: Initialized ${this.cols}x${this.rows} grid, cellSize=${gridSize}`
       )
     }
   }
@@ -87,24 +87,15 @@ export class NavigationGrid {
   /**
    * Point-in-Polygon test using ray casting algorithm for 2D XZ plane
    */
-  private isPointInPolygon(
-    px: number,
-    pz: number,
-    polygonVertices: Vector3[],
-  ): boolean {
+  private isPointInPolygon(px: number, pz: number, polygonVertices: Vector3[]): boolean {
     let isInside = false
-    for (
-      let i = 0, j = polygonVertices.length - 1;
-      i < polygonVertices.length;
-      j = i++
-    ) {
+    for (let i = 0, j = polygonVertices.length - 1; i < polygonVertices.length; j = i++) {
       const xi = polygonVertices[i].x,
         zi = polygonVertices[i].z
       const xj = polygonVertices[j].x,
         zj = polygonVertices[j].z
 
-      const intersect =
-        zi > pz !== zj > pz && px < ((xj - xi) * (pz - zi)) / (zj - zi) + xi
+      const intersect = zi > pz !== zj > pz && px < ((xj - xi) * (pz - zi)) / (zj - zi) + xi
       if (intersect) isInside = !isInside
     }
     return isInside
@@ -118,7 +109,7 @@ export class NavigationGrid {
     pz: number,
     circleX: number,
     circleZ: number,
-    circleRadius: number,
+    circleRadius: number
   ): boolean {
     const dx = px - circleX
     const dz = pz - circleZ
@@ -134,7 +125,7 @@ export class NavigationGrid {
     cellCenterX: number,
     cellCenterZ: number,
     cellSize: number,
-    polygonVertices: Vector3[],
+    polygonVertices: Vector3[]
   ): boolean {
     // First check if the cell center is inside the polygon (most common case)
     if (this.isPointInPolygon(cellCenterX, cellCenterZ, polygonVertices)) {
@@ -186,14 +177,7 @@ export class NavigationGrid {
       ]
 
       for (const cellEdge of cellEdges) {
-        if (
-          this.doLineSegmentsIntersect(
-            polyEdge[0],
-            polyEdge[1],
-            cellEdge[0],
-            cellEdge[1],
-          )
-        ) {
+        if (this.doLineSegmentsIntersect(polyEdge[0], polyEdge[1], cellEdge[0], cellEdge[1])) {
           return true
         }
       }
@@ -209,17 +193,14 @@ export class NavigationGrid {
     p1: { x: number; z: number },
     p2: { x: number; z: number },
     p3: { x: number; z: number },
-    p4: { x: number; z: number },
+    p4: { x: number; z: number }
   ): boolean {
     const d1 = this.direction(p3, p4, p1)
     const d2 = this.direction(p3, p4, p2)
     const d3 = this.direction(p1, p2, p3)
     const d4 = this.direction(p1, p2, p4)
 
-    if (
-      ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
-      ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
-    ) {
+    if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
       return true
     }
 
@@ -238,7 +219,7 @@ export class NavigationGrid {
   private direction(
     a: { x: number; z: number },
     b: { x: number; z: number },
-    c: { x: number; z: number },
+    c: { x: number; z: number }
   ): number {
     return (c.x - a.x) * (b.z - a.z) - (b.x - a.x) * (c.z - a.z)
   }
@@ -249,7 +230,7 @@ export class NavigationGrid {
   private onSegment(
     a: { x: number; z: number },
     b: { x: number; z: number },
-    p: { x: number; z: number },
+    p: { x: number; z: number }
   ): boolean {
     return (
       p.x >= Math.min(a.x, b.x) &&
@@ -266,7 +247,7 @@ export class NavigationGrid {
   private fastPolygonIntersectCell(
     cellCenterX: number,
     cellCenterZ: number,
-    polygonVertices: Vector3[],
+    polygonVertices: Vector3[]
   ): boolean {
     // Fast check: If cell center is inside polygon, we're done
     if (this.isPointInPolygon(cellCenterX, cellCenterZ, polygonVertices)) {
@@ -303,12 +284,7 @@ export class NavigationGrid {
     }
 
     // Check if polygon AABB overlaps cell AABB
-    return !(
-      polyMaxX < minX ||
-      polyMinX > maxX ||
-      polyMaxZ < minZ ||
-      polyMinZ > maxZ
-    )
+    return !(polyMaxX < minX || polyMinX > maxX || polyMaxZ < minZ || polyMinZ > maxZ)
   }
 
   /**
@@ -349,26 +325,20 @@ export class NavigationGrid {
     const aabb = this.calculateAABB(footprint)
 
     // FAST: Inline grid bounds calculation without object allocations
-    const minCol = Math.max(
-      0,
-      Math.floor((aabb.minX + this.halfWorldWidth) * this.gridSizeInv),
-    )
+    const minCol = Math.max(0, Math.floor((aabb.minX + this.halfWorldWidth) * this.gridSizeInv))
     const maxCol = Math.min(
       this.cols - 1,
-      Math.floor((aabb.maxX + this.halfWorldWidth) * this.gridSizeInv),
+      Math.floor((aabb.maxX + this.halfWorldWidth) * this.gridSizeInv)
     )
-    const minRow = Math.max(
-      0,
-      Math.floor((aabb.minZ + this.halfWorldDepth) * this.gridSizeInv),
-    )
+    const minRow = Math.max(0, Math.floor((aabb.minZ + this.halfWorldDepth) * this.gridSizeInv))
     const maxRow = Math.min(
       this.rows - 1,
-      Math.floor((aabb.maxZ + this.halfWorldDepth) * this.gridSizeInv),
+      Math.floor((aabb.maxZ + this.halfWorldDepth) * this.gridSizeInv)
     )
 
     if (NavigationGrid.DEBUG_MODE) {
       console.log(
-        `🔍 NavigationGrid: Adding ${footprint.type} obstacle, grid area: rows ${minRow}-${maxRow}, cols ${minCol}-${maxCol}`,
+        `🔍 NavigationGrid: Adding ${footprint.type} obstacle, grid area: rows ${minRow}-${maxRow}, cols ${minCol}-${maxCol}`
       )
     }
 
@@ -383,12 +353,10 @@ export class NavigationGrid {
 
     // OPTIMIZED: Inline cell world coordinate calculation to avoid function calls
     for (let r = minRow; r <= maxRow; r++) {
-      const cellWorldZ =
-        r * this.gridSize - this.halfWorldDepth + this.halfGridSize
+      const cellWorldZ = r * this.gridSize - this.halfWorldDepth + this.halfGridSize
 
       for (let c = minCol; c <= maxCol; c++) {
-        const cellWorldX =
-          c * this.gridSize - this.halfWorldWidth + this.halfGridSize
+        const cellWorldX = c * this.gridSize - this.halfWorldWidth + this.halfGridSize
 
         let isCovered = false
         if (isCircle) {
@@ -398,11 +366,7 @@ export class NavigationGrid {
           isCovered = dx * dx + dz * dz <= radiusSquared
         } else {
           // FAST: Use optimized polygon intersection
-          isCovered = this.fastPolygonIntersectCell(
-            cellWorldX,
-            cellWorldZ,
-            vertices!,
-          )
+          isCovered = this.fastPolygonIntersectCell(cellWorldX, cellWorldZ, vertices!)
         }
 
         if (isCovered) {
@@ -413,9 +377,7 @@ export class NavigationGrid {
     }
 
     if (NavigationGrid.DEBUG_MODE) {
-      console.log(
-        `🔍 NavigationGrid: ${footprint.type} obstacle affected ${cellsAffected} cells`,
-      )
+      console.log(`🔍 NavigationGrid: ${footprint.type} obstacle affected ${cellsAffected} cells`)
     }
   }
 
@@ -427,21 +389,15 @@ export class NavigationGrid {
     const aabb = this.calculateAABB(footprint)
 
     // FAST: Inline grid bounds calculation (same as addObstacle for consistency)
-    const minCol = Math.max(
-      0,
-      Math.floor((aabb.minX + this.halfWorldWidth) * this.gridSizeInv),
-    )
+    const minCol = Math.max(0, Math.floor((aabb.minX + this.halfWorldWidth) * this.gridSizeInv))
     const maxCol = Math.min(
       this.cols - 1,
-      Math.floor((aabb.maxX + this.halfWorldWidth) * this.gridSizeInv),
+      Math.floor((aabb.maxX + this.halfWorldWidth) * this.gridSizeInv)
     )
-    const minRow = Math.max(
-      0,
-      Math.floor((aabb.minZ + this.halfWorldDepth) * this.gridSizeInv),
-    )
+    const minRow = Math.max(0, Math.floor((aabb.minZ + this.halfWorldDepth) * this.gridSizeInv))
     const maxRow = Math.min(
       this.rows - 1,
-      Math.floor((aabb.maxZ + this.halfWorldDepth) * this.gridSizeInv),
+      Math.floor((aabb.maxZ + this.halfWorldDepth) * this.gridSizeInv)
     )
 
     // Pre-calculate values outside loops (same as addObstacle for consistency)
@@ -453,12 +409,10 @@ export class NavigationGrid {
 
     // OPTIMIZED: Same performance optimizations as addObstacle
     for (let r = minRow; r <= maxRow; r++) {
-      const cellWorldZ =
-        r * this.gridSize - this.halfWorldDepth + this.halfGridSize
+      const cellWorldZ = r * this.gridSize - this.halfWorldDepth + this.halfGridSize
 
       for (let c = minCol; c <= maxCol; c++) {
-        const cellWorldX =
-          c * this.gridSize - this.halfWorldWidth + this.halfGridSize
+        const cellWorldX = c * this.gridSize - this.halfWorldWidth + this.halfGridSize
 
         let isCovered = false
         if (isCircle) {
@@ -468,11 +422,7 @@ export class NavigationGrid {
           isCovered = dx * dx + dz * dz <= radiusSquared
         } else {
           // FAST: Same optimized polygon intersection
-          isCovered = this.fastPolygonIntersectCell(
-            cellWorldX,
-            cellWorldZ,
-            vertices!,
-          )
+          isCovered = this.fastPolygonIntersectCell(cellWorldX, cellWorldZ, vertices!)
         }
 
         if (isCovered) {
@@ -480,9 +430,7 @@ export class NavigationGrid {
           if (this.grid[r][c] < 0) {
             this.grid[r][c] = 0
             if (NavigationGrid.DEBUG_MODE) {
-              console.warn(
-                `Grid count for cell (${c},${r}) went negative. Check logic.`,
-              )
+              console.warn(`Grid count for cell (${c},${r}) went negative. Check logic.`)
             }
           }
         }
@@ -525,7 +473,7 @@ export class NavigationGrid {
   public printGrid(): void {
     console.log("Navigation Grid State:")
     console.log(
-      `Grid: ${this.cols}x${this.rows}, World: ${this.worldWidth}x${this.worldDepth}, Cell Size: ${this.gridSize}`,
+      `Grid: ${this.cols}x${this.rows}, World: ${this.worldWidth}x${this.worldDepth}, Cell Size: ${this.gridSize}`
     )
     console.log("🧭 NORTH (positive Z) at bottom, SOUTH (negative Z) at top")
 
@@ -538,9 +486,7 @@ export class NavigationGrid {
 
       // Add row number and world Z coordinate for reference
       const worldZ = this.gridToWorld(0, r).z
-      console.log(
-        `${r.toString().padStart(2)} (Z=${worldZ.toFixed(1)}): ${rowString}`,
-      )
+      console.log(`${r.toString().padStart(2)} (Z=${worldZ.toFixed(1)}): ${rowString}`)
     }
     console.log("🧭 SOUTH ← → NORTH (Z coordinates)")
   }
@@ -561,9 +507,7 @@ export class NavigationGrid {
     if (enabled) {
       console.log("NavigationGrid: Debug mode ENABLED (performance impact)")
     } else {
-      console.log(
-        "NavigationGrid: Debug mode DISABLED (production performance)",
-      )
+      console.log("NavigationGrid: Debug mode DISABLED (production performance)")
     }
   }
 

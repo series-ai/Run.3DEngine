@@ -5,7 +5,6 @@ import * as THREE from "three"
  * Simplified to provide consistent text sizing based on world units
  */
 export class UIUtils {
-
   /**
    * Create world-space UI plane with consistent text sizing
    * Text sizes in pixels directly translate to world units via pixelsPerUnit
@@ -25,7 +24,7 @@ export class UIUtils {
       heightOffset?: number
       /** Rotate 180 degrees for correct text orientation (default: true) */
       flipOrientation?: boolean
-    } = {},
+    } = {}
   ): {
     plane: THREE.Mesh
     canvas: HTMLCanvasElement
@@ -34,11 +33,7 @@ export class UIUtils {
     worldSize: { width: number; height: number }
     pixelsPerUnit: number
   } {
-    const {
-      pixelsPerUnit = 128,
-      heightOffset = 0.05,
-      flipOrientation = true,
-    } = options
+    const { pixelsPerUnit = 128, heightOffset = 0.05, flipOrientation = true } = options
 
     // Canvas size = world units * pixels per unit
     // This ensures consistent pixel density across all world UI
@@ -49,7 +44,7 @@ export class UIUtils {
     const canvas = document.createElement("canvas")
     canvas.width = canvasWidth
     canvas.height = canvasHeight
-    
+
     const ctx = canvas.getContext("2d")
     if (!ctx) {
       throw new Error("Failed to get 2D context from canvas")
@@ -128,7 +123,7 @@ export class UIUtils {
     y: number,
     width: number,
     height: number,
-    radius: number,
+    radius: number
   ): void {
     ctx.beginPath()
     ctx.moveTo(x + radius, y)

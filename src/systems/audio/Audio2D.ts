@@ -32,9 +32,7 @@ export class Audio2D extends Component {
   public play(clipName: string): void {
     // If availableClips is specified, check if the clip is allowed
     if (this.availableClips.size > 0 && !this.availableClips.has(clipName)) {
-      throw new Error(
-        `Audio clip '${clipName}' is not available in this Audio2D component`,
-      )
+      throw new Error(`Audio clip '${clipName}' is not available in this Audio2D component`)
     }
 
     PlayAudioOneShot2D(this.audioBank, clipName)

@@ -19,9 +19,7 @@ export class AnimationVisualizerComponent extends Component {
   /**
    * Set the animation controller to visualize
    */
-  public setAnimationController(
-    controller: AnimationControllerComponent,
-  ): void {
+  public setAnimationController(controller: AnimationControllerComponent): void {
     this.animationController = controller
 
     const animator = controller.getAnimator()
@@ -93,20 +91,18 @@ export class AnimationVisualizerComponent extends Component {
     if (controller) {
       this.setAnimationController(controller)
       console.log(
-        `[AnimationVisualizerComponent] Auto-connected to AnimationController on ${this.gameObject.name}`,
+        `[AnimationVisualizerComponent] Auto-connected to AnimationController on ${this.gameObject.name}`
       )
     } else {
       console.log(
-        `[AnimationVisualizerComponent] Component created on ${this.gameObject.name} - waiting for animation controller`,
+        `[AnimationVisualizerComponent] Component created on ${this.gameObject.name} - waiting for animation controller`
       )
     }
   }
 
   protected onCleanup(): void {
     this.destroyVisualizer()
-    console.log(
-      `[AnimationVisualizerComponent] Component cleaned up on ${this.gameObject.name}`,
-    )
+    console.log(`[AnimationVisualizerComponent] Component cleaned up on ${this.gameObject.name}`)
   }
 
   public onEnabled(): void {
@@ -129,14 +125,12 @@ export class AnimationVisualizerComponent extends Component {
     const controller = this.getComponent(AnimationControllerComponent)
     if (controller) {
       this.setAnimationController(controller)
-      console.log(
-        `[AnimationVisualizerComponent] Successfully connected to AnimationController`,
-      )
+      console.log(`[AnimationVisualizerComponent] Successfully connected to AnimationController`)
       return true
     }
 
     console.warn(
-      `[AnimationVisualizerComponent] No AnimationControllerComponent found on ${this.gameObject.name}`,
+      `[AnimationVisualizerComponent] No AnimationControllerComponent found on ${this.gameObject.name}`
     )
     return false
   }
@@ -146,8 +140,6 @@ export class AnimationVisualizerComponent extends Component {
    */
   public connectToController(controller: AnimationControllerComponent): void {
     this.setAnimationController(controller)
-    console.log(
-      `[AnimationVisualizerComponent] Connected to external AnimationController`,
-    )
+    console.log(`[AnimationVisualizerComponent] Connected to external AnimationController`)
   }
 }

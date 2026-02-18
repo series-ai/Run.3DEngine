@@ -3,26 +3,26 @@ import * as THREE from "three"
 /**
  * Shared animation clip registry
  * Stores clips once, characters create their own mixers
- * 
+ *
  * Note: We tried using AnimationObjectGroup for true sharing, but it had
  * issues with certain animations not applying to some character models.
  * Per-character mixers are slightly less efficient but much more reliable.
  */
 export class SharedAnimationManager {
   private static instance: SharedAnimationManager | null = null
-  
+
   // Cached clips (shared by all characters - this is the main memory savings)
   private clips: Map<string, THREE.AnimationClip> = new Map()
-  
+
   private constructor() {}
-  
+
   public static getInstance(): SharedAnimationManager {
     if (!SharedAnimationManager.instance) {
       SharedAnimationManager.instance = new SharedAnimationManager()
     }
     return SharedAnimationManager.instance
   }
-  
+
   /**
    * Register an animation clip once
    */
@@ -30,15 +30,15 @@ export class SharedAnimationManager {
     if (this.clips.has(name)) return
     this.clips.set(name, clip)
   }
-  
+
   public getClip(name: string): THREE.AnimationClip | undefined {
     return this.clips.get(name)
   }
-  
+
   public getRegisteredClipNames(): string[] {
     return [...this.clips.keys()]
   }
-  
+
   /**
    * No-op for backward compatibility
    * Per-character mixers update themselves
@@ -64,14 +64,14 @@ export class CharacterAnimationController {
     this.manager = manager
     this.mixer = new THREE.AnimationMixer(model)
   }
-  
+
   /**
    * Pause animation updates (for off-screen or distant characters)
    */
   public setPaused(paused: boolean): void {
     this.isPaused = paused
   }
-  
+
   /**
    * Check if animation is paused
    */
@@ -131,7 +131,7 @@ export class CharacterAnimationController {
 
     this.currentAnimation = name
   }
-  
+
   /**
    * Update the mixer - MUST be called every frame
    * Returns early if paused (for performance optimization of off-screen characters)
@@ -140,7 +140,7 @@ export class CharacterAnimationController {
     if (this.isPaused) return
     this.mixer.update(deltaTime)
   }
-  
+
   /**
    * Stop all animations
    */
@@ -150,7 +150,7 @@ export class CharacterAnimationController {
     }
     this.currentAnimation = null
   }
-  
+
   /**
    * Cleanup
    */

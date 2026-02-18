@@ -65,8 +65,7 @@ export class InteractionSystemThree {
 
     // Calculate mouse position in normalized device coordinates
     InteractionSystemThree.mouse.x = (event.clientX / window.innerWidth) * 2 - 1
-    InteractionSystemThree.mouse.y =
-      -(event.clientY / window.innerHeight) * 2 + 1
+    InteractionSystemThree.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
 
     InteractionSystemThree.updateHover()
   }
@@ -76,9 +75,7 @@ export class InteractionSystemThree {
    */
   private static onClick(event: MouseEvent): void {
     if (InteractionSystemThree.hoveredObject) {
-      InteractionSystemThree.triggerInteraction(
-        InteractionSystemThree.hoveredObject,
-      )
+      InteractionSystemThree.triggerInteraction(InteractionSystemThree.hoveredObject)
     }
   }
 
@@ -101,17 +98,13 @@ export class InteractionSystemThree {
   private static onTouchStart(event: TouchEvent): void {
     if (event.touches.length > 0) {
       const touch = event.touches[0]
-      InteractionSystemThree.mouse.x =
-        (touch.clientX / window.innerWidth) * 2 - 1
-      InteractionSystemThree.mouse.y =
-        -(touch.clientY / window.innerHeight) * 2 + 1
+      InteractionSystemThree.mouse.x = (touch.clientX / window.innerWidth) * 2 - 1
+      InteractionSystemThree.mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1
 
       InteractionSystemThree.updateHover()
 
       if (InteractionSystemThree.hoveredObject) {
-        InteractionSystemThree.triggerInteraction(
-          InteractionSystemThree.hoveredObject,
-        )
+        InteractionSystemThree.triggerInteraction(InteractionSystemThree.hoveredObject)
       }
     }
   }
@@ -125,7 +118,7 @@ export class InteractionSystemThree {
     // Update raycaster
     InteractionSystemThree.raycaster.setFromCamera(
       InteractionSystemThree.mouse,
-      InteractionSystemThree.camera,
+      InteractionSystemThree.camera
     )
 
     // Get all interactable meshes
@@ -137,8 +130,7 @@ export class InteractionSystemThree {
     })
 
     // Perform raycast
-    const intersects =
-      InteractionSystemThree.raycaster.intersectObjects(interactableMeshes)
+    const intersects = InteractionSystemThree.raycaster.intersectObjects(interactableMeshes)
 
     // Handle hover state
     const previousHovered = InteractionSystemThree.hoveredObject
@@ -205,10 +197,7 @@ export class InteractionSystemThree {
    * Find the nearest interactable object to the player
    */
   private static findNearestInteractable(): InteractionZone | null {
-    if (
-      !InteractionSystemThree.playerObject ||
-      InteractionSystemThree.nearbyObjects.size === 0
-    ) {
+    if (!InteractionSystemThree.playerObject || InteractionSystemThree.nearbyObjects.size === 0) {
       return null
     }
 
@@ -285,16 +274,10 @@ export class InteractionSystemThree {
    */
   public static dispose(): void {
     // Remove event listeners
-    document.removeEventListener(
-      "mousemove",
-      InteractionSystemThree.onMouseMove,
-    )
+    document.removeEventListener("mousemove", InteractionSystemThree.onMouseMove)
     document.removeEventListener("click", InteractionSystemThree.onClick)
     document.removeEventListener("keydown", InteractionSystemThree.onKeyDown)
-    document.removeEventListener(
-      "touchstart",
-      InteractionSystemThree.onTouchStart,
-    )
+    document.removeEventListener("touchstart", InteractionSystemThree.onTouchStart)
 
     // Clear all registered objects
     InteractionSystemThree.interactableObjects.clear()
@@ -371,7 +354,7 @@ export class InteractionZone extends Component {
     const geometry = new THREE.BoxGeometry(
       this.options.width,
       this.options.height,
-      this.options.depth,
+      this.options.depth
     )
 
     // Create material - invisible by default, visible for debugging
@@ -466,7 +449,7 @@ export class InteractionZone extends Component {
       {
         className: "ui-interaction-prompt",
         offset: { x: 0, y: -50 },
-      },
+      }
     )
   }
 

@@ -10,7 +10,7 @@ export class Particle extends Component {
   private emitter: ParticleSystem | null = null
   private config: EmitterConfig
   private assets: EmitterAssets
-  
+
   // Reusable vector to avoid allocation on trigger
   private static readonly _tempOrigin = new THREE.Vector3()
 
@@ -19,10 +19,7 @@ export class Particle extends Component {
    * @param config - The emitter configuration
    * @param assets - The assets (textures) for the particles
    */
-  constructor(
-    config: EmitterConfig,
-    assets: EmitterAssets,
-  ) {
+  constructor(config: EmitterConfig, assets: EmitterAssets) {
     super()
     this.config = config
     this.assets = assets
@@ -31,7 +28,7 @@ export class Particle extends Component {
   protected onCreate(): void {
     // Create the particle emitter
     this.emitter = createParticleEmitter(this.config, this.assets)
-    
+
     // Add the particle mesh as a child of the GameObject
     // This makes it follow the GameObject's transform automatically
     if (this.emitter?.object && this.gameObject) {
@@ -49,7 +46,7 @@ export class Particle extends Component {
    */
   public trigger(count: number = 10): void {
     if (!this.emitter) return
-    
+
     // Since the particle mesh is a child of the GameObject,
     // we use local position (0,0,0) to spawn at the GameObject's position
     const localOrigin = Particle._tempOrigin.set(0, 0, 0)

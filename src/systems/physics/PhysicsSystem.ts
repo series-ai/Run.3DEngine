@@ -28,9 +28,7 @@ export class PhysicsSystem {
   /**
    * Configure physics stepping parameters at runtime
    */
-  public static configure(
-    params: { fixedTimeStep?: number; maxSubSteps?: number } = {},
-  ): void {
+  public static configure(params: { fixedTimeStep?: number; maxSubSteps?: number } = {}): void {
     if (typeof params.fixedTimeStep === "number" && params.fixedTimeStep > 0) {
       PhysicsSystem.fixedTimeStep = params.fixedTimeStep
     }
@@ -142,7 +140,7 @@ export class PhysicsSystem {
   public static createRigidBody(
     id: string,
     rigidBodyDesc: RigidBodyDesc,
-    colliderDesc?: ColliderDesc,
+    colliderDesc?: ColliderDesc
   ): { rigidBody: RigidBody; collider?: Collider } | null {
     if (!PhysicsSystem.world) return null
 
@@ -196,10 +194,7 @@ export class PhysicsSystem {
   /**
    * Register a component for trigger events
    */
-  public static registerTriggerComponent(
-    colliderId: string,
-    component: any,
-  ): void {
+  public static registerTriggerComponent(colliderId: string, component: any): void {
     // Find the collider by ID and get its handle
     const collider = PhysicsSystem.colliders.get(colliderId)
     if (collider) {
@@ -208,11 +203,9 @@ export class PhysicsSystem {
       PhysicsSystem.colliderHandleToComponent.set(handle, component)
       // Handle-to-ID mapping should already be set by registerGameObject
     } else {
-      console.error(
-        `🔥 PhysicsSystem: Could not find collider with ID ${colliderId}`,
-      )
+      console.error(`🔥 PhysicsSystem: Could not find collider with ID ${colliderId}`)
       console.log(
-        `🔍 Available collider IDs: ${Array.from(PhysicsSystem.colliders.keys()).join(", ")}`,
+        `🔍 Available collider IDs: ${Array.from(PhysicsSystem.colliders.keys()).join(", ")}`
       )
     }
   }
@@ -238,78 +231,74 @@ export class PhysicsSystem {
     let eventCount = 0
 
     // Drain collision events from the event queue
-    PhysicsSystem.eventQueue.drainCollisionEvents(
-      (handle1, handle2, started) => {
-        eventCount++
+    PhysicsSystem.eventQueue.drainCollisionEvents((handle1, handle2, started) => {
+      eventCount++
 
-        // Get components for both colliders
-        const component1 = PhysicsSystem.colliderHandleToComponent.get(handle1)
-        const component2 = PhysicsSystem.colliderHandleToComponent.get(handle2)
-        const id1 = PhysicsSystem.colliderHandleToId.get(handle1)
-        const id2 = PhysicsSystem.colliderHandleToId.get(handle2)
+      // Get components for both colliders
+      const component1 = PhysicsSystem.colliderHandleToComponent.get(handle1)
+      const component2 = PhysicsSystem.colliderHandleToComponent.get(handle2)
+      const id1 = PhysicsSystem.colliderHandleToId.get(handle1)
+      const id2 = PhysicsSystem.colliderHandleToId.get(handle2)
 
-        // Debug: log all collision events to see what's happening
-        const gameObject1 = PhysicsSystem.colliderIdToGameObject.get(id1 || "")
-        const gameObject2 = PhysicsSystem.colliderIdToGameObject.get(id2 || "")
-        // Collision detected: ${gameObject1?.name || id1} <-> ${gameObject2?.name || id2}
+      // Debug: log all collision events to see what's happening
+      const gameObject1 = PhysicsSystem.colliderIdToGameObject.get(id1 || "")
+      const gameObject2 = PhysicsSystem.colliderIdToGameObject.get(id2 || "")
+      // Collision detected: ${gameObject1?.name || id1} <-> ${gameObject2?.name || id2}
 
-        // Components identified
+      // Components identified
 
-        // Get colliders to check which is sensor
-        const collider1 = PhysicsSystem.colliders.get(id1 || "")
-        const collider2 = PhysicsSystem.colliders.get(id2 || "")
+      // Get colliders to check which is sensor
+      const collider1 = PhysicsSystem.colliders.get(id1 || "")
+      const collider2 = PhysicsSystem.colliders.get(id2 || "")
 
-        if (!collider1 || !collider2) {
-          return // Missing colliders
-        }
+      if (!collider1 || !collider2) {
+        return // Missing colliders
+      }
 
-        const collider1IsSensor = collider1.isSensor()
-        const collider2IsSensor = collider2.isSensor()
+      const collider1IsSensor = collider1.isSensor()
+      const collider2IsSensor = collider2.isSensor()
 
-        // Sensor types determined
+      // Sensor types determined
 
-        // If collider1 is sensor, notify its component about collider2
-        if (
-          collider1IsSensor &&
-          component1 &&
-          component1.onTriggerEnter &&
-          component1.onTriggerExit
-        ) {
-          // Find GameObject for collider2 (may or may not have a registered component)
-          const gameObject2 =
-            component2?.gameObject ||
-            PhysicsSystem.colliderIdToGameObject.get(id2 || "")
-          if (gameObject2) {
-            if (started) {
-              component1.onTriggerEnter(gameObject2)
-            } else {
-              component1.onTriggerExit(gameObject2)
-            }
+      // If collider1 is sensor, notify its component about collider2
+      if (
+        collider1IsSensor &&
+        component1 &&
+        component1.onTriggerEnter &&
+        component1.onTriggerExit
+      ) {
+        // Find GameObject for collider2 (may or may not have a registered component)
+        const gameObject2 =
+          component2?.gameObject || PhysicsSystem.colliderIdToGameObject.get(id2 || "")
+        if (gameObject2) {
+          if (started) {
+            component1.onTriggerEnter(gameObject2)
+          } else {
+            component1.onTriggerExit(gameObject2)
           }
         }
+      }
 
-        // If collider2 is sensor, notify its component about collider1
-        if (
-          collider2IsSensor &&
-          component2 &&
-          component2.onTriggerEnter &&
-          component2.onTriggerExit
-        ) {
-          // Find GameObject for collider1 (may or may not have a registered component)
-          const gameObject1 =
-            component1?.gameObject ||
-            PhysicsSystem.colliderIdToGameObject.get(id1 || "")
-          if (gameObject1) {
-            // console.log(`🔥 PhysicsSystem: Calling trigger on component2 (${component2.constructor?.name}) for gameObject: ${gameObject1.name}`); // Reduced spam
-            if (started) {
-              component2.onTriggerEnter(gameObject1)
-            } else {
-              component2.onTriggerExit(gameObject1)
-            }
+      // If collider2 is sensor, notify its component about collider1
+      if (
+        collider2IsSensor &&
+        component2 &&
+        component2.onTriggerEnter &&
+        component2.onTriggerExit
+      ) {
+        // Find GameObject for collider1 (may or may not have a registered component)
+        const gameObject1 =
+          component1?.gameObject || PhysicsSystem.colliderIdToGameObject.get(id1 || "")
+        if (gameObject1) {
+          // console.log(`🔥 PhysicsSystem: Calling trigger on component2 (${component2.constructor?.name}) for gameObject: ${gameObject1.name}`); // Reduced spam
+          if (started) {
+            component2.onTriggerEnter(gameObject1)
+          } else {
+            component2.onTriggerExit(gameObject1)
           }
         }
-      },
-    )
+      }
+    })
 
     // Events processed silently
   }
@@ -353,10 +342,7 @@ export class PhysicsSystem {
   /**
    * Sync Three.js object position with physics body
    */
-  public static syncObjectToPhysics(
-    object: THREE.Object3D,
-    rigidBody: RigidBody,
-  ): void {
+  public static syncObjectToPhysics(object: THREE.Object3D, rigidBody: RigidBody): void {
     const translation = rigidBody.translation()
     const rotation = rigidBody.rotation()
 
@@ -368,18 +354,12 @@ export class PhysicsSystem {
   /**
    * Sync physics body position to Three.js object
    */
-  public static syncPhysicsToObject(
-    rigidBody: RigidBody,
-    object: THREE.Object3D,
-  ): void {
+  public static syncPhysicsToObject(rigidBody: RigidBody, object: THREE.Object3D): void {
     const position = object.position
     const quaternion = object.quaternion
 
     // Update physics body position
-    rigidBody.setTranslation(
-      { x: position.x, y: position.y, z: position.z },
-      true,
-    )
+    rigidBody.setTranslation({ x: position.x, y: position.y, z: position.z }, true)
     rigidBody.setRotation(
       {
         x: quaternion.x,
@@ -387,7 +367,7 @@ export class PhysicsSystem {
         z: quaternion.z,
         w: quaternion.w,
       },
-      true,
+      true
     )
   }
 
@@ -395,7 +375,7 @@ export class PhysicsSystem {
    * Create a ground plane
    */
   public static createGround(
-    size: number = 50,
+    size: number = 50
   ): { rigidBody: RigidBody; collider: Collider } | null {
     if (!PhysicsSystem.world) return null
 
@@ -405,14 +385,8 @@ export class PhysicsSystem {
     // Create ground collider descriptor
     const groundColliderDesc = ColliderDesc.cuboid(size / 2, 0.1, size / 2)
 
-    const result = PhysicsSystem.createRigidBody(
-      "ground",
-      groundBodyDesc,
-      groundColliderDesc,
-    )
-    return result
-      ? { rigidBody: result.rigidBody, collider: result.collider! }
-      : null
+    const result = PhysicsSystem.createRigidBody("ground", groundBodyDesc, groundColliderDesc)
+    return result ? { rigidBody: result.rigidBody, collider: result.collider! } : null
   }
 
   /**
@@ -422,7 +396,7 @@ export class PhysicsSystem {
     id: string,
     position: THREE.Vector3,
     size: THREE.Vector3,
-    isDynamic: boolean = true,
+    isDynamic: boolean = true
   ): { rigidBody: RigidBody; collider: Collider } | null {
     if (!PhysicsSystem.world) return null
 
@@ -435,9 +409,7 @@ export class PhysicsSystem {
     const colliderDesc = ColliderDesc.cuboid(size.x / 2, size.y / 2, size.z / 2)
 
     const result = PhysicsSystem.createRigidBody(id, bodyDesc, colliderDesc)
-    return result
-      ? { rigidBody: result.rigidBody, collider: result.collider! }
-      : null
+    return result ? { rigidBody: result.rigidBody, collider: result.collider! } : null
   }
 
   /**
@@ -447,7 +419,7 @@ export class PhysicsSystem {
     id: string,
     position: THREE.Vector3,
     radius: number,
-    isDynamic: boolean = true,
+    isDynamic: boolean = true
   ): { rigidBody: RigidBody; collider: Collider } | null {
     if (!PhysicsSystem.world) return null
 
@@ -460,9 +432,7 @@ export class PhysicsSystem {
     const colliderDesc = ColliderDesc.ball(radius)
 
     const result = PhysicsSystem.createRigidBody(id, bodyDesc, colliderDesc)
-    return result
-      ? { rigidBody: result.rigidBody, collider: result.collider! }
-      : null
+    return result ? { rigidBody: result.rigidBody, collider: result.collider! } : null
   }
 
   /**
@@ -505,10 +475,7 @@ export class PhysicsSystem {
   /**
    * Create debug mesh for a collider
    */
-  private static createDebugMesh(
-    id: string,
-    collider: Collider,
-  ): THREE.Mesh | null {
+  private static createDebugMesh(id: string, collider: Collider): THREE.Mesh | null {
     if (!PhysicsSystem.debugMaterial || !PhysicsSystem.debugScene) return null
 
     const shape = collider.shape
@@ -523,11 +490,7 @@ export class PhysicsSystem {
 
       case 1: // Cuboid/Box
         const halfExtents = (shape as any).halfExtents
-        geometry = new THREE.BoxGeometry(
-          halfExtents.x * 2,
-          halfExtents.y * 2,
-          halfExtents.z * 2,
-        )
+        geometry = new THREE.BoxGeometry(halfExtents.x * 2, halfExtents.y * 2, halfExtents.z * 2)
         break
 
       case 2: // Capsule
@@ -538,7 +501,7 @@ export class PhysicsSystem {
           capsuleRadius,
           capsuleHalfHeight * 2,
           8,
-          16,
+          16
         )
         geometry = capsuleGeometry
         break
@@ -546,9 +509,7 @@ export class PhysicsSystem {
       default:
         // For other shapes, create a simple box as fallback
         geometry = new THREE.BoxGeometry(1, 1, 1)
-        console.warn(
-          `⚠️ Unsupported collider shape type: ${shape.type}, using box fallback`,
-        )
+        console.warn(`⚠️ Unsupported collider shape type: ${shape.type}, using box fallback`)
         break
     }
 

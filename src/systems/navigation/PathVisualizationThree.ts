@@ -1,9 +1,5 @@
 import * as THREE from "three"
-import {
-  DynamicNavSystem,
-  Waypoint,
-  PathfindingResult,
-} from "./DynamicNavSystem"
+import { DynamicNavSystem, Waypoint, PathfindingResult } from "./DynamicNavSystem"
 
 /**
  * Three.js visualization system for pathfinding results
@@ -115,12 +111,9 @@ export class PathVisualizationThree {
     startX?: number,
     startZ?: number,
     endX?: number,
-    endZ?: number,
+    endZ?: number
   ): boolean {
-    if (
-      !PathVisualizationThree.isInitialized ||
-      !PathVisualizationThree.scene
-    ) {
+    if (!PathVisualizationThree.isInitialized || !PathVisualizationThree.scene) {
       console.warn("PathVisualizationThree not initialized")
       return false
     }
@@ -140,7 +133,7 @@ export class PathVisualizationThree {
     PathVisualizationThree.removePath(pathId)
 
     console.log(
-      `🛤️ Adding path visualization '${pathId}' with ${result.waypoints.length} waypoints, distance: ${result.distance.toFixed(1)}`,
+      `🛤️ Adding path visualization '${pathId}' with ${result.waypoints.length} waypoints, distance: ${result.distance.toFixed(1)}`
     )
 
     const visualization = {
@@ -153,17 +146,15 @@ export class PathVisualizationThree {
     // If start/end coordinates aren't provided, infer them from waypoints
     const inferredStartX = startX ?? result.waypoints[0]?.x
     const inferredStartZ = startZ ?? result.waypoints[0]?.z
-    const inferredEndX =
-      endX ?? result.waypoints[result.waypoints.length - 1]?.x
-    const inferredEndZ =
-      endZ ?? result.waypoints[result.waypoints.length - 1]?.z
+    const inferredEndX = endX ?? result.waypoints[result.waypoints.length - 1]?.x
+    const inferredEndZ = endZ ?? result.waypoints[result.waypoints.length - 1]?.z
 
     // Create start and end markers if positions are available
     if (inferredStartX !== undefined && inferredStartZ !== undefined) {
       visualization.startMarker = PathVisualizationThree.createStartMarker(
         pathId,
         inferredStartX,
-        inferredStartZ,
+        inferredStartZ
       )
     }
 
@@ -171,19 +162,18 @@ export class PathVisualizationThree {
       visualization.endMarker = PathVisualizationThree.createEndMarker(
         pathId,
         inferredEndX,
-        inferredEndZ,
+        inferredEndZ
       )
     }
 
     // Create waypoint spheres
-    visualization.waypointSpheres =
-      PathVisualizationThree.createWaypointSpheres(pathId, result.waypoints)
+    visualization.waypointSpheres = PathVisualizationThree.createWaypointSpheres(
+      pathId,
+      result.waypoints
+    )
 
     // Create path lines
-    visualization.pathLines = PathVisualizationThree.createPathLines(
-      pathId,
-      result.waypoints,
-    )
+    visualization.pathLines = PathVisualizationThree.createPathLines(pathId, result.waypoints)
 
     // Store the visualization
     PathVisualizationThree.pathVisualizations.set(pathId, visualization)
@@ -195,10 +185,7 @@ export class PathVisualizationThree {
   /**
    * Add a path visualization (simplified API - infers start/end from waypoints)
    */
-  public static addPathSimple(
-    pathId: string,
-    result: PathfindingResult,
-  ): boolean {
+  public static addPathSimple(pathId: string, result: PathfindingResult): boolean {
     return PathVisualizationThree.addPath(pathId, result)
   }
 
@@ -244,34 +231,19 @@ export class PathVisualizationThree {
     startX?: number,
     startZ?: number,
     endX?: number,
-    endZ?: number,
+    endZ?: number
   ): void {
-    PathVisualizationThree.addPath(
-      "default",
-      result,
-      startX,
-      startZ,
-      endX,
-      endZ,
-    )
+    PathVisualizationThree.addPath("default", result, startX, startZ, endX, endZ)
   }
 
   /**
    * Create visual marker for start position
    */
-  private static createStartMarker(
-    pathId: string,
-    x: number,
-    z: number,
-  ): THREE.Mesh | null {
-    if (!PathVisualizationThree.scene || !PathVisualizationThree.startMaterial)
-      return null
+  private static createStartMarker(pathId: string, x: number, z: number): THREE.Mesh | null {
+    if (!PathVisualizationThree.scene || !PathVisualizationThree.startMaterial) return null
 
     const geometry = new THREE.SphereGeometry(0.5, 16, 16)
-    const marker = new THREE.Mesh(
-      geometry,
-      PathVisualizationThree.startMaterial,
-    )
+    const marker = new THREE.Mesh(geometry, PathVisualizationThree.startMaterial)
 
     marker.position.set(x, 0.5, z)
     marker.name = `PathStartMarker_${pathId}`
@@ -283,13 +255,8 @@ export class PathVisualizationThree {
   /**
    * Create visual marker for end position
    */
-  private static createEndMarker(
-    pathId: string,
-    x: number,
-    z: number,
-  ): THREE.Mesh | null {
-    if (!PathVisualizationThree.scene || !PathVisualizationThree.endMaterial)
-      return null
+  private static createEndMarker(pathId: string, x: number, z: number): THREE.Mesh | null {
+    if (!PathVisualizationThree.scene || !PathVisualizationThree.endMaterial) return null
 
     const geometry = new THREE.SphereGeometry(0.5, 16, 16)
     const marker = new THREE.Mesh(geometry, PathVisualizationThree.endMaterial)
@@ -304,24 +271,14 @@ export class PathVisualizationThree {
   /**
    * Create spheres to mark waypoints along the path
    */
-  private static createWaypointSpheres(
-    pathId: string,
-    waypoints: Waypoint[],
-  ): THREE.Mesh[] {
-    if (
-      !PathVisualizationThree.scene ||
-      !PathVisualizationThree.waypointMaterial
-    )
-      return []
+  private static createWaypointSpheres(pathId: string, waypoints: Waypoint[]): THREE.Mesh[] {
+    if (!PathVisualizationThree.scene || !PathVisualizationThree.waypointMaterial) return []
 
     const spheres: THREE.Mesh[] = []
 
     waypoints.forEach((waypoint, index) => {
       const geometry = new THREE.SphereGeometry(0.3, 12, 12)
-      const sphere = new THREE.Mesh(
-        geometry,
-        PathVisualizationThree.waypointMaterial!,
-      )
+      const sphere = new THREE.Mesh(geometry, PathVisualizationThree.waypointMaterial!)
 
       sphere.position.set(waypoint.x, 0.3, waypoint.z)
       sphere.name = `PathWaypoint_${pathId}_${index}`
@@ -336,10 +293,7 @@ export class PathVisualizationThree {
   /**
    * Create lines connecting waypoints to show the path
    */
-  private static createPathLines(
-    pathId: string,
-    waypoints: Waypoint[],
-  ): THREE.Line[] {
+  private static createPathLines(pathId: string, waypoints: Waypoint[]): THREE.Line[] {
     if (
       !PathVisualizationThree.scene ||
       !PathVisualizationThree.pathMaterial ||
@@ -406,15 +360,8 @@ export class PathVisualizationThree {
   /**
    * Console helper function for manual testing
    */
-  public static testPath(
-    startX: number,
-    startZ: number,
-    endX: number,
-    endZ: number,
-  ): void {
-    console.log(
-      `🛤️ Testing path from (${startX}, ${startZ}) to (${endX}, ${endZ})`,
-    )
+  public static testPath(startX: number, startZ: number, endX: number, endZ: number): void {
+    console.log(`🛤️ Testing path from (${startX}, ${startZ}) to (${endX}, ${endZ})`)
 
     if (!DynamicNavSystem.getIsInitialized()) {
       console.warn("❌ DynamicNavSystem not initialized")
@@ -425,17 +372,15 @@ export class PathVisualizationThree {
 
     const result = DynamicNavSystem.findPath(
       new THREE.Vector2(startX, startZ),
-      new THREE.Vector2(endX, endZ),
+      new THREE.Vector2(endX, endZ)
     )
 
     if (result.success) {
       console.log(
-        `✅ Path found! ${result.waypoints.length} waypoints, distance: ${result.distance.toFixed(1)} units`,
+        `✅ Path found! ${result.waypoints.length} waypoints, distance: ${result.distance.toFixed(1)} units`
       )
       result.waypoints.forEach((waypoint, index) => {
-        console.log(
-          `   ${index + 1}. (${waypoint.x.toFixed(1)}, ${waypoint.z.toFixed(1)})`,
-        )
+        console.log(`   ${index + 1}. (${waypoint.x.toFixed(1)}, ${waypoint.z.toFixed(1)})`)
       })
       PathVisualizationThree.visualizePath(result, startX, startZ, endX, endZ)
     } else {
@@ -452,14 +397,10 @@ export class PathVisualizationThree {
       PathVisualizationThree.clearVisualization()
 
       // Dispose materials
-      if (PathVisualizationThree.pathMaterial)
-        PathVisualizationThree.pathMaterial.dispose()
-      if (PathVisualizationThree.waypointMaterial)
-        PathVisualizationThree.waypointMaterial.dispose()
-      if (PathVisualizationThree.startMaterial)
-        PathVisualizationThree.startMaterial.dispose()
-      if (PathVisualizationThree.endMaterial)
-        PathVisualizationThree.endMaterial.dispose()
+      if (PathVisualizationThree.pathMaterial) PathVisualizationThree.pathMaterial.dispose()
+      if (PathVisualizationThree.waypointMaterial) PathVisualizationThree.waypointMaterial.dispose()
+      if (PathVisualizationThree.startMaterial) PathVisualizationThree.startMaterial.dispose()
+      if (PathVisualizationThree.endMaterial) PathVisualizationThree.endMaterial.dispose()
 
       PathVisualizationThree.scene = null
       PathVisualizationThree.isInitialized = false
@@ -472,19 +413,14 @@ export class PathVisualizationThree {
 // Make functions available globally for console testing
 declare global {
   interface Window {
-    testPathThree: (
-      startX: number,
-      startZ: number,
-      endX: number,
-      endZ: number,
-    ) => void
+    testPathThree: (startX: number, startZ: number, endX: number, endZ: number) => void
     clearPathThree: () => void
     addPathThree: (
       pathId: string,
       startX: number,
       startZ: number,
       endX: number,
-      endZ: number,
+      endZ: number
     ) => void
     removePathThree: (pathId: string) => void
     listPathsThree: () => void
@@ -493,12 +429,7 @@ declare global {
 
 // Add to window for browser console access
 if (typeof window !== "undefined") {
-  window.testPathThree = (
-    startX: number,
-    startZ: number,
-    endX: number,
-    endZ: number,
-  ) => {
+  window.testPathThree = (startX: number, startZ: number, endX: number, endZ: number) => {
     PathVisualizationThree.testPath(startX, startZ, endX, endZ)
   }
 
@@ -512,11 +443,11 @@ if (typeof window !== "undefined") {
     startX: number,
     startZ: number,
     endX: number,
-    endZ: number,
+    endZ: number
   ) => {
     const result = DynamicNavSystem.findPath(
       new THREE.Vector2(startX, startZ),
-      new THREE.Vector2(endX, endZ),
+      new THREE.Vector2(endX, endZ)
     )
     if (result.success) {
       PathVisualizationThree.addPath(pathId, result, startX, startZ, endX, endZ)
@@ -535,8 +466,6 @@ if (typeof window !== "undefined") {
 
   window.listPathsThree = () => {
     const paths = PathVisualizationThree.getActivePathIds()
-    console.log(
-      `🛤️ Active paths: ${paths.length > 0 ? paths.join(", ") : "none"}`,
-    )
+    console.log(`🛤️ Active paths: ${paths.length > 0 ? paths.join(", ") : "none"}`)
   }
 }

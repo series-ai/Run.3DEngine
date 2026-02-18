@@ -1,5 +1,5 @@
 ﻿export class UILoadingScreen {
-  private static loadingScreenElement: HTMLDivElement | null = null;
+  private static loadingScreenElement: HTMLDivElement | null = null
 
   /**
    * Show the loading screen with a spinner
@@ -12,11 +12,11 @@
   ): void {
     // Prevent multiple loading screens
     if (this.loadingScreenElement) {
-      return;
+      return
     }
 
-    const loadingScreen = document.createElement("div");
-    loadingScreen.id = "loadingScreen";
+    const loadingScreen = document.createElement("div")
+    loadingScreen.id = "loadingScreen"
 
     // Apply styles
     Object.assign(loadingScreen.style, {
@@ -32,11 +32,11 @@
       justifyContent: "center",
       alignItems: "center",
       fontFamily: "Arial, sans-serif",
-    });
+    })
 
     // Create spinner
-    const spinner = document.createElement("div");
-    spinner.className = "spinner";
+    const spinner = document.createElement("div")
+    spinner.className = "spinner"
     Object.assign(spinner.style, {
       width: "60px",
       height: "60px",
@@ -44,7 +44,7 @@
       borderTop: "6px solid #ffffff",
       borderRadius: "50%",
       animation: "spin 1s linear infinite",
-    });
+    })
 
     // Create loading text
     // const loadingText = document.createElement("p");
@@ -57,14 +57,14 @@
     // });
 
     // Add CSS animation
-    this.addSpinnerAnimation();
+    this.addSpinnerAnimation()
 
     // Append elements
-    loadingScreen.appendChild(spinner);
+    loadingScreen.appendChild(spinner)
     // loadingScreen.appendChild(loadingText);
-    document.body.appendChild(loadingScreen);
+    document.body.appendChild(loadingScreen)
 
-    this.loadingScreenElement = loadingScreen;
+    this.loadingScreenElement = loadingScreen
   }
 
   /**
@@ -73,18 +73,18 @@
    */
   static hideLoadingScreen(fadeOut: boolean = true): void {
     if (!this.loadingScreenElement) {
-      return;
+      return
     }
 
     if (fadeOut) {
-      this.loadingScreenElement.style.transition = "opacity 0.3s ease-out";
-      this.loadingScreenElement.style.opacity = "0";
+      this.loadingScreenElement.style.transition = "opacity 0.3s ease-out"
+      this.loadingScreenElement.style.opacity = "0"
 
       setTimeout(() => {
-        this.removeLoadingScreen();
-      }, 300);
+        this.removeLoadingScreen()
+      }, 300)
     } else {
-      this.removeLoadingScreen();
+      this.removeLoadingScreen()
     }
   }
 
@@ -93,8 +93,8 @@
    */
   private static removeLoadingScreen(): void {
     if (this.loadingScreenElement) {
-      this.loadingScreenElement.remove();
-      this.loadingScreenElement = null;
+      this.loadingScreenElement.remove()
+      this.loadingScreenElement = null
     }
   }
 
@@ -104,17 +104,17 @@
   private static addSpinnerAnimation(): void {
     // Check if animation already exists
     if (document.getElementById("spinner-animation")) {
-      return;
+      return
     }
 
-    const style = document.createElement("style");
-    style.id = "spinner-animation";
+    const style = document.createElement("style")
+    style.id = "spinner-animation"
     style.textContent = `
       @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
-    `;
-    document.head.appendChild(style);
+    `
+    document.head.appendChild(style)
   }
 }

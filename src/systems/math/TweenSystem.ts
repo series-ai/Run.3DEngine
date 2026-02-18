@@ -23,7 +23,7 @@ export class Easing {
   }
 
   static easeOutCubic(t: number): number {
-    return (--t) * t * t + 1
+    return --t * t * t + 1
   }
 
   static easeInOutCubic(t: number): number {
@@ -38,11 +38,7 @@ export class Easing {
   // Elastic easing - perfect for bounce/spring effects
   static easeOutElastic(t: number): number {
     const c4 = (2 * Math.PI) / 3
-    return t === 0
-      ? 0
-      : t === 1
-      ? 1
-      : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1
+    return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1
   }
 
   // Back easings and anticipate/overshoot combo
@@ -92,9 +88,11 @@ export class Tween {
     this.endValue = endValue
     this.duration = duration
     this.easingFunction = easingFunction
-    
+
     if (TweenSystem.debugLogging) {
-      console.log(`[Tween] Created: property=${property}, start=${this.startValue}, end=${endValue}, duration=${duration}`)
+      console.log(
+        `[Tween] Created: property=${property}, start=${this.startValue}, end=${endValue}, duration=${duration}`
+      )
     }
   }
 
@@ -122,40 +120,42 @@ export class Tween {
     if (!this.active) return false
 
     this.elapsed += deltaTime
-    
+
     // Fast path for incomplete tweens
     if (this.elapsed < this.duration) {
       const t = this.elapsed / this.duration
       const easedT = this.easingFunction(t)
       const currentValue = this.startValue + (this.endValue - this.startValue) * easedT
       this.target[this.property] = currentValue
-      
+
       // Only call update callback if it exists
       if (this.onUpdate) {
         this.onUpdate(currentValue)
       }
-      
+
       // Debug logging with reduced frequency
       if (TweenSystem.debugLogging && Math.random() < 0.02) {
-        console.log(`[Tween] Progress: ${this.property}=${currentValue.toFixed(2)} (${(t * 100).toFixed(0)}%)`)
+        console.log(
+          `[Tween] Progress: ${this.property}=${currentValue.toFixed(2)} (${(t * 100).toFixed(0)}%)`
+        )
       }
-      
+
       return true
     }
-    
+
     // Tween completed
     this.target[this.property] = this.endValue
     this.active = false
-    
+
     if (TweenSystem.debugLogging) {
       console.log(`[Tween] Completed: ${this.property}=${this.endValue}`)
     }
-    
+
     // Call completion callback if it exists
     if (this.onComplete) {
       this.onComplete()
     }
-    
+
     return false
   }
 
@@ -195,14 +195,14 @@ export class TweenSystem {
     easingFunction?: (t: number) => number
   ): Tween {
     const tween = new Tween(target, property, endValue, duration, easingFunction)
-    
+
     // If we're currently updating, add to pending list to avoid modification during iteration
     if (this.pendingTweens.length > 0 || this.frameCount - this.lastActiveFrame < 2) {
       this.pendingTweens.push(tween)
     } else {
       this.tweens.push(tween)
     }
-    
+
     return tween
   }
 
@@ -211,15 +211,15 @@ export class TweenSystem {
    */
   static update(deltaTime: number): void {
     this.frameCount++
-    
+
     // Early exit if no tweens to process
     if (this.tweens.length === 0 && this.pendingTweens.length === 0) {
       // System is sleeping - no tweens active
       return
     }
-    
+
     this.lastActiveFrame = this.frameCount
-    
+
     // Debug: log deltaTime occasionally
     if (this.debugLogging && Math.random() < 0.01 && this.tweens.length > 0) {
       console.log(`[TweenSystem] Updating ${this.tweens.length} tweens with deltaTime=${deltaTime}`)
@@ -233,13 +233,13 @@ export class TweenSystem {
         activeTweens.push(tween)
       }
     }
-    
+
     // Add any pending tweens that were created during update
     if (this.pendingTweens.length > 0) {
       activeTweens.push(...this.pendingTweens)
       this.pendingTweens = []
     }
-    
+
     this.tweens = activeTweens
   }
 
@@ -247,7 +247,7 @@ export class TweenSystem {
    * Stop all tweens
    */
   static stopAll(): void {
-    this.tweens.forEach(tween => tween.stop())
+    this.tweens.forEach((tween) => tween.stop())
     this.tweens = []
     this.pendingTweens = []
   }
@@ -258,23 +258,28 @@ export class TweenSystem {
   static getActiveCount(): number {
     return this.tweens.length + this.pendingTweens.length
   }
-  
+
   /**
    * Check if the tween system is currently active
    */
   static isActive(): boolean {
     return this.tweens.length > 0 || this.pendingTweens.length > 0
   }
-  
+
   /**
    * Get performance stats for debugging
    */
-  static getStats(): { active: number, pending: number, lastActiveFrame: number, currentFrame: number } {
+  static getStats(): {
+    active: number
+    pending: number
+    lastActiveFrame: number
+    currentFrame: number
+  } {
     return {
       active: this.tweens.length,
       pending: this.pendingTweens.length,
       lastActiveFrame: this.lastActiveFrame,
-      currentFrame: this.frameCount
+      currentFrame: this.frameCount,
     }
   }
 }

@@ -44,10 +44,10 @@ export class SplineThree {
       resolution: 10,
       tension: 0.5,
       closed: false,
-    },
+    }
   ) {
     this.config = config
-    
+
     // Auto-register with debug manager
     SplineDebugManager.getInstance().registerSpline(this)
   }
@@ -71,8 +71,7 @@ export class SplineThree {
     }
 
     if (t === 0) return this.interpolatedPoints[0].clone()
-    if (t === 1)
-      return this.interpolatedPoints[this.interpolatedPoints.length - 1].clone()
+    if (t === 1) return this.interpolatedPoints[this.interpolatedPoints.length - 1].clone()
 
     const index = t * (this.interpolatedPoints.length - 1)
     const lowerIndex = Math.floor(index)
@@ -111,18 +110,18 @@ export class SplineThree {
     if (this.totalLength === 0 || this.cumulativeDistances.length === 0) {
       return 0
     }
-    
+
     // Clamp distance to valid range
     distance = Math.max(0, Math.min(this.totalLength, distance))
-    
+
     // Handle edge cases
     if (distance === 0) return 0
     if (distance >= this.totalLength) return 1
-    
+
     // Find the segment that contains this distance using binary search
     let left = 0
     let right = this.cumulativeDistances.length - 1
-    
+
     while (left < right - 1) {
       const mid = Math.floor((left + right) / 2)
       if (this.cumulativeDistances[mid] <= distance) {
@@ -131,19 +130,19 @@ export class SplineThree {
         right = mid
       }
     }
-    
+
     // Interpolate between the two points
     const startDistance = this.cumulativeDistances[left]
     const endDistance = this.cumulativeDistances[right]
     const segmentDistance = endDistance - startDistance
-    
+
     if (segmentDistance === 0) {
       return left / (this.interpolatedPoints.length - 1)
     }
-    
+
     const localT = (distance - startDistance) / segmentDistance
     const pointIndexT = (left + localT) / (this.interpolatedPoints.length - 1)
-    
+
     return pointIndexT
   }
 
@@ -293,9 +292,7 @@ export class SplineThree {
     }
 
     // Add final point
-    this.interpolatedPoints.push(
-      this.waypoints[this.waypoints.length - 1].clone(),
-    )
+    this.interpolatedPoints.push(this.waypoints[this.waypoints.length - 1].clone())
   }
 
   /**
@@ -308,10 +305,7 @@ export class SplineThree {
       const p0 = i > 0 ? this.waypoints[i - 1] : this.waypoints[i]
       const p1 = this.waypoints[i]
       const p2 = this.waypoints[i + 1]
-      const p3 =
-        i < this.waypoints.length - 2
-          ? this.waypoints[i + 2]
-          : this.waypoints[i + 1]
+      const p3 = i < this.waypoints.length - 2 ? this.waypoints[i + 2] : this.waypoints[i + 1]
 
       for (let j = 0; j < this.config.resolution; j++) {
         const t = j / this.config.resolution
@@ -321,9 +315,7 @@ export class SplineThree {
     }
 
     // Add final point
-    this.interpolatedPoints.push(
-      this.waypoints[this.waypoints.length - 1].clone(),
-    )
+    this.interpolatedPoints.push(this.waypoints[this.waypoints.length - 1].clone())
   }
 
   /**
@@ -335,7 +327,7 @@ export class SplineThree {
     p2: THREE.Vector3,
     p3: THREE.Vector3,
     t: number,
-    tension: number,
+    tension: number
   ): THREE.Vector3 {
     const t2 = t * t
     const t3 = t2 * t
@@ -370,9 +362,7 @@ export class SplineThree {
     }
 
     // Add final point
-    this.interpolatedPoints.push(
-      this.waypoints[this.waypoints.length - 1].clone(),
-    )
+    this.interpolatedPoints.push(this.waypoints[this.waypoints.length - 1].clone())
   }
 
   /**
@@ -382,7 +372,7 @@ export class SplineThree {
     p0: THREE.Vector3,
     p1: THREE.Vector3,
     p2: THREE.Vector3,
-    t: number,
+    t: number
   ): THREE.Vector3 {
     const oneMinusT = 1 - t
 
@@ -426,12 +416,12 @@ export class SplineThree {
   private calculateTotalLength(): void {
     this.cumulativeDistances = []
     this.totalLength = 0
-    
+
     // First point is at distance 0
     if (this.interpolatedPoints.length > 0) {
       this.cumulativeDistances.push(0)
     }
-    
+
     // Build cumulative distance array
     for (let i = 0; i < this.segments.length; i++) {
       this.totalLength += this.segments[i].length

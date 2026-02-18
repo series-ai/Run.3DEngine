@@ -9,7 +9,7 @@ export class AnimationRetargeter {
    */
   public static retargetClip(
     clip: THREE.AnimationClip,
-    boneMap: Map<string, string>,
+    boneMap: Map<string, string>
   ): THREE.AnimationClip {
     const tracks: THREE.KeyframeTrack[] = []
 
@@ -34,21 +34,21 @@ export class AnimationRetargeter {
             newTrackName,
             track.times,
             track.values,
-            track.getInterpolation(),
+            track.getInterpolation()
           )
         } else if (track instanceof THREE.QuaternionKeyframeTrack) {
           newTrack = new THREE.QuaternionKeyframeTrack(
             newTrackName,
             track.times,
             track.values,
-            track.getInterpolation(),
+            track.getInterpolation()
           )
         } else if (track instanceof THREE.NumberKeyframeTrack) {
           newTrack = new THREE.NumberKeyframeTrack(
             newTrackName,
             track.times,
             track.values,
-            track.getInterpolation(),
+            track.getInterpolation()
           )
         } else {
           // Keep original track if type is unknown
@@ -62,12 +62,7 @@ export class AnimationRetargeter {
       }
     }
 
-    return new THREE.AnimationClip(
-      clip.name + "_retargeted",
-      clip.duration,
-      tracks,
-      clip.blendMode,
-    )
+    return new THREE.AnimationClip(clip.name + "_retargeted", clip.duration, tracks, clip.blendMode)
   }
 
   /**
@@ -76,7 +71,7 @@ export class AnimationRetargeter {
    */
   public static detectBoneMapping(
     sourceSkeleton: THREE.Object3D,
-    targetSkeleton: THREE.Object3D,
+    targetSkeleton: THREE.Object3D
   ): Map<string, string> {
     const boneMap = new Map<string, string>()
     const sourceBones: string[] = []

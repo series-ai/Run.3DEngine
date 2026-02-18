@@ -43,7 +43,7 @@ export class DynamicNavSystem {
     scene?: THREE.Scene,
     worldWidth: number = 200,
     worldDepth: number = 200,
-    gridSize: number = 2,
+    gridSize: number = 2
   ): void {
     if (DynamicNavSystem.isInitialized) {
       console.warn("DynamicNavSystem already initialized")
@@ -51,11 +51,7 @@ export class DynamicNavSystem {
     }
 
     DynamicNavSystem.scene = scene || null
-    DynamicNavSystem.navigationGrid = new NavigationGrid(
-      worldWidth,
-      worldDepth,
-      gridSize,
-    )
+    DynamicNavSystem.navigationGrid = new NavigationGrid(worldWidth, worldDepth, gridSize)
     DynamicNavSystem.isInitialized = true
 
     // Initialize debug display system if scene is provided
@@ -126,10 +122,7 @@ export class DynamicNavSystem {
   /**
    * Convert world coordinates to grid coordinates
    */
-  public static worldToGrid(
-    x: number,
-    z: number,
-  ): { col: number; row: number } | null {
+  public static worldToGrid(x: number, z: number): { col: number; row: number } | null {
     if (!DynamicNavSystem.navigationGrid) {
       console.warn("DynamicNavSystem not initialized")
       return null
@@ -141,10 +134,7 @@ export class DynamicNavSystem {
   /**
    * Convert grid coordinates to world coordinates
    */
-  public static gridToWorld(
-    col: number,
-    row: number,
-  ): { x: number; z: number } | null {
+  public static gridToWorld(col: number, row: number): { x: number; z: number } | null {
     if (!DynamicNavSystem.navigationGrid) {
       console.warn("DynamicNavSystem not initialized")
       return null
@@ -167,12 +157,7 @@ export class DynamicNavSystem {
    * @param width Width of the obstacle
    * @param depth Depth of the obstacle
    */
-  public static addBoxObstacle(
-    x: number,
-    z: number,
-    width: number,
-    depth: number,
-  ): void {
+  public static addBoxObstacle(x: number, z: number, width: number, depth: number): void {
     if (!DynamicNavSystem.navigationGrid) {
       console.warn("DynamicNavSystem not initialized")
       return
@@ -203,12 +188,7 @@ export class DynamicNavSystem {
    * @param width Width of the obstacle
    * @param depth Depth of the obstacle
    */
-  public static removeBoxObstacle(
-    x: number,
-    z: number,
-    width: number,
-    depth: number,
-  ): void {
+  public static removeBoxObstacle(x: number, z: number, width: number, depth: number): void {
     if (!DynamicNavSystem.navigationGrid) {
       console.warn("DynamicNavSystem not initialized")
       return
@@ -229,19 +209,16 @@ export class DynamicNavSystem {
     }
 
     DynamicNavSystem.navigationGrid.removeObstacle(footprint)
-    console.log(
-      `🚧 Removed box obstacle at (${x}, ${z}) with size ${width}x${depth}`,
-    )
+    console.log(`🚧 Removed box obstacle at (${x}, ${z}) with size ${width}x${depth}`)
   }
 
   public static addBoxObstacleFromRigidBody(gameObject: GameObject): void {
-      const rigidBody = gameObject.getComponent(RigidBodyComponentThree)
-      if (!rigidBody)
-          return
+    const rigidBody = gameObject.getComponent(RigidBodyComponentThree)
+    if (!rigidBody) return
 
-      const bounds = rigidBody.getBounds()
-      const boundsSize = bounds.getSize(new THREE.Vector3())
-      DynamicNavSystem.addBoxObstacleFromBounds(gameObject, boundsSize);
+    const bounds = rigidBody.getBounds()
+    const boundsSize = bounds.getSize(new THREE.Vector3())
+    DynamicNavSystem.addBoxObstacleFromBounds(gameObject, boundsSize)
   }
 
   /**
@@ -249,10 +226,7 @@ export class DynamicNavSystem {
    * @param gameObject The GameObject to get world position from
    * @param boundsSize The size from renderer bounds (uses X and Z for navigation)
    */
-  public static addBoxObstacleFromBounds(
-    gameObject: GameObject,
-    boundsSize: THREE.Vector3,
-  ): void {
+  public static addBoxObstacleFromBounds(gameObject: GameObject, boundsSize: THREE.Vector3): void {
     // Get world position of the object
     const worldPos = gameObject.getWorldPosition(new THREE.Vector3())
 
@@ -291,10 +265,7 @@ export class DynamicNavSystem {
    * @param boundsSize The size from bounds (uses X and Z for navigation)
    * @returns The ID used to track this obstacle (GameObject UUID)
    */
-  public static addRotatedBoxObstacle(
-    gameObject: GameObject,
-    boundsSize: THREE.Vector3,
-  ): string {
+  public static addRotatedBoxObstacle(gameObject: GameObject, boundsSize: THREE.Vector3): string {
     if (!DynamicNavSystem.navigationGrid) {
       console.warn("DynamicNavSystem not initialized")
       return ""
@@ -385,27 +356,21 @@ export class DynamicNavSystem {
    * @param startPos Start position as THREE.Vector2 (x, z)
    * @param endPos End position as THREE.Vector2 (x, z)
    */
-  public static findPath(
-    startPos: THREE.Vector2,
-    endPos: THREE.Vector2,
-  ): PathfindingResult
+  public static findPath(startPos: THREE.Vector2, endPos: THREE.Vector2): PathfindingResult
 
   /**
    * Find a path from start position to end position using A* pathfinding
    * @param startPos Start position as THREE.Vector3 (uses x, z components)
    * @param endPos End position as THREE.Vector3 (uses x, z components)
    */
-  public static findPath(
-    startPos: THREE.Vector3,
-    endPos: THREE.Vector3,
-  ): PathfindingResult
+  public static findPath(startPos: THREE.Vector3, endPos: THREE.Vector3): PathfindingResult
 
   /**
    * Implementation for findPath - main logic using THREE.Vector2
    */
   public static findPath(
     startPos: THREE.Vector2 | THREE.Vector3,
-    endPos: THREE.Vector2 | THREE.Vector3,
+    endPos: THREE.Vector2 | THREE.Vector3
   ): PathfindingResult {
     // Convert inputs to THREE.Vector2
     let start: THREE.Vector2, end: THREE.Vector2
@@ -429,23 +394,15 @@ export class DynamicNavSystem {
     }
 
     // Convert world coordinates to grid coordinates
-    const startGrid = DynamicNavSystem.navigationGrid.worldToGrid(
-      start.x,
-      start.y,
-    )
+    const startGrid = DynamicNavSystem.navigationGrid.worldToGrid(start.x, start.y)
     const endGrid = DynamicNavSystem.navigationGrid.worldToGrid(end.x, end.y)
 
     // Check if start and end positions are valid
-    if (
-      !DynamicNavSystem.navigationGrid.isWalkable(startGrid.col, startGrid.row)
-    ) {
+    if (!DynamicNavSystem.navigationGrid.isWalkable(startGrid.col, startGrid.row)) {
       // Find the closest walkable cell to the start position
-      const closestWalkableStartCell =
-        DynamicNavSystem.findClosestWalkableCell(startGrid)
+      const closestWalkableStartCell = DynamicNavSystem.findClosestWalkableCell(startGrid)
       if (!closestWalkableStartCell) {
-        console.warn(
-          `No walkable position found near start position (${start.x}, ${start.y})`,
-        )
+        console.warn(`No walkable position found near start position (${start.x}, ${start.y})`)
         return { success: false, waypoints: [], distance: 0 }
       }
 
@@ -457,8 +414,7 @@ export class DynamicNavSystem {
 
     if (!DynamicNavSystem.navigationGrid.isWalkable(endGrid.col, endGrid.row)) {
       // Find the closest walkable cell to the target
-      const closestWalkableCell =
-        DynamicNavSystem.findClosestWalkableCell(endGrid)
+      const closestWalkableCell = DynamicNavSystem.findClosestWalkableCell(endGrid)
       if (!closestWalkableCell) {
         return { success: false, waypoints: [], distance: 0 }
       }
@@ -477,10 +433,7 @@ export class DynamicNavSystem {
 
     // Convert grid path to world waypoints
     const worldPath = gridPath.map((node) => {
-      const worldPos = DynamicNavSystem.navigationGrid!.gridToWorld(
-        node.col,
-        node.row,
-      )
+      const worldPos = DynamicNavSystem.navigationGrid!.gridToWorld(node.col, node.row)
       return { x: worldPos.x, z: worldPos.z }
     })
 
@@ -491,19 +444,10 @@ export class DynamicNavSystem {
     if (simplifiedPath.length > 0 && gridPath.length > 0) {
       const finalPathCell = gridPath[gridPath.length - 1]
       // If pathfinding reached the target cell, use exact target position
-      if (
-        finalPathCell.col === endGrid.col &&
-        finalPathCell.row === endGrid.row
-      ) {
+      if (finalPathCell.col === endGrid.col && finalPathCell.row === endGrid.row) {
         // Check if target was redirected to a different cell
-        const originalTargetGrid = DynamicNavSystem.navigationGrid!.worldToGrid(
-          end.x,
-          end.y,
-        )
-        if (
-          endGrid.col === originalTargetGrid.col &&
-          endGrid.row === originalTargetGrid.row
-        ) {
+        const originalTargetGrid = DynamicNavSystem.navigationGrid!.worldToGrid(end.x, end.y)
+        if (endGrid.col === originalTargetGrid.col && endGrid.row === originalTargetGrid.row) {
           // Target wasn't redirected, use exact position
           simplifiedPath[simplifiedPath.length - 1] = {
             x: end.x,
@@ -513,20 +457,19 @@ export class DynamicNavSystem {
           // Target was redirected, find closest point in the reachable cell to original target
           const cellWorldPos = DynamicNavSystem.navigationGrid!.gridToWorld(
             endGrid.col,
-            endGrid.row,
+            endGrid.row
           )
-          const gridSize =
-            DynamicNavSystem.navigationGrid!.getDimensions().gridSize
+          const gridSize = DynamicNavSystem.navigationGrid!.getDimensions().gridSize
           const halfGrid = gridSize / 2
 
           // Clamp original target to be within the reachable cell bounds
           const clampedX = Math.max(
             cellWorldPos.x - halfGrid,
-            Math.min(cellWorldPos.x + halfGrid, end.x),
+            Math.min(cellWorldPos.x + halfGrid, end.x)
           )
           const clampedZ = Math.max(
             cellWorldPos.z - halfGrid,
-            Math.min(cellWorldPos.z + halfGrid, end.y),
+            Math.min(cellWorldPos.z + halfGrid, end.y)
           )
 
           simplifiedPath[simplifiedPath.length - 1] = {
@@ -594,7 +537,7 @@ export class DynamicNavSystem {
    */
   private static findPathAStar(
     start: { col: number; row: number },
-    end: { col: number; row: number },
+    end: { col: number; row: number }
   ): PathNode[] {
     const openSet: PathNode[] = []
     const closedSet: Set<string> = new Set()
@@ -605,12 +548,7 @@ export class DynamicNavSystem {
       col: start.col,
       row: start.row,
       gCost: 0,
-      hCost: DynamicNavSystem.getDistance(
-        start.col,
-        start.row,
-        end.col,
-        end.row,
-      ),
+      hCost: DynamicNavSystem.getDistance(start.col, start.row, end.col, end.row),
       fCost: 0,
       parent: null,
     }
@@ -626,8 +564,7 @@ export class DynamicNavSystem {
       for (let i = 1; i < openSet.length; i++) {
         if (
           openSet[i].fCost < currentNode.fCost ||
-          (openSet[i].fCost === currentNode.fCost &&
-            openSet[i].hCost < currentNode.hCost)
+          (openSet[i].fCost === currentNode.fCost && openSet[i].hCost < currentNode.hCost)
         ) {
           currentNode = openSet[i]
           currentIndex = i
@@ -673,10 +610,7 @@ export class DynamicNavSystem {
 
         // Skip if not walkable or already in closed set
         if (
-          !DynamicNavSystem.navigationGrid!.isWalkable(
-            neighborCol,
-            neighborRow,
-          ) ||
+          !DynamicNavSystem.navigationGrid!.isWalkable(neighborCol, neighborRow) ||
           closedSet.has(neighborKey)
         ) {
           continue
@@ -689,7 +623,7 @@ export class DynamicNavSystem {
 
         // Check if this neighbor is already in open set
         let neighborNode = openSet.find(
-          (node) => node.col === neighborCol && node.row === neighborRow,
+          (node) => node.col === neighborCol && node.row === neighborRow
         )
 
         if (!neighborNode) {
@@ -698,12 +632,7 @@ export class DynamicNavSystem {
             col: neighborCol,
             row: neighborRow,
             gCost: tentativeGCost,
-            hCost: DynamicNavSystem.getDistance(
-              neighborCol,
-              neighborRow,
-              end.col,
-              end.row,
-            ),
+            hCost: DynamicNavSystem.getDistance(neighborCol, neighborRow, end.col, end.row),
             fCost: 0,
             parent: currentNode,
           }
@@ -739,12 +668,7 @@ export class DynamicNavSystem {
   /**
    * Calculate distance between two grid positions (Manhattan distance with diagonal support)
    */
-  private static getDistance(
-    col1: number,
-    row1: number,
-    col2: number,
-    row2: number,
-  ): number {
+  private static getDistance(col1: number, row1: number, col2: number, row2: number): number {
     const dx = Math.abs(col1 - col2)
     const dy = Math.abs(row1 - row2)
 
@@ -770,17 +694,8 @@ export class DynamicNavSystem {
       let farthestReachable = currentIndex + 1
 
       // Find the farthest point we can reach in a straight line
-      for (
-        let testIndex = currentIndex + 2;
-        testIndex < waypoints.length;
-        testIndex++
-      ) {
-        if (
-          DynamicNavSystem.hasLineOfSight(
-            waypoints[currentIndex],
-            waypoints[testIndex],
-          )
-        ) {
+      for (let testIndex = currentIndex + 2; testIndex < waypoints.length; testIndex++) {
+        if (DynamicNavSystem.hasLineOfSight(waypoints[currentIndex], waypoints[testIndex])) {
           farthestReachable = testIndex
         } else {
           break
@@ -801,10 +716,7 @@ export class DynamicNavSystem {
     if (!DynamicNavSystem.navigationGrid) return false
 
     // Convert to grid coordinates
-    const startGrid = DynamicNavSystem.navigationGrid.worldToGrid(
-      start.x,
-      start.z,
-    )
+    const startGrid = DynamicNavSystem.navigationGrid.worldToGrid(start.x, start.z)
     const endGrid = DynamicNavSystem.navigationGrid.worldToGrid(end.x, end.z)
 
     // Use Bresenham's line algorithm to check each grid cell along the line
@@ -856,40 +768,26 @@ export class DynamicNavSystem {
   /**
    * Check if a path exists between two positions (faster than full pathfinding)
    */
-  public static canReach(
-    startX: number,
-    startZ: number,
-    endX: number,
-    endZ: number,
-  ): boolean {
+  public static canReach(startX: number, startZ: number, endX: number, endZ: number): boolean {
     if (!DynamicNavSystem.isInitialized || !DynamicNavSystem.navigationGrid) {
       return false
     }
 
     // Quick checks first
-    if (
-      !DynamicNavSystem.isWalkable(startX, startZ) ||
-      !DynamicNavSystem.isWalkable(endX, endZ)
-    ) {
+    if (!DynamicNavSystem.isWalkable(startX, startZ) || !DynamicNavSystem.isWalkable(endX, endZ)) {
       return false
     }
 
     // If very close, just check line of sight
     const distance = Math.sqrt((endX - startX) ** 2 + (endZ - startZ) ** 2)
-    if (
-      distance <=
-      DynamicNavSystem.navigationGrid.getDimensions().gridSize * 2
-    ) {
-      return DynamicNavSystem.hasLineOfSight(
-        { x: startX, z: startZ },
-        { x: endX, z: endZ },
-      )
+    if (distance <= DynamicNavSystem.navigationGrid.getDimensions().gridSize * 2) {
+      return DynamicNavSystem.hasLineOfSight({ x: startX, z: startZ }, { x: endX, z: endZ })
     }
 
     // For longer distances, use simplified A* with early exit
     const result = DynamicNavSystem.findPath(
       new THREE.Vector2(startX, startZ),
-      new THREE.Vector2(endX, endZ),
+      new THREE.Vector2(endX, endZ)
     )
     return result.success
   }

@@ -24,9 +24,7 @@ export class VirtualJoystickThree extends Component {
   // Mobile detection
   private static isMobileDevice(): boolean {
     return (
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-        navigator.userAgent,
-      ) ||
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
       "ontouchstart" in window ||
       navigator.maxTouchPoints > 0
     )
@@ -282,9 +280,7 @@ export class VirtualJoystickThree extends Component {
 
     // Show and position the joystick (only if visible is true)
     if (this.joystickContainer) {
-      this.joystickContainer.style.display = this.options.visible
-        ? "block"
-        : "none"
+      this.joystickContainer.style.display = this.options.visible ? "block" : "none"
       this.joystickContainer.style.left = `${x - (this.options.size + this.options.knobSize) / 2}px`
       this.joystickContainer.style.top = `${y - (this.options.size + this.options.knobSize) / 2}px`
     }
@@ -301,11 +297,7 @@ export class VirtualJoystickThree extends Component {
    * Handle pointer move event
    */
   private onPointerMove(event: PointerEvent): void {
-    if (
-      !this.isActive ||
-      !this.isDragging ||
-      event.pointerId !== this.joystickPointerId
-    ) {
+    if (!this.isActive || !this.isDragging || event.pointerId !== this.joystickPointerId) {
       return
     }
 
@@ -448,7 +440,7 @@ export class VirtualJoystickThree extends Component {
     return new THREE.Vector3(
       this.direction.x * this.magnitude,
       0,
-      -this.direction.y * this.magnitude,
+      -this.direction.y * this.magnitude
     )
   }
 

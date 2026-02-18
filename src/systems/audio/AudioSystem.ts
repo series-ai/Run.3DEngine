@@ -2,17 +2,17 @@ import * as THREE from "three"
 
 export const AudioSystem: AudioSystemInstance = {
   mainListener: null,
-  
+
   /**
    * Initialize the audio system with proper browser autoplay handling
    * Call this after setting up mainListener to ensure all audio works correctly
    */
   initialize(): void {
     let audioUnlocked = false
-    
+
     const unlockAudioOnInteraction = async () => {
       if (audioUnlocked) return
-      
+
       try {
         // Resume main AudioSystem context (used by Audio2D components)
         const mainContext = (AudioSystem.mainListener as any)?.context
@@ -27,7 +27,7 @@ export const AudioSystem: AudioSystemInstance = {
         document.removeEventListener("click", unlockAudioOnInteraction)
         document.removeEventListener("keydown", unlockAudioOnInteraction)
         document.removeEventListener("touchstart", unlockAudioOnInteraction)
-        
+
         console.log("🎵 Audio system initialized")
       } catch (error) {
         console.warn("Failed to initialize audio:", error)
@@ -36,11 +36,11 @@ export const AudioSystem: AudioSystemInstance = {
 
     // Add event listeners for user interaction to unlock audio
     document.addEventListener("click", unlockAudioOnInteraction)
-    document.addEventListener("keydown", unlockAudioOnInteraction) 
+    document.addEventListener("keydown", unlockAudioOnInteraction)
     document.addEventListener("touchstart", unlockAudioOnInteraction)
-    
+
     console.log("🎵 Audio system ready - waiting for user interaction")
-  }
+  },
 }
 
 export const Main2DAudioBank: AudioBank2D = {}
@@ -76,7 +76,7 @@ export type AudioClip3DConfig = {
 export async function PopulateAudioBank2D(
   systemInstance: AudioSystemInstance,
   audioBank: AudioBank2D,
-  clips: AudioClip2DConfig[],
+  clips: AudioClip2DConfig[]
 ): Promise<void> {
   const loadPromises = clips.map((cfg) => {
     return new Promise<void>((resolve, reject) => {
@@ -101,7 +101,7 @@ export async function PopulateAudioBank2D(
         function (error) {
           console.error(`Failed to load audio file: ${cfg.path}`, error)
           reject(error)
-        },
+        }
       )
     })
   })
@@ -112,14 +112,12 @@ export async function PopulateAudioBank2D(
 export async function PopulateAudioBank3D(
   systemInstance: AudioSystemInstance,
   audioBank: AudioBank3D,
-  clips: AudioClip3DConfig[],
+  clips: AudioClip3DConfig[]
 ): Promise<void> {
   const loadPromises = clips.map((cfg) => {
     return new Promise<void>((resolve, reject) => {
       if (systemInstance.mainListener) {
-        audioBank[cfg.path] = new THREE.PositionalAudio(
-          systemInstance.mainListener,
-        )
+        audioBank[cfg.path] = new THREE.PositionalAudio(systemInstance.mainListener)
       } else {
         console.error("Main listener is not set in AudioSystemInstance")
         reject(new Error(`Main listener is not set for ${cfg.path}`))
@@ -140,7 +138,7 @@ export async function PopulateAudioBank3D(
         function (error) {
           console.error(`Failed to load audio file: ${cfg.path}`, error)
           reject(error)
-        },
+        }
       )
     })
   })
@@ -165,10 +163,7 @@ export function PlayAudioOneShot2D(audioBank: AudioBank2D, audioClip: string) {
  * Only clips that exist and are loaded in the provided bank will be considered.
  * Returns the clip name that was played.
  */
-export function PlayAudioRandom2D(
-  audioBank: AudioBank2D,
-  clipNames: string[],
-): string {
+export function PlayAudioRandom2D(audioBank: AudioBank2D, clipNames: string[]): string {
   if (!Array.isArray(clipNames) || clipNames.length === 0) {
     throw new Error("No audio clip names provided to PlayAudioRandom2D")
   }
@@ -180,9 +175,7 @@ export function PlayAudioRandom2D(
   })
 
   if (candidates.length === 0) {
-    throw new Error(
-      "None of the provided audio clips are loaded in the audio bank",
-    )
+    throw new Error("None of the provided audio clips are loaded in the audio bank")
   }
 
   const index = Math.floor(Math.random() * candidates.length)
@@ -194,7 +187,7 @@ export function PlayAudioRandom2D(
 export function PlayAudioOneShot3D(
   audioBank: AudioBank3D,
   audioClip: string,
-  parentObject: THREE.Object3D,
+  parentObject: THREE.Object3D
 ) {
   if (!audioBank[audioClip]) {
     throw new Error(`Audio clip not found in bank: ${audioClip}`)
@@ -212,7 +205,7 @@ export function PlayAudioOneShot3D(
 export function SetMasterVolume(volume: number): void {
   const v = Math.max(0, Math.min(1, volume))
   __masterVolume = v
-  
+
   if (AudioSystem.mainListener) {
     AudioSystem.mainListener.setMasterVolume(__masterMuted ? 0 : v)
   }
@@ -226,7 +219,7 @@ export function GetMasterVolume(): number {
 /** Toggle global mute using Three.js AudioListener */
 export function SetAudioMuted(muted: boolean): void {
   __masterMuted = !!muted
-  
+
   if (AudioSystem.mainListener) {
     AudioSystem.mainListener.setMasterVolume(__masterMuted ? 0 : __masterVolume)
   }

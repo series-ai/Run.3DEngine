@@ -7,7 +7,7 @@ import Animatrix, { ParameterType } from "./animatrix"
 import AnimatrixVisualizer from "./visualizer"
 
 export interface ParameterConfig {
-  type: "bool" | "float" | "int" 
+  type: "bool" | "float" | "int"
   default: any
 }
 
@@ -51,7 +51,7 @@ export interface StoredTreeConfig {
 
 export class AnimationGraphComponent extends Component {
   private static instances: Set<AnimationGraphComponent> = new Set()
-  private static instancesByName: Map<string, AnimationGraphComponent> = new Map()  // O(1) lookup
+  private static instancesByName: Map<string, AnimationGraphComponent> = new Map() // O(1) lookup
   private static sharedVisualizer: AnimatrixVisualizer | null = null
   private static debugViewEnabled: boolean = false
   private static treeConfigs: Map<string, Map<string, StoredTreeConfig>> = new Map()
@@ -62,30 +62,30 @@ export class AnimationGraphComponent extends Component {
   private sharedManager: SharedAnimationManager
   private animator: Animatrix | null = null
   private animatorName: string | null = null
-  
+
   private parameters: Map<string, any> = new Map()
   private currentState: string | null = null
   private currentAnimation: string | null = null
   private stateElapsedTime: number = 0
   private currentStateDuration: number = 1
-  
+
   // Pre-indexed transitions by source state for O(1) lookup
   private transitionsByState: Map<string, TransitionConfig[]> = new Map()
   // Cached state durations to avoid repeated clip lookups
   private stateDurations: Map<string, number> = new Map()
-  
+
   // Frustum culling settings
   private useFrustumCulling: boolean = true
-  private boundingRadius: number = 4  // Character bounding sphere radius in world units
+  private boundingRadius: number = 4 // Character bounding sphere radius in world units
   private cullingManager: AnimationCullingManager
-  
+
   constructor(model: THREE.Object3D, config: AnimationGraphConfig) {
     super()
     this.model = model
     this.config = config
     this.sharedManager = SharedAnimationManager.getInstance()
     this.cullingManager = AnimationCullingManager.getInstance()
-    
+
     if (config.parameters) {
       for (const [name, paramConfig] of Object.entries(config.parameters)) {
         this.parameters.set(name, paramConfig.default)
@@ -104,7 +104,10 @@ export class AnimationGraphComponent extends Component {
 
       for (const instance of AnimationGraphComponent.instances) {
         if (instance.animator && instance.animatorName) {
-          AnimationGraphComponent.sharedVisualizer.add_animator(instance.animatorName, instance.animator)
+          AnimationGraphComponent.sharedVisualizer.add_animator(
+            instance.animatorName,
+            instance.animator
+          )
         }
       }
 
@@ -153,20 +156,20 @@ export class AnimationGraphComponent extends Component {
     this.controller = new CharacterAnimationController(this.model, this.sharedManager)
     this.animator = new Animatrix()
     this.animatorName = this.gameObject?.name || `graph_${AnimationGraphComponent.instances.size}`
-    
+
     // Register in name lookup map
     AnimationGraphComponent.instancesByName.set(this.animatorName, this)
-    
+
     this.registerAnimationClips()
     this.setupAnimatrix()
     this.storeTreeConfigs()
     this.preIndexTransitions()
     this.cacheStateDurations()
-    
+
     if (AnimationGraphComponent.debugViewEnabled && AnimationGraphComponent.sharedVisualizer) {
       AnimationGraphComponent.sharedVisualizer.add_animator(this.animatorName, this.animator)
     }
-    
+
     this.setState(this.config.initialState)
   }
 
@@ -176,7 +179,7 @@ export class AnimationGraphComponent extends Component {
   private preIndexTransitions(): void {
     this.transitionsByState.clear()
     if (!this.config.transitions) return
-    
+
     for (const transition of this.config.transitions) {
       let stateTransitions = this.transitionsByState.get(transition.from)
       if (!stateTransitions) {
@@ -209,21 +212,21 @@ export class AnimationGraphComponent extends Component {
     if (!this.animatorName) return
 
     const stateConfigs = new Map<string, StoredTreeConfig>()
-    
+
     for (const [stateName, stateConfig] of Object.entries(this.config.states)) {
       stateConfigs.set(stateName, {
         stateName,
         tree: stateConfig.tree || null,
-        simpleAnimation: stateConfig.animation || null
+        simpleAnimation: stateConfig.animation || null,
       })
     }
-    
+
     AnimationGraphComponent.treeConfigs.set(this.animatorName, stateConfigs)
   }
-  
+
   private registerAnimationClips(): void {
     const clipIds = new Set<string>()
-    
+
     for (const stateConfig of Object.values(this.config.states)) {
       if (stateConfig.animation) {
         clipIds.add(stateConfig.animation)
@@ -233,7 +236,7 @@ export class AnimationGraphComponent extends Component {
         }
       }
     }
-    
+
     for (const clipId of clipIds) {
       const clip = AnimationLibrary.getClip(clipId)
       if (clip) {
@@ -249,10 +252,17 @@ export class AnimationGraphComponent extends Component {
       for (const [name, paramConfig] of Object.entries(this.config.parameters)) {
         let paramType: ParameterType
         switch (paramConfig.type) {
-          case "bool": paramType = ParameterType.BOOL; break
-          case "float": paramType = ParameterType.FLOAT; break
-          case "int": paramType = ParameterType.INT; break
-          default: paramType = ParameterType.BOOL
+          case "bool":
+            paramType = ParameterType.BOOL
+            break
+          case "float":
+            paramType = ParameterType.FLOAT
+            break
+          case "int":
+            paramType = ParameterType.INT
+            break
+          default:
+            paramType = ParameterType.BOOL
         }
         this.animator.add_parameter(name, paramType, paramConfig.default)
       }
@@ -275,21 +285,21 @@ export class AnimationGraphComponent extends Component {
         this.animator.add_transition({
           from: transition.from,
           to: transition.to,
-          conditions: transition.when 
+          conditions: transition.when
             ? Object.entries(transition.when).map(([param, value]) => ({
                 parameter: param,
                 operator: "==" as any,
-                value: value
+                value: value,
               }))
-            : []
+            : [],
         })
       }
     }
   }
-  
+
   public update(deltaTime: number): void {
     if (!this.controller || !this.gameObject.isEnabled()) return
-    
+
     // Check frustum culling if enabled
     if (this.useFrustumCulling) {
       const cullResult = this.cullingManager.shouldUpdateAnimation(this.model, this.boundingRadius)
@@ -300,11 +310,11 @@ export class AnimationGraphComponent extends Component {
       }
       // LOD mode could reduce animation quality here if needed
     }
-    
+
     this.animator?.update(deltaTime)
     this.controller.update(deltaTime)
     this.stateElapsedTime += deltaTime
-    
+
     // Use pre-indexed transitions for O(1) lookup by current state
     if (this.currentState) {
       const stateTransitions = this.transitionsByState.get(this.currentState)
@@ -312,11 +322,12 @@ export class AnimationGraphComponent extends Component {
         for (const transition of stateTransitions) {
           // Check exit time condition if specified
           if (transition.exitTime !== undefined) {
-            const exitThreshold = typeof transition.exitTime === 'boolean' ? 1.0 : transition.exitTime
+            const exitThreshold =
+              typeof transition.exitTime === "boolean" ? 1.0 : transition.exitTime
             const normalizedTime = this.stateElapsedTime / this.currentStateDuration
             if (normalizedTime < exitThreshold) continue
           }
-          
+
           // Check parameter conditions if specified
           let allConditionsMet = true
           if (transition.when) {
@@ -328,7 +339,7 @@ export class AnimationGraphComponent extends Component {
               }
             }
           }
-          
+
           if (allConditionsMet) {
             this.setState(transition.to)
             break
@@ -336,23 +347,23 @@ export class AnimationGraphComponent extends Component {
         }
       }
     }
-    
+
     this.updateAnimation()
   }
-  
+
   private updateAnimation(): void {
     if (!this.currentState || !this.controller) return
-    
+
     const stateConfig = this.config.states[this.currentState]
     if (!stateConfig) return
-    
+
     let targetAnimation: string | null = null
-    
+
     if (stateConfig.animation) {
       targetAnimation = stateConfig.animation
     } else if (stateConfig.tree) {
       const paramValue = this.parameters.get(stateConfig.tree.parameter) || 0
-      
+
       for (let i = stateConfig.tree.children.length - 1; i >= 0; i--) {
         const child = stateConfig.tree.children[i]
         if (paramValue >= child.threshold) {
@@ -360,25 +371,29 @@ export class AnimationGraphComponent extends Component {
           break
         }
       }
-      
+
       if (!targetAnimation && stateConfig.tree.children.length > 0) {
         targetAnimation = stateConfig.tree.children[0].animation
       }
     }
-    
+
     if (targetAnimation && targetAnimation !== this.currentAnimation) {
       if (this.config.debug) {
-        console.log(`[AnimGraph] ${this.animatorName}: ${this.currentAnimation} -> ${targetAnimation} (model: ${this.model?.name || 'unnamed'})`)
+        console.log(
+          `[AnimGraph] ${this.animatorName}: ${this.currentAnimation} -> ${targetAnimation} (model: ${this.model?.name || "unnamed"})`
+        )
       }
-      const startTime = this.getStateRandomizeTime(this.currentState) ? Math.random() * this.currentStateDuration : 0
+      const startTime = this.getStateRandomizeTime(this.currentState)
+        ? Math.random() * this.currentStateDuration
+        : 0
       this.controller.playAnimation(targetAnimation, startTime)
       this.currentAnimation = targetAnimation
     }
   }
-  
+
   public setParameter(name: string, value: any): void {
     this.parameters.set(name, value)
-    
+
     if (this.animator) {
       if (typeof value === "boolean") {
         this.animator.set_bool(name, value)
@@ -391,18 +406,18 @@ export class AnimationGraphComponent extends Component {
       }
     }
   }
-  
+
   public getParameter(name: string): any {
     return this.parameters.get(name)
   }
-  
+
   public setState(stateName: string): void {
     if (this.currentState === stateName) return
-    
+
     if (this.config.debug) {
       console.log(`[AnimGraph] ${this.animatorName} setState: ${this.currentState} -> ${stateName}`)
     }
-    
+
     this.currentState = stateName
     this.currentAnimation = null
     this.currentStateDuration = this.getStateDuration(stateName)
@@ -416,11 +431,11 @@ export class AnimationGraphComponent extends Component {
     this.animator?.set_state(stateName)
     this.updateAnimation()
   }
-  
+
   public getCurrentState(): string | null {
     return this.currentState
   }
-  
+
   /**
    * Pause/unpause animation updates.
    * Use for off-screen or distant characters to save CPU.
@@ -429,14 +444,14 @@ export class AnimationGraphComponent extends Component {
   public setPaused(paused: boolean): void {
     this.controller?.setPaused(paused)
   }
-  
+
   /**
    * Check if animation is paused
    */
   public isPaused(): boolean {
     return this.controller?.getIsPaused() ?? false
   }
-  
+
   /**
    * Enable/disable frustum culling for this animator.
    * When enabled, animation updates are skipped if the model is outside the camera frustum.
@@ -445,7 +460,7 @@ export class AnimationGraphComponent extends Component {
   public setFrustumCulling(enabled: boolean): void {
     this.useFrustumCulling = enabled
   }
-  
+
   /**
    * Set the bounding radius used for frustum culling.
    * @param radius The sphere radius around the character (default: 2)
@@ -453,7 +468,7 @@ export class AnimationGraphComponent extends Component {
   public setBoundingRadius(radius: number): void {
     this.boundingRadius = radius
   }
-  
+
   /**
    * Get the AnimationCullingManager instance for global culling settings.
    * Use this to add cameras, configure distance culling, etc.
@@ -461,7 +476,7 @@ export class AnimationGraphComponent extends Component {
   public static getCullingManager(): AnimationCullingManager {
     return AnimationCullingManager.getInstance()
   }
-  
+
   private getStateDuration(stateName: string): number {
     // Use cached duration for O(1) lookup
     return this.stateDurations.get(stateName) ?? 1
@@ -472,27 +487,27 @@ export class AnimationGraphComponent extends Component {
     if (!stateConfig) return false
     return stateConfig.randomizeStartTime || false
   }
-  
+
   public addEventListener(_event: string, _callback: (data?: any) => void): void {
     // Not implemented
   }
-  
+
   protected onCleanup(): void {
     AnimationGraphComponent.instances.delete(this)
-    
+
     if (this.animatorName) {
       AnimationGraphComponent.instancesByName.delete(this.animatorName)
       AnimationGraphComponent.treeConfigs.delete(this.animatorName)
     }
-    
+
     if (AnimationGraphComponent.sharedVisualizer && this.animator && this.animatorName) {
       AnimationGraphComponent.sharedVisualizer.remove_animator(this.animatorName)
     }
-    
+
     if (this.animator) {
       this.animator.stop_all()
     }
-    
+
     if (this.controller) {
       this.controller.dispose()
     }

@@ -6,7 +6,4 @@ export {
   type SplinePointThree,
   type SplineSegmentThree,
 } from "./SplineThree"
-export {
-  SplineDebugRendererThree,
-  type SplineDebugOptionsThree,
-} from "./SplineDebugRendererThree"
+export { SplineDebugRendererThree, type SplineDebugOptionsThree } from "./SplineDebugRendererThree"

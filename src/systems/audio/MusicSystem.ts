@@ -38,7 +38,7 @@ export const MusicSystem: MusicSystemState = {
 export async function PopulateMusicBank(
   systemInstance: AudioSystemInstance,
   musicBank: MusicBankType,
-  musicList: string[],
+  musicList: string[]
 ): Promise<void> {
   const loadPromises = musicList.map((musicFile) => {
     return new Promise<void>((resolve, reject) => {
@@ -64,7 +64,7 @@ export async function PopulateMusicBank(
         function (error) {
           console.error(`Failed to load music file: ${musicFile}`, error)
           reject(error)
-        },
+        }
       )
     })
   })
@@ -78,11 +78,7 @@ export async function PopulateMusicBank(
  * @param trackName - Name/path of the music track
  * @param loop - Whether to loop the track (default: true)
  */
-export function PlayMusic(
-  musicBank: MusicBankType,
-  trackName: string,
-  loop: boolean = true,
-): void {
+export function PlayMusic(musicBank: MusicBankType, trackName: string, loop: boolean = true): void {
   if (!musicBank[trackName]) {
     throw new Error(`Music track not found in bank: ${trackName}`)
   }
@@ -118,11 +114,7 @@ export function PlayMusic(
  * @param musicBank - The music bank
  */
 export function PauseMusic(musicBank: MusicBankType): void {
-  if (
-    MusicSystem.currentTrack &&
-    MusicSystem.isPlaying &&
-    !MusicSystem.isPaused
-  ) {
+  if (MusicSystem.currentTrack && MusicSystem.isPlaying && !MusicSystem.isPaused) {
     const track = musicBank[MusicSystem.currentTrack]
     if (track) {
       track.pause()
@@ -137,11 +129,7 @@ export function PauseMusic(musicBank: MusicBankType): void {
  * @param musicBank - The music bank
  */
 export function ResumeMusic(musicBank: MusicBankType): void {
-  if (
-    MusicSystem.currentTrack &&
-    MusicSystem.isPlaying &&
-    MusicSystem.isPaused
-  ) {
+  if (MusicSystem.currentTrack && MusicSystem.isPlaying && MusicSystem.isPaused) {
     const track = musicBank[MusicSystem.currentTrack]
     if (track) {
       track.play()
@@ -208,10 +196,7 @@ export function ToggleMusic(musicBank: MusicBankType): void {
  * @param musicBank - The music bank
  * @param trackName - Name/path of the music track
  */
-export function IsMusicReady(
-  musicBank: MusicBankType,
-  trackName: string,
-): boolean {
+export function IsMusicReady(musicBank: MusicBankType, trackName: string): boolean {
   const track = musicBank[trackName]
   return track && !!track.buffer
 }
@@ -234,7 +219,7 @@ export function CrossfadeToMusic(
   musicBank: MusicBankType,
   newTrackName: string,
   fadeDuration: number = 2000,
-  loop: boolean = true,
+  loop: boolean = true
 ): void {
   if (!musicBank[newTrackName]) {
     throw new Error(`Music track not found in bank: ${newTrackName}`)
@@ -244,9 +229,7 @@ export function CrossfadeToMusic(
     throw new Error(`Music track not loaded yet: ${newTrackName}`)
   }
 
-  const oldTrack = MusicSystem.currentTrack
-    ? musicBank[MusicSystem.currentTrack]
-    : null
+  const oldTrack = MusicSystem.currentTrack ? musicBank[MusicSystem.currentTrack] : null
   const newTrack = musicBank[newTrackName]
 
   // Set up new track
@@ -305,7 +288,7 @@ export function CrossfadeToMusic(
 export function StartMusicWithAutoplayHandling(
   musicBank: MusicBankType,
   trackName: string,
-  loop: boolean = true,
+  loop: boolean = true
 ): void {
   // Try to start playing background music immediately
   try {
@@ -313,9 +296,7 @@ export function StartMusicWithAutoplayHandling(
     console.log("🎵 Background music started immediately")
     return
   } catch (error) {
-    console.log(
-      "🎵 Music blocked by autoplay policy, will start on user interaction",
-    )
+    console.log("🎵 Music blocked by autoplay policy, will start on user interaction")
   }
 
   // Handle browser autoplay policy - start music on first user interaction
@@ -347,9 +328,7 @@ export function StartMusicWithAutoplayHandling(
   document.addEventListener("keydown", startMusicOnInteraction)
   document.addEventListener("touchstart", startMusicOnInteraction) // For mobile devices
 
-  console.log(
-    "🎵 Music queued to start on user interaction (click, keypress, or touch)",
-  )
+  console.log("🎵 Music queued to start on user interaction (click, keypress, or touch)")
 }
 
 /**
@@ -365,7 +344,9 @@ function playNextInPlaylist(musicBank: MusicBankType): void {
   MusicSystem.playlistIndex = (MusicSystem.playlistIndex + 1) % MusicSystem.playlist.length
   const nextTrack = MusicSystem.playlist[MusicSystem.playlistIndex]
 
-  console.log(`🎵 Playlist: playing next track (${MusicSystem.playlistIndex + 1}/${MusicSystem.playlist.length}): ${nextTrack}`)
+  console.log(
+    `🎵 Playlist: playing next track (${MusicSystem.playlistIndex + 1}/${MusicSystem.playlist.length}): ${nextTrack}`
+  )
 
   // Play the next track without looping, set up ended handler
   playPlaylistTrack(musicBank, nextTrack)
@@ -433,7 +414,7 @@ function playPlaylistTrack(musicBank: MusicBankType, trackName: string): void {
 export function StartPlaylist(
   musicBank: MusicBankType,
   trackNames: string[],
-  startIndex: number = 0,
+  startIndex: number = 0
 ): void {
   if (trackNames.length === 0) {
     console.warn("StartPlaylist called with empty track list")
@@ -478,7 +459,7 @@ export function StopPlaylist(musicBank: MusicBankType): void {
  */
 export function StartPlaylistWithAutoplayHandling(
   musicBank: MusicBankType,
-  trackNames: string[],
+  trackNames: string[]
 ): void {
   // Try to start playing playlist immediately
   try {
@@ -486,9 +467,7 @@ export function StartPlaylistWithAutoplayHandling(
     console.log("🎵 Playlist started immediately")
     return
   } catch (error) {
-    console.log(
-      "🎵 Playlist blocked by autoplay policy, will start on user interaction",
-    )
+    console.log("🎵 Playlist blocked by autoplay policy, will start on user interaction")
   }
 
   // Handle browser autoplay policy - start playlist on first user interaction
@@ -520,7 +499,5 @@ export function StartPlaylistWithAutoplayHandling(
   document.addEventListener("keydown", startPlaylistOnInteraction)
   document.addEventListener("touchstart", startPlaylistOnInteraction)
 
-  console.log(
-    "🎵 Playlist queued to start on user interaction (click, keypress, or touch)",
-  )
+  console.log("🎵 Playlist queued to start on user interaction (click, keypress, or touch)")
 }

@@ -10,7 +10,7 @@ export class SecondOrderDynamics {
   private k2: number
   private k3: number
   private xp: THREE.Vector3 // Previous input
-  private y: THREE.Vector3  // Current output position
+  private y: THREE.Vector3 // Current output position
   private yd: THREE.Vector3 // Current output velocity
 
   /**
@@ -25,11 +25,11 @@ export class SecondOrderDynamics {
     const pi = Math.PI
     const w = 2 * pi * f // Angular frequency
     const d = w * Math.sqrt(Math.abs(z * z - 1)) // Damped frequency
-    
+
     this.k1 = z / (pi * f)
     this.k2 = 1 / (w * w)
-    this.k3 = r * z / w
-    
+    this.k3 = (r * z) / w
+
     // Initialize state
     this.xp = initialValue.clone()
     this.y = initialValue.clone()
@@ -48,10 +48,8 @@ export class SecondOrderDynamics {
     }
 
     // Estimate velocity from position change
-    const xd = new THREE.Vector3()
-      .subVectors(x, this.xp)
-      .divideScalar(deltaTime)
-    
+    const xd = new THREE.Vector3().subVectors(x, this.xp).divideScalar(deltaTime)
+
     this.xp.copy(x)
 
     // Clamp deltaTime to prevent instability
@@ -67,7 +65,7 @@ export class SecondOrderDynamics {
       .addScaledVector(this.y, -1)
       .addScaledVector(this.yd, -this.k1)
       .divideScalar(this.k2)
-    
+
     this.yd.addScaledVector(acceleration, T)
 
     return this.y.clone()
@@ -105,17 +103,17 @@ export class SecondOrderDynamics1D {
   private k2: number
   private k3: number
   private xp: number // Previous input
-  private y: number  // Current output position
+  private y: number // Current output position
   private yd: number // Current output velocity
 
   constructor(f: number, z: number, r: number, initialValue: number = 0) {
     const pi = Math.PI
     const w = 2 * pi * f
-    
+
     this.k1 = z / (pi * f)
     this.k2 = 1 / (w * w)
-    this.k3 = r * z / w
-    
+    this.k3 = (r * z) / w
+
     this.xp = initialValue
     this.y = initialValue
     this.yd = 0
@@ -128,9 +126,9 @@ export class SecondOrderDynamics1D {
     this.xp = x
 
     const T = Math.min(deltaTime, 0.05)
-    
+
     this.y += this.yd * T
-    
+
     const acceleration = (x + this.k3 * xd - this.y - this.k1 * this.yd) / this.k2
     this.yd += acceleration * T
 

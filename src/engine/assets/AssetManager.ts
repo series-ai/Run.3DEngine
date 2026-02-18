@@ -160,11 +160,7 @@ export class AssetManager {
    */
   public static async preloadAssets(
     assetPaths: string[],
-    progressCallback?: (
-      progress: number,
-      loadedCount: number,
-      totalCount: number,
-    ) => void,
+    progressCallback?: (progress: number, loadedCount: number, totalCount: number) => void
   ): Promise<{ loaded: string[]; failed: string[] }> {
     // Starting asset preload
     AssetManager._isPreloadingComplete = false
@@ -183,9 +179,7 @@ export class AssetManager {
         // Asset loaded
       } else {
         results.failed.push(assetPath)
-        console.error(
-          `❌ Failed: ${assetPath} (${completedCount}/${assetPaths.length})`,
-        )
+        console.error(`❌ Failed: ${assetPath} (${completedCount}/${assetPaths.length})`)
       }
 
       // Update overall progress
@@ -203,7 +197,7 @@ export class AssetManager {
 
     if (results.failed.length > 0) {
       console.warn(
-        `⚠️ ${results.failed.length} assets failed to load. ObjRendererThree will throw errors for these.`,
+        `⚠️ ${results.failed.length} assets failed to load. ObjRendererThree will throw errors for these.`
       )
     }
 
@@ -225,28 +219,20 @@ export class AssetManager {
    */
   public static async loadAsset(
     path: string,
-    progressCallback?: (progress: number) => void,
+    progressCallback?: (progress: number) => void
   ): Promise<boolean> {
     if (!AssetManager._scene) {
-      throw new Error(
-        "AssetManager is not initialized. Call AssetManager.init(scene) first.",
-      )
+      throw new Error("AssetManager is not initialized. Call AssetManager.init(scene) first.")
     }
 
     // Skip if already loaded
-    if (
-      AssetManager._assets.has(path) &&
-      AssetManager._assets.get(path)!.isLoaded
-    ) {
+    if (AssetManager._assets.has(path) && AssetManager._assets.get(path)!.isLoaded) {
       if (progressCallback) progressCallback(1)
       return true
     }
 
     // Skip if currently loading
-    if (
-      AssetManager._assets.has(path) &&
-      AssetManager._assets.get(path)!.isLoading
-    ) {
+    if (AssetManager._assets.has(path) && AssetManager._assets.get(path)!.isLoading) {
       return false
     }
 
@@ -274,29 +260,19 @@ export class AssetManager {
       switch (fileExtension) {
         case "glb":
         case "gltf":
-          success = await AssetManager.loadGLTFAsset(
-            asset,
-            fullPath,
-            progressCallback,
-          )
+          success = await AssetManager.loadGLTFAsset(asset, fullPath, progressCallback)
           break
         case "obj":
-          success = await AssetManager.loadOBJAsset(
-            asset,
-            fullPath,
-            progressCallback,
-          )
+          success = await AssetManager.loadOBJAsset(asset, fullPath, progressCallback)
           break
         case "fbx":
-          success = await AssetManager.loadFBXAsset(
-            asset,
-            fullPath,
-            progressCallback,
-          )
+          success = await AssetManager.loadFBXAsset(asset, fullPath, progressCallback)
           break
         case "stow":
           // .stow files are now loaded directly using StowKitLoader in game code
-          console.error('.stow files should be loaded using StowKitLoader.load() directly, not via AssetManager')
+          console.error(
+            ".stow files should be loaded using StowKitLoader.load() directly, not via AssetManager"
+          )
           success = false
           break
         default:
@@ -326,7 +302,7 @@ export class AssetManager {
     if (!asset || !asset.isLoaded) {
       throw new Error(
         `Asset '${path}' is not preloaded. ` +
-          `Make sure to call AssetManager.preloadAssets([...]) with this path before creating renderers.`,
+          `Make sure to call AssetManager.preloadAssets([...]) with this path before creating renderers.`
       )
     }
     return asset
@@ -337,7 +313,7 @@ export class AssetManager {
    */
   public static getPreloadedAssets(): string[] {
     return Array.from(AssetManager._assets.keys()).filter(
-      (path) => AssetManager._assets.get(path)?.isLoaded,
+      (path) => AssetManager._assets.get(path)?.isLoaded
     )
   }
 
@@ -376,8 +352,7 @@ export class AssetManager {
       }
     }
 
-    const completionPercentage =
-      total > 0 ? Math.round((loaded / total) * 100) : 100
+    const completionPercentage = total > 0 ? Math.round((loaded / total) * 100) : 100
 
     return { total, loaded, failed, loading, completionPercentage }
   }
@@ -391,9 +366,7 @@ export class AssetManager {
     const asset = AssetManager._assets.get(path)
 
     if (!asset || !asset.isLoaded) {
-      console.error(
-        `Asset '${path}' not loaded. Use AssetManager.preloadAssets() first.`,
-      )
+      console.error(`Asset '${path}' not loaded. Use AssetManager.preloadAssets() first.`)
       return null
     }
 
@@ -407,7 +380,7 @@ export class AssetManager {
   private static loadGLTFAsset(
     asset: AssetInfo,
     fullPath: string,
-    progressCallback?: (progress: number) => void,
+    progressCallback?: (progress: number) => void
   ): Promise<boolean> {
     return new Promise((resolve) => {
       AssetManager._gltfLoader.load(
@@ -469,7 +442,7 @@ export class AssetManager {
 
           if (progressCallback) progressCallback(0)
           resolve(false)
-        },
+        }
       )
     })
   }
@@ -481,7 +454,7 @@ export class AssetManager {
   private static loadOBJAsset(
     asset: AssetInfo,
     fullPath: string,
-    progressCallback?: (progress: number) => void,
+    progressCallback?: (progress: number) => void
   ): Promise<boolean> {
     return new Promise((resolve) => {
       // First, try to load MTL file if it exists
@@ -494,23 +467,13 @@ export class AssetManager {
           // MTL file exists, apply materials
           materials.preload()
           AssetManager._objLoader.setMaterials(materials)
-          AssetManager.loadOBJWithMaterials(
-            asset,
-            fullPath,
-            resolve,
-            progressCallback,
-          )
+          AssetManager.loadOBJWithMaterials(asset, fullPath, resolve, progressCallback)
         },
         undefined,
         () => {
           // MTL file doesn't exist, load OBJ without materials
-          AssetManager.loadOBJWithMaterials(
-            asset,
-            fullPath,
-            resolve,
-            progressCallback,
-          )
-        },
+          AssetManager.loadOBJWithMaterials(asset, fullPath, resolve, progressCallback)
+        }
       )
     })
   }
@@ -523,7 +486,7 @@ export class AssetManager {
     asset: AssetInfo,
     fullPath: string,
     resolve: (value: boolean) => void,
-    progressCallback?: (progress: number) => void,
+    progressCallback?: (progress: number) => void
   ): void {
     AssetManager._objLoader.load(
       fullPath,
@@ -598,7 +561,7 @@ export class AssetManager {
 
         if (progressCallback) progressCallback(0)
         resolve(false)
-      },
+      }
     )
   }
 
@@ -609,7 +572,7 @@ export class AssetManager {
   private static loadFBXAsset(
     asset: AssetInfo,
     fullPath: string,
-    progressCallback?: (progress: number) => void,
+    progressCallback?: (progress: number) => void
   ): Promise<boolean> {
     return new Promise((resolve) => {
       AssetManager._fbxLoader.load(
@@ -661,7 +624,7 @@ export class AssetManager {
 
           if (progressCallback) progressCallback(0)
           resolve(false)
-        },
+        }
       )
     })
   }
@@ -673,24 +636,18 @@ export class AssetManager {
    */
   public static getAssetGroup(path: string): THREE.Group | null {
     if (!AssetManager._scene) {
-      throw new Error(
-        "AssetManager is not initialized. Call AssetManager.init(scene) first.",
-      )
+      throw new Error("AssetManager is not initialized. Call AssetManager.init(scene) first.")
     }
 
     const asset = AssetManager._assets.get(path)
 
     if (!asset) {
-      console.error(
-        `Asset '${path}' not found. Use AssetManager.preloadAssets() first.`,
-      )
+      console.error(`Asset '${path}' not found. Use AssetManager.preloadAssets() first.`)
       return null
     }
 
     if (!asset.isLoaded || !asset.group) {
-      console.error(
-        `Asset '${path}' not loaded. Use AssetManager.preloadAssets() first.`,
-      )
+      console.error(`Asset '${path}' not loaded. Use AssetManager.preloadAssets() first.`)
       return null
     }
 
@@ -706,9 +663,7 @@ export class AssetManager {
     const asset = AssetManager._assets.get(path)
 
     if (!asset || !asset.isLoaded) {
-      console.error(
-        `Asset '${path}' not loaded. Use AssetManager.preloadAssets() first.`,
-      )
+      console.error(`Asset '${path}' not loaded. Use AssetManager.preloadAssets() first.`)
       return null
     }
 
@@ -729,9 +684,7 @@ export class AssetManager {
     const asset = AssetManager._assets.get(path)
 
     if (!asset || !asset.isLoaded) {
-      console.error(
-        `Asset '${path}' not loaded. Use AssetManager.preloadAssets() first.`,
-      )
+      console.error(`Asset '${path}' not loaded. Use AssetManager.preloadAssets() first.`)
       return []
     }
 
@@ -747,9 +700,7 @@ export class AssetManager {
     const asset = AssetManager._assets.get(path)
 
     if (!asset || !asset.isLoaded) {
-      console.error(
-        `Asset '${path}' not loaded. Use AssetManager.preloadAssets() first.`,
-      )
+      console.error(`Asset '${path}' not loaded. Use AssetManager.preloadAssets() first.`)
       return []
     }
 
@@ -765,9 +716,7 @@ export class AssetManager {
     const asset = AssetManager._assets.get(path)
 
     if (!asset || !asset.isLoaded) {
-      console.error(
-        `Asset '${path}' not loaded. Use AssetManager.preloadAssets() first.`,
-      )
+      console.error(`Asset '${path}' not loaded. Use AssetManager.preloadAssets() first.`)
       return []
     }
 
@@ -946,7 +895,7 @@ export class AssetManager {
   public static getGlobalInstanceStats(): GlobalInstanceStats {
     const totalAssets = AssetManager._assets.size
     const loadedAssets = Array.from(AssetManager._assets.values()).filter(
-      (asset) => asset.isLoaded,
+      (asset) => asset.isLoaded
     ).length
 
     let totalInstances = 0
@@ -984,13 +933,9 @@ export class AssetManager {
     }
 
     const geometryReuse =
-      totalGeometries > 0
-        ? Math.round((geometryInstances / totalGeometries) * 100) / 100
-        : 0
+      totalGeometries > 0 ? Math.round((geometryInstances / totalGeometries) * 100) / 100 : 0
     const materialReuse =
-      totalMaterials > 0
-        ? Math.round((materialInstances / totalMaterials) * 100) / 100
-        : 0
+      totalMaterials > 0 ? Math.round((materialInstances / totalMaterials) * 100) / 100 : 0
 
     return {
       totalAssets,
@@ -1027,7 +972,7 @@ export class AssetManager {
     for (const [assetPath, stats] of AssetManager._instanceStats.entries()) {
       if (stats.totalInstances > 0) {
         lines.push(
-          `${assetPath}: ${stats.totalInstances} total (${stats.gpuInstances} GPU in ${stats.gpuBatches} batches, ${stats.sharedInstances} shared, ${stats.clonedInstances} cloned, ${stats.brokenInstances} broken)`,
+          `${assetPath}: ${stats.totalInstances} total (${stats.gpuInstances} GPU in ${stats.gpuBatches} batches, ${stats.sharedInstances} shared, ${stats.clonedInstances} cloned, ${stats.brokenInstances} broken)`
         )
       }
     }
@@ -1046,7 +991,7 @@ export class AssetManager {
   public static getOrCreateGPUBatch(
     assetPath: string,
     material: THREE.Material,
-    maxInstances: number = 1000,
+    maxInstances: number = 1000
   ): GPUInstanceBatch | null {
     const asset = AssetManager.requireAsset(assetPath)
     const primaryMesh = AssetManager.getMesh(assetPath)
@@ -1065,20 +1010,13 @@ export class AssetManager {
 
     // Find an existing batch with space and matching material
     for (const batch of batches) {
-      if (
-        batch.material === material &&
-        batch.instances.length < batch.maxInstances
-      ) {
+      if (batch.material === material && batch.instances.length < batch.maxInstances) {
         return batch
       }
     }
 
     // Create new batch if none found with space
-    const instancedMesh = new THREE.InstancedMesh(
-      primaryMesh.geometry,
-      material,
-      maxInstances,
-    )
+    const instancedMesh = new THREE.InstancedMesh(primaryMesh.geometry, material, maxInstances)
     instancedMesh.name = `${assetPath}_gpu_batch_${batches.length}`
     instancedMesh.castShadow = true
     instancedMesh.receiveShadow = true
@@ -1141,7 +1079,7 @@ export class AssetManager {
     assetPath: string,
     gameObject: GameObject,
     material: THREE.Material,
-    isStatic: boolean = false,
+    isStatic: boolean = false
   ): string | null {
     const batch = AssetManager.getOrCreateGPUBatch(assetPath, material)
     if (!batch) {
@@ -1149,9 +1087,7 @@ export class AssetManager {
     }
 
     if (batch.instances.length >= batch.maxInstances) {
-      console.warn(
-        `GPU batch full for '${assetPath}', consider increasing maxInstances`,
-      )
+      console.warn(`GPU batch full for '${assetPath}', consider increasing maxInstances`)
       return null
     }
 
@@ -1206,9 +1142,7 @@ export class AssetManager {
     if (!batches) return
 
     for (const batch of batches) {
-      const instanceIndex = batch.instances.findIndex(
-        (inst) => inst.id === instanceId,
-      )
+      const instanceIndex = batch.instances.findIndex((inst) => inst.id === instanceId)
       if (instanceIndex !== -1) {
         batch.instances.splice(instanceIndex, 1)
         batch.needsUpdate = true
@@ -1230,7 +1164,7 @@ export class AssetManager {
   public static setGPUInstanceVisible(
     assetPath: string,
     instanceId: string,
-    visible: boolean,
+    visible: boolean
   ): void {
     const batches = AssetManager._gpuBatches.get(assetPath)
     if (!batches) return
@@ -1254,10 +1188,7 @@ export class AssetManager {
    * @param instanceId Instance ID to check
    * @returns Whether the instance is visible
    */
-  public static getGPUInstanceVisible(
-    assetPath: string,
-    instanceId: string,
-  ): boolean {
+  public static getGPUInstanceVisible(assetPath: string, instanceId: string): boolean {
     const batches = AssetManager._gpuBatches.get(assetPath)
     if (!batches) return false
 
@@ -1276,17 +1207,12 @@ export class AssetManager {
    * @param instanceId Instance ID to convert
    * @returns New GameObject with ObjRenderer or null if failed
    */
-  public static convertGPUToObjectLevel(
-    assetPath: string,
-    instanceId: string,
-  ): any | null {
+  public static convertGPUToObjectLevel(assetPath: string, instanceId: string): any | null {
     const batches = AssetManager._gpuBatches.get(assetPath)
     if (!batches) return null
 
     for (const batch of batches) {
-      const instanceIndex = batch.instances.findIndex(
-        (inst) => inst.id === instanceId,
-      )
+      const instanceIndex = batch.instances.findIndex((inst) => inst.id === instanceId)
       if (instanceIndex !== -1) {
         const instanceData = batch.instances[instanceIndex]
 
@@ -1297,9 +1223,7 @@ export class AssetManager {
 
         // Create new object-level instance
         // Note: This would need to be integrated with the actual GameObject/Component system
-        console.log(
-          `🔄 Converting GPU instance '${instanceId}' to object-level for scaling`,
-        )
+        console.log(`🔄 Converting GPU instance '${instanceId}' to object-level for scaling`)
 
         // Track the conversion
         AssetManager.trackInstanceDestroyed(assetPath, false, true) // Remove GPU
@@ -1318,10 +1242,7 @@ export class AssetManager {
    * @param batch GPU batch to update
    * @param camera Optional camera for frustum culling
    */
-  public static updateGPUBatch(
-    batch: GPUInstanceBatch,
-    camera?: THREE.Camera,
-  ): void {
+  public static updateGPUBatch(batch: GPUInstanceBatch, camera?: THREE.Camera): void {
     if (!batch.needsUpdate) return
 
     const activeInstances = batch.instances.filter((inst) => inst.isActive)
@@ -1347,15 +1268,11 @@ export class AssetManager {
     let visibleInstances = activeInstances
 
     // Optional frustum culling to reduce triangle count (can be globally disabled)
-    if (
-      AssetManager._frustumCullingEnabled &&
-      camera &&
-      batch.cullingRadius > 0
-    ) {
+    if (AssetManager._frustumCullingEnabled && camera && batch.cullingRadius > 0) {
       const frustum = new THREE.Frustum()
       const cameraMatrix = new THREE.Matrix4().multiplyMatrices(
         camera.projectionMatrix,
-        camera.matrixWorldInverse,
+        camera.matrixWorldInverse
       )
       frustum.setFromProjectionMatrix(cameraMatrix)
 
@@ -1412,9 +1329,7 @@ export class AssetManager {
 
     let totalGPUInstances = 0
     for (const batch of batches) {
-      totalGPUInstances += batch.instances.filter(
-        (inst) => inst.isActive,
-      ).length
+      totalGPUInstances += batch.instances.filter((inst) => inst.isActive).length
     }
     stats.gpuInstances = totalGPUInstances
   }
@@ -1428,7 +1343,7 @@ export class AssetManager {
   public static trackInstanceCreated(
     assetPath: string,
     isShared: boolean,
-    isGPU: boolean = false,
+    isGPU: boolean = false
   ): void {
     if (!AssetManager._instanceStats.has(assetPath)) {
       AssetManager._instanceStats.set(assetPath, {
@@ -1462,7 +1377,7 @@ export class AssetManager {
   public static trackInstanceDestroyed(
     assetPath: string,
     wasShared: boolean,
-    wasGPU: boolean = false,
+    wasGPU: boolean = false
   ): void {
     if (!AssetManager._instanceStats.has(assetPath)) {
       return // Shouldn't happen, but be safe
@@ -1486,10 +1401,7 @@ export class AssetManager {
    * @param camera Optional camera for frustum culling
    * @param debug Whether to log frustum culling statistics (default: false)
    */
-  public static updateAllGPUBatches(
-    camera?: THREE.Camera,
-    debug: boolean = false,
-  ): void {
+  public static updateAllGPUBatches(camera?: THREE.Camera, debug: boolean = false): void {
     // Update both static and dynamic batches (for compatibility/testing)
     AssetManager.updateDynamicGPUBatches(camera, debug)
   }
@@ -1504,9 +1416,7 @@ export class AssetManager {
     let totalInstances = 0
 
     for (const [assetPath, batches] of AssetManager._gpuBatches.entries()) {
-      console.log(
-        `🔧 Updating batches for '${assetPath}': ${batches.length} batches`,
-      )
+      console.log(`🔧 Updating batches for '${assetPath}': ${batches.length} batches`)
 
       batches.forEach((batch, batchIndex) => {
         batch.needsUpdate = true
@@ -1515,14 +1425,12 @@ export class AssetManager {
         totalInstances += batch.instances.length
 
         console.log(
-          `🔧 Batch ${batchIndex} for '${assetPath}': ${batch.instances.length} instances, InstancedMesh count: ${batch.instancedMesh.count}`,
+          `🔧 Batch ${batchIndex} for '${assetPath}': ${batch.instances.length} instances, InstancedMesh count: ${batch.instancedMesh.count}`
         )
       })
     }
 
-    console.log(
-      `🔧 DEBUG: Updated ${totalBatches} batches with ${totalInstances} total instances`,
-    )
+    console.log(`🔧 DEBUG: Updated ${totalBatches} batches with ${totalInstances} total instances`)
   }
 
   /**
@@ -1530,10 +1438,7 @@ export class AssetManager {
    * @param camera Optional camera for frustum culling
    * @param debug Whether to log statistics (default: false)
    */
-  public static updateDynamicGPUBatches(
-    camera?: THREE.Camera,
-    debug: boolean = false,
-  ): void {
+  public static updateDynamicGPUBatches(camera?: THREE.Camera, debug: boolean = false): void {
     let totalInstancesBefore = 0
     let totalInstancesAfter = 0
     let batchesUpdated = 0
@@ -1552,17 +1457,13 @@ export class AssetManager {
     }
 
     if (debug && batchesUpdated > 0) {
-      console.log(
-        `🔄 Dynamic GPU Batch Update: ${batchesUpdated} dynamic batches updated`,
-      )
+      console.log(`🔄 Dynamic GPU Batch Update: ${batchesUpdated} dynamic batches updated`)
       if (camera && totalInstancesBefore !== totalInstancesAfter) {
         const reduction = totalInstancesBefore - totalInstancesAfter
         const percentReduction =
-          totalInstancesBefore > 0
-            ? Math.round((reduction / totalInstancesBefore) * 100)
-            : 0
+          totalInstancesBefore > 0 ? Math.round((reduction / totalInstancesBefore) * 100) : 0
         console.log(
-          `🎯 Dynamic frustum culling: ${totalInstancesAfter}/${totalInstancesBefore} instances visible (${percentReduction}% culled)`,
+          `🎯 Dynamic frustum culling: ${totalInstancesAfter}/${totalInstancesBefore} instances visible (${percentReduction}% culled)`
         )
       }
     }
@@ -1596,11 +1497,9 @@ export class AssetManager {
     }
 
     console.log(
-      `📊 Summary: ${totalDynamicBatches} dynamic batches (${totalDynamicInstances} instances), ${totalStaticBatches} static batches (${totalStaticInstances} instances)`,
+      `📊 Summary: ${totalDynamicBatches} dynamic batches (${totalDynamicInstances} instances), ${totalStaticBatches} static batches (${totalStaticInstances} instances)`
     )
-    console.log(
-      `💡 Dynamic batches update every frame, static batches only on camera movement`,
-    )
+    console.log(`💡 Dynamic batches update every frame, static batches only on camera movement`)
   }
 
   /**
@@ -1612,7 +1511,7 @@ export class AssetManager {
   public static setFrustumCullingPadding(padding: number): void {
     AssetManager._frustumCullingPadding = Math.max(1.0, padding) // Minimum 1.0 (no shrinking)
     console.log(
-      `🎯 Frustum culling padding set to ${AssetManager._frustumCullingPadding.toFixed(2)}x`,
+      `🎯 Frustum culling padding set to ${AssetManager._frustumCullingPadding.toFixed(2)}x`
     )
   }
 
@@ -1658,7 +1557,7 @@ export class AssetManager {
   public static debugFrustumCulling(disabled: boolean = false): void {
     AssetManager.setFrustumCullingEnabled(!disabled)
     console.log(
-      `🎯 Current frustum culling state: ${AssetManager._frustumCullingEnabled ? "ENABLED" : "DISABLED"}`,
+      `🎯 Current frustum culling state: ${AssetManager._frustumCullingEnabled ? "ENABLED" : "DISABLED"}`
     )
   }
 

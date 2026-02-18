@@ -6,8 +6,7 @@ import * as THREE from "three"
  */
 export class MaterialUtils {
   // Centralized default path for the toon gradient ramp used by toon materials
-  public static readonly DEFAULT_TOON_GRADIENT_PATH =
-    "assets/cozy_game_general/threeTone.jpg"
+  public static readonly DEFAULT_TOON_GRADIENT_PATH = "assets/cozy_game_general/threeTone.jpg"
   private static textureLoader = new THREE.TextureLoader()
   private static cachedGradientMap: THREE.Texture | null = null
 
@@ -25,7 +24,7 @@ export class MaterialUtils {
       normalMapPath?: string // Path to normal map
       transparent?: boolean
       opacity?: number
-    } = {},
+    } = {}
   ): THREE.MeshStandardMaterial {
     // Only include defined properties to avoid warnings
     const materialOptions: any = {
@@ -44,9 +43,7 @@ export class MaterialUtils {
     }
 
     if (options.normalMapPath) {
-      materialOptions.normalMap = MaterialUtils.textureLoader.load(
-        options.normalMapPath,
-      )
+      materialOptions.normalMap = MaterialUtils.textureLoader.load(options.normalMapPath)
     } else if (options.normalMap) {
       materialOptions.normalMap = options.normalMap
     }
@@ -57,9 +54,7 @@ export class MaterialUtils {
   /**
    * Create a basic material with a color
    */
-  static createBasicMaterial(
-    color: THREE.ColorRepresentation,
-  ): THREE.MeshBasicMaterial {
+  static createBasicMaterial(color: THREE.ColorRepresentation): THREE.MeshBasicMaterial {
     return new THREE.MeshBasicMaterial({ color })
   }
 
@@ -70,7 +65,7 @@ export class MaterialUtils {
     options: {
       color?: THREE.ColorRepresentation
       map?: THREE.Texture
-    } = {},
+    } = {}
   ): THREE.MeshLambertMaterial {
     return new THREE.MeshLambertMaterial({
       color: options.color || 0xffffff,
@@ -87,7 +82,7 @@ export class MaterialUtils {
       color?: THREE.ColorRepresentation
       roughness?: number
       metalness?: number
-    } = {},
+    } = {}
   ): THREE.MeshStandardMaterial {
     const texture = new THREE.TextureLoader().load(textureUrl)
 
@@ -103,7 +98,7 @@ export class MaterialUtils {
    * Create a simple shared material for prototyping
    */
   static createSharedMaterial(
-    color: THREE.ColorRepresentation = 0xffffff,
+    color: THREE.ColorRepresentation = 0xffffff
   ): THREE.MeshStandardMaterial {
     return new THREE.MeshStandardMaterial({
       color,
@@ -118,7 +113,7 @@ export class MaterialUtils {
    * to preserve crisp banding of the ramp.
    */
   static getToonGradientMap(
-    gradientPath: string = MaterialUtils.DEFAULT_TOON_GRADIENT_PATH,
+    gradientPath: string = MaterialUtils.DEFAULT_TOON_GRADIENT_PATH
   ): THREE.Texture {
     if (MaterialUtils.cachedGradientMap) {
       return MaterialUtils.cachedGradientMap
@@ -136,15 +131,17 @@ export class MaterialUtils {
   /**
    * Create a MeshToonMaterial with optional albedo map and the shared gradient ramp.
    */
-  static createToonMaterial(options: {
-    color?: THREE.ColorRepresentation
-    map?: THREE.Texture
-    mapPath?: string
-    transparent?: boolean
-    opacity?: number
-    gradientPath?: string
-    emissive?: THREE.ColorRepresentation
-  } = {}): THREE.MeshToonMaterial {
+  static createToonMaterial(
+    options: {
+      color?: THREE.ColorRepresentation
+      map?: THREE.Texture
+      mapPath?: string
+      transparent?: boolean
+      opacity?: number
+      gradientPath?: string
+      emissive?: THREE.ColorRepresentation
+    } = {}
+  ): THREE.MeshToonMaterial {
     const params: any = {
       color: options.color ?? 0xffffff,
       transparent: options.transparent ?? false,
@@ -153,8 +150,7 @@ export class MaterialUtils {
     }
 
     if (options.map) params.map = options.map
-    if (options.mapPath)
-      params.map = MaterialUtils.textureLoader.load(options.mapPath)
+    if (options.mapPath) params.map = MaterialUtils.textureLoader.load(options.mapPath)
     if (options.emissive !== undefined) params.emissive = options.emissive
 
     return new THREE.MeshToonMaterial(params)

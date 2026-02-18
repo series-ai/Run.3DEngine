@@ -61,7 +61,7 @@ export default class AnimatrixVisualizer {
     font: string
     color: string
   }> = []
-  
+
   // Drill-down view state
   private drillDownState: string | null = null
   private drillDownTreeConfig: StoredTreeConfig | null = null
@@ -201,14 +201,7 @@ export default class AnimatrixVisualizer {
       e.stopPropagation()
     }
     // Prevent game input from consuming these events. Do NOT block move events so window listeners still receive them.
-    ;[
-      "mousedown",
-      "click",
-      "dblclick",
-      "contextmenu",
-      "pointerdown",
-      "wheel",
-    ].forEach((type) => {
+    ;["mousedown", "click", "dblclick", "contextmenu", "pointerdown", "wheel"].forEach((type) => {
       this.container.addEventListener(type as any, stopAll)
     })
     // Ensure releasing inside the window stops drag/resize immediately
@@ -247,7 +240,7 @@ export default class AnimatrixVisualizer {
         e.stopPropagation()
         this.handle_wheel(e)
       },
-      { passive: false },
+      { passive: false }
     )
 
     // Enable window dragging via header (but not on buttons)
@@ -278,8 +271,7 @@ export default class AnimatrixVisualizer {
     resizer.style.right = "2px"
     resizer.style.bottom = "2px"
     resizer.style.cursor = "se-resize"
-    resizer.style.background =
-      "linear-gradient(135deg, transparent 50%, #666 50%)"
+    resizer.style.background = "linear-gradient(135deg, transparent 50%, #666 50%)"
     this.container.appendChild(resizer)
     resizer.addEventListener("mousedown", (e) => {
       e.preventDefault()
@@ -361,18 +353,9 @@ export default class AnimatrixVisualizer {
     const transition_start_listener = () => this.render()
     const transition_end_listener = () => this.render()
 
-    this.animator.add_listener(
-      AnimationEvent.STATE_CHANGED,
-      state_changed_listener,
-    )
-    this.animator.add_listener(
-      AnimationEvent.TRANSITION_START,
-      transition_start_listener,
-    )
-    this.animator.add_listener(
-      AnimationEvent.TRANSITION_END,
-      transition_end_listener,
-    )
+    this.animator.add_listener(AnimationEvent.STATE_CHANGED, state_changed_listener)
+    this.animator.add_listener(AnimationEvent.TRANSITION_START, transition_start_listener)
+    this.animator.add_listener(AnimationEvent.TRANSITION_END, transition_end_listener)
 
     this.event_listeners.set("state_changed", state_changed_listener)
     this.event_listeners.set("transition_start", transition_start_listener)
@@ -383,36 +366,24 @@ export default class AnimatrixVisualizer {
     if (!this.animator) return
 
     const state_changed_listener = this.event_listeners.get("state_changed")
-    const transition_start_listener =
-      this.event_listeners.get("transition_start")
+    const transition_start_listener = this.event_listeners.get("transition_start")
     const transition_end_listener = this.event_listeners.get("transition_end")
 
     if (state_changed_listener) {
-      this.animator.remove_listener(
-        AnimationEvent.STATE_CHANGED,
-        state_changed_listener,
-      )
+      this.animator.remove_listener(AnimationEvent.STATE_CHANGED, state_changed_listener)
     }
     if (transition_start_listener) {
-      this.animator.remove_listener(
-        AnimationEvent.TRANSITION_START,
-        transition_start_listener,
-      )
+      this.animator.remove_listener(AnimationEvent.TRANSITION_START, transition_start_listener)
     }
     if (transition_end_listener) {
-      this.animator.remove_listener(
-        AnimationEvent.TRANSITION_END,
-        transition_end_listener,
-      )
+      this.animator.remove_listener(AnimationEvent.TRANSITION_END, transition_end_listener)
     }
 
     this.event_listeners.clear()
   }
 
   private update_animator_select(): void {
-    const listContent = this.container.querySelector(
-      "#animator-list-content",
-    ) as HTMLElement
+    const listContent = this.container.querySelector("#animator-list-content") as HTMLElement
     if (!listContent) return
 
     listContent.innerHTML = ""
@@ -438,38 +409,37 @@ export default class AnimatrixVisualizer {
       item.style.whiteSpace = "nowrap"
       item.style.overflow = "hidden"
       item.style.textOverflow = "ellipsis"
-      
+
       const isSelected = name === this.current_animator_name
       item.style.background = isSelected ? "rgba(91, 154, 232, 0.3)" : "rgba(255, 255, 255, 0.05)"
       item.style.color = isSelected ? "#5B9AE8" : "#AAA"
       item.style.fontWeight = isSelected ? "bold" : "normal"
-      
+
       item.textContent = name
       item.title = name
-      
+
       item.onmouseenter = () => {
         if (name !== this.current_animator_name) {
           item.style.background = "rgba(255, 255, 255, 0.1)"
         }
       }
       item.onmouseleave = () => {
-        item.style.background = name === this.current_animator_name 
-          ? "rgba(91, 154, 232, 0.3)" 
-          : "rgba(255, 255, 255, 0.05)"
+        item.style.background =
+          name === this.current_animator_name
+            ? "rgba(91, 154, 232, 0.3)"
+            : "rgba(255, 255, 255, 0.05)"
       }
       item.onclick = (e) => {
         e.stopPropagation()
         this.set_animator(name)
       }
-      
+
       listContent.appendChild(item)
     })
   }
 
   private update_title(): void {
-    const title = this.container.querySelector(
-      "#visualizer-title",
-    ) as HTMLElement
+    const title = this.container.querySelector("#visualizer-title") as HTMLElement
     if (!title) return
 
     if (this.drillDownState) {
@@ -494,7 +464,7 @@ export default class AnimatrixVisualizer {
     const clips = this.animator.get_clips()
     const blendNodes = this.animator.get_blend_tree_ids()
     const transitions = this.animator.get_transitions()
-    
+
     // States referenced explicitly in transitions should always be visible
     const referencedStates = new Set<string>()
     transitions.forEach((t) => {
@@ -513,21 +483,19 @@ export default class AnimatrixVisualizer {
 
     // Clips that are not exclusively internal children (or are referenced in transitions)
     const baseClipIds = Array.from(clips.keys()).filter(
-      (id) => !childClipIds.has(id) || referencedStates.has(id),
+      (id) => !childClipIds.has(id) || referencedStates.has(id)
     )
     // Final node ids = base clips + blend tree ids
-    const nodeIds: string[] = [
-      ...new Set<string>([...baseClipIds, ...blendNodes]),
-    ]
-    
+    const nodeIds: string[] = [...new Set<string>([...baseClipIds, ...blendNodes])]
+
     if (nodeIds.length === 0) return
 
     // Build graph structure
     const graph = this.buildGraph(nodeIds, transitions)
-    
+
     // Check if graph has cycles (bidirectional edges)
     const hasCycles = this.detectCycles(nodeIds, graph)
-    
+
     if (hasCycles) {
       // Use radial/force-directed layout for cyclic graphs
       this.radialLayout(nodeIds, graph)
@@ -546,7 +514,7 @@ export default class AnimatrixVisualizer {
     graph: { outgoing: Map<string, Set<string>>; incoming: Map<string, Set<string>> }
   ): boolean {
     const { outgoing, incoming } = graph
-    
+
     // Check for bidirectional edges (A->B and B->A)
     for (const [from, targets] of outgoing) {
       for (const to of targets) {
@@ -555,7 +523,7 @@ export default class AnimatrixVisualizer {
         }
       }
     }
-    
+
     // Also check if any node has both incoming and outgoing to suggest cycles
     for (const node of nodeIds) {
       const hasIn = (incoming.get(node)?.size || 0) > 0
@@ -564,11 +532,11 @@ export default class AnimatrixVisualizer {
         // Could be part of a cycle - do DFS to confirm
         const visited = new Set<string>()
         const recStack = new Set<string>()
-        
+
         const hasCycleDFS = (n: string): boolean => {
           visited.add(n)
           recStack.add(n)
-          
+
           for (const neighbor of outgoing.get(n) || []) {
             if (!visited.has(neighbor)) {
               if (hasCycleDFS(neighbor)) return true
@@ -576,15 +544,15 @@ export default class AnimatrixVisualizer {
               return true
             }
           }
-          
+
           recStack.delete(n)
           return false
         }
-        
+
         if (hasCycleDFS(node)) return true
       }
     }
-    
+
     return false
   }
 
@@ -595,15 +563,15 @@ export default class AnimatrixVisualizer {
     const { outgoing, incoming } = graph
     const canvasW = this.canvas.width
     const canvasH = this.canvas.height
-    
+
     // Node dimensions for spacing
     const nodeW = 250
     const nodeH = 100
-    
+
     // Find the hub node (most total connections)
     let hubNode = nodeIds[0]
     let maxConnections = 0
-    
+
     for (const node of nodeIds) {
       const connections = (outgoing.get(node)?.size || 0) + (incoming.get(node)?.size || 0)
       if (connections > maxConnections) {
@@ -611,21 +579,21 @@ export default class AnimatrixVisualizer {
         hubNode = node
       }
     }
-    
+
     // Get nodes directly connected to hub
     const hubConnected = new Set<string>()
     for (const n of outgoing.get(hubNode) || []) hubConnected.add(n)
     for (const n of incoming.get(hubNode) || []) hubConnected.add(n)
-    
+
     // Separate into tiers: hub, directly connected, and others
-    const directlyConnected = nodeIds.filter(n => n !== hubNode && hubConnected.has(n))
-    const others = nodeIds.filter(n => n !== hubNode && !hubConnected.has(n))
-    
+    const directlyConnected = nodeIds.filter((n) => n !== hubNode && hubConnected.has(n))
+    const others = nodeIds.filter((n) => n !== hubNode && !hubConnected.has(n))
+
     // Place hub in center
     const centerX = canvasW / 2
     const centerY = canvasH / 2
     this.node_positions.set(hubNode, { x: centerX, y: centerY })
-    
+
     // Calculate radius for first ring - must fit all directly connected nodes
     const numDirectConnected = directlyConnected.length
     if (numDirectConnected > 0) {
@@ -634,14 +602,14 @@ export default class AnimatrixVisualizer {
       const nodeSpacing = nodeW + 60
       const circumference = numDirectConnected * nodeSpacing
       const minRadius = circumference / (2 * Math.PI)
-      
+
       // Also ensure radius is enough to clear center node
       const clearanceRadius = Math.max(nodeW, nodeH) / 2 + nodeH / 2 + 80
       const radius = Math.max(minRadius, clearanceRadius, 200)
-      
+
       // Sort connected nodes by their connections to each other (for better edge routing)
       const sortedConnected = this.sortNodesByConnectivity(directlyConnected, graph)
-      
+
       // Place nodes in a circle
       for (let i = 0; i < sortedConnected.length; i++) {
         const angle = (2 * Math.PI * i) / sortedConnected.length - Math.PI / 2 // Start from top
@@ -650,18 +618,21 @@ export default class AnimatrixVisualizer {
         this.node_positions.set(sortedConnected[i], { x, y })
       }
     }
-    
+
     // Place other nodes (not directly connected to hub) in outer ring
     if (others.length > 0) {
-      const innerRadius = numDirectConnected > 0 
-        ? Math.max(...directlyConnected.map(n => {
-            const pos = this.node_positions.get(n)!
-            return Math.sqrt((pos.x - centerX) ** 2 + (pos.y - centerY) ** 2)
-          }))
-        : 200
-      
+      const innerRadius =
+        numDirectConnected > 0
+          ? Math.max(
+              ...directlyConnected.map((n) => {
+                const pos = this.node_positions.get(n)!
+                return Math.sqrt((pos.x - centerX) ** 2 + (pos.y - centerY) ** 2)
+              })
+            )
+          : 200
+
       const outerRadius = innerRadius + nodeH + 100
-      
+
       for (let i = 0; i < others.length; i++) {
         const angle = (2 * Math.PI * i) / others.length - Math.PI / 2
         const x = centerX + outerRadius * Math.cos(angle)
@@ -669,7 +640,7 @@ export default class AnimatrixVisualizer {
         this.node_positions.set(others[i], { x, y })
       }
     }
-    
+
     // Fine-tune with force-directed adjustment
     this.forceDirectedRefinement(nodeIds, graph, 50)
   }
@@ -679,15 +650,15 @@ export default class AnimatrixVisualizer {
     graph: { outgoing: Map<string, Set<string>>; incoming: Map<string, Set<string>> }
   ): string[] {
     if (nodes.length <= 2) return nodes
-    
+
     const { outgoing, incoming } = graph
-    
+
     // Build adjacency between these nodes only
     const adj = new Map<string, Set<string>>()
     for (const n of nodes) {
       adj.set(n, new Set())
     }
-    
+
     for (const n of nodes) {
       for (const target of outgoing.get(n) || []) {
         if (nodes.includes(target)) {
@@ -696,26 +667,26 @@ export default class AnimatrixVisualizer {
         }
       }
     }
-    
+
     // Greedy ordering: start with first node, always pick the most connected neighbor
     const result: string[] = []
     const remaining = new Set(nodes)
-    
+
     // Start with node that has most connections within the group
-    let current = nodes.reduce((a, b) => 
+    let current = nodes.reduce((a, b) =>
       (adj.get(a)?.size || 0) >= (adj.get(b)?.size || 0) ? a : b
     )
-    
+
     while (remaining.size > 0) {
       result.push(current)
       remaining.delete(current)
-      
+
       if (remaining.size === 0) break
-      
+
       // Find the remaining node most connected to current
       let bestNext: string | null = null
       let bestScore = -1
-      
+
       for (const n of remaining) {
         const isConnected = adj.get(current)?.has(n) ? 1 : 0
         if (isConnected > bestScore || bestNext === null) {
@@ -723,10 +694,10 @@ export default class AnimatrixVisualizer {
           bestNext = n
         }
       }
-      
+
       current = bestNext!
     }
-    
+
     return result
   }
 
@@ -741,14 +712,14 @@ export default class AnimatrixVisualizer {
     const nodeW = 250
     const nodeH = 100
     const minDist = Math.max(nodeW, nodeH) + 40
-    
+
     for (let iter = 0; iter < iterations; iter++) {
       const forces = new Map<string, { fx: number; fy: number }>()
-      
+
       for (const id of nodeIds) {
         forces.set(id, { fx: 0, fy: 0 })
       }
-      
+
       // Repulsion between all nodes
       for (let i = 0; i < nodeIds.length; i++) {
         for (let j = i + 1; j < nodeIds.length; j++) {
@@ -756,16 +727,16 @@ export default class AnimatrixVisualizer {
           const b = nodeIds[j]
           const posA = this.node_positions.get(a)!
           const posB = this.node_positions.get(b)!
-          
+
           const dx = posB.x - posA.x
           const dy = posB.y - posA.y
           const dist = Math.sqrt(dx * dx + dy * dy) || 1
-          
+
           if (dist < minDist * 1.5) {
             const force = (minDist * 1.5 - dist) * 0.5
             const fx = (dx / dist) * force
             const fy = (dy / dist) * force
-            
+
             forces.get(a)!.fx -= fx
             forces.get(a)!.fy -= fy
             forces.get(b)!.fx += fx
@@ -773,24 +744,24 @@ export default class AnimatrixVisualizer {
           }
         }
       }
-      
+
       // Attraction along edges
       for (const [from, targets] of outgoing) {
         for (const to of targets) {
           const posFrom = this.node_positions.get(from)
           const posTo = this.node_positions.get(to)
           if (!posFrom || !posTo) continue
-          
+
           const dx = posTo.x - posFrom.x
           const dy = posTo.y - posFrom.y
           const dist = Math.sqrt(dx * dx + dy * dy) || 1
-          
+
           const idealDist = minDist * 1.2
           if (dist > idealDist) {
             const force = (dist - idealDist) * 0.02
             const fx = (dx / dist) * force
             const fy = (dy / dist) * force
-            
+
             forces.get(from)!.fx += fx
             forces.get(from)!.fy += fy
             forces.get(to)!.fx -= fx
@@ -798,18 +769,18 @@ export default class AnimatrixVisualizer {
           }
         }
       }
-      
+
       // Apply forces
       const damping = 0.8 * (1 - iter / iterations) // Decrease over iterations
       const padding = nodeW / 2 + 20
-      
+
       for (const id of nodeIds) {
         const pos = this.node_positions.get(id)!
         const f = forces.get(id)!
-        
+
         pos.x += f.fx * damping
         pos.y += f.fy * damping
-        
+
         // Keep within bounds
         pos.x = Math.max(padding, Math.min(canvasW - padding, pos.x))
         pos.y = Math.max(padding, Math.min(canvasH - padding, pos.y))
@@ -817,7 +788,10 @@ export default class AnimatrixVisualizer {
     }
   }
 
-  private buildGraph(nodeIds: string[], transitions: any[]): {
+  private buildGraph(
+    nodeIds: string[],
+    transitions: any[]
+  ): {
     outgoing: Map<string, Set<string>>
     incoming: Map<string, Set<string>>
     edges: Array<{ from: string; to: string }>
@@ -825,12 +799,12 @@ export default class AnimatrixVisualizer {
     const outgoing = new Map<string, Set<string>>()
     const incoming = new Map<string, Set<string>>()
     const edges: Array<{ from: string; to: string }> = []
-    
+
     for (const id of nodeIds) {
       outgoing.set(id, new Set())
       incoming.set(id, new Set())
     }
-    
+
     for (const t of transitions) {
       if (t.from !== "*" && nodeIds.includes(t.from) && nodeIds.includes(t.to) && t.from !== t.to) {
         if (!outgoing.get(t.from)?.has(t.to)) {
@@ -840,7 +814,7 @@ export default class AnimatrixVisualizer {
         }
       }
     }
-    
+
     return { outgoing, incoming, edges }
   }
 
@@ -850,43 +824,47 @@ export default class AnimatrixVisualizer {
   ): string[][] {
     const { outgoing, incoming } = graph
     const layers = new Map<string, number>()
-    
+
     // Use longest path algorithm for layer assignment
     // First, find nodes with no incoming edges (roots)
-    const roots = nodeIds.filter(id => (incoming.get(id)?.size || 0) === 0)
-    
+    const roots = nodeIds.filter((id) => (incoming.get(id)?.size || 0) === 0)
+
     // If no roots (cyclic), pick node with minimum incoming edges
-    const startNodes = roots.length > 0 ? roots : 
-      [nodeIds.reduce((a, b) => 
-        (incoming.get(a)?.size || 0) <= (incoming.get(b)?.size || 0) ? a : b
-      )]
-    
+    const startNodes =
+      roots.length > 0
+        ? roots
+        : [
+            nodeIds.reduce((a, b) =>
+              (incoming.get(a)?.size || 0) <= (incoming.get(b)?.size || 0) ? a : b
+            ),
+          ]
+
     // Compute longest path from any root to each node
     const computeLayer = (node: string, visited: Set<string>): number => {
       if (layers.has(node)) return layers.get(node)!
       if (visited.has(node)) return 0 // Cycle detected
-      
+
       visited.add(node)
       const parents = incoming.get(node) || new Set()
       let maxParentLayer = -1
-      
+
       for (const parent of parents) {
         const parentLayer = computeLayer(parent, visited)
         maxParentLayer = Math.max(maxParentLayer, parentLayer)
       }
-      
+
       const layer = maxParentLayer + 1
       layers.set(node, layer)
       return layer
     }
-    
+
     // Assign layers to all nodes
     for (const node of nodeIds) {
       if (!layers.has(node)) {
         computeLayer(node, new Set())
       }
     }
-    
+
     // Handle disconnected nodes - place them based on their connections or at end
     const maxLayer = Math.max(...Array.from(layers.values()), 0)
     for (const node of nodeIds) {
@@ -894,21 +872,21 @@ export default class AnimatrixVisualizer {
         layers.set(node, maxLayer + 1)
       }
     }
-    
+
     // Group into layer arrays
     const layerArrays: string[][] = []
     const layerCount = Math.max(...Array.from(layers.values())) + 1
-    
+
     for (let i = 0; i < layerCount; i++) {
       layerArrays.push([])
     }
-    
+
     for (const [node, layer] of layers) {
       layerArrays[layer].push(node)
     }
-    
+
     // Remove empty layers
-    return layerArrays.filter(l => l.length > 0)
+    return layerArrays.filter((l) => l.length > 0)
   }
 
   private minimizeCrossings(
@@ -916,16 +894,16 @@ export default class AnimatrixVisualizer {
     graph: { outgoing: Map<string, Set<string>>; incoming: Map<string, Set<string>> }
   ): void {
     const { outgoing, incoming } = graph
-    
+
     // Barycenter heuristic with multiple passes
     const numPasses = 4
-    
+
     for (let pass = 0; pass < numPasses; pass++) {
       // Forward pass (top to bottom)
       for (let i = 1; i < layers.length; i++) {
         this.orderLayerByBarycenter(layers[i], layers[i - 1], incoming, true)
       }
-      
+
       // Backward pass (bottom to top)
       for (let i = layers.length - 2; i >= 0; i--) {
         this.orderLayerByBarycenter(layers[i], layers[i + 1], outgoing, false)
@@ -942,15 +920,15 @@ export default class AnimatrixVisualizer {
     // Create position map for adjacent layer
     const posMap = new Map<string, number>()
     adjacentLayer.forEach((node, idx) => posMap.set(node, idx))
-    
+
     // Calculate barycenter for each node in current layer
     const barycenters: Array<{ node: string; bc: number }> = []
-    
+
     for (const node of layer) {
       const connectedNodes = connections.get(node) || new Set()
       let sum = 0
       let count = 0
-      
+
       for (const connected of connectedNodes) {
         const pos = posMap.get(connected)
         if (pos !== undefined) {
@@ -958,15 +936,15 @@ export default class AnimatrixVisualizer {
           count++
         }
       }
-      
+
       // If no connections, keep current relative position
       const bc = count > 0 ? sum / count : layer.indexOf(node)
       barycenters.push({ node, bc })
     }
-    
+
     // Sort by barycenter
     barycenters.sort((a, b) => a.bc - b.bc)
-    
+
     // Update layer order
     layer.length = 0
     barycenters.forEach(({ node }) => layer.push(node))
@@ -974,52 +952,56 @@ export default class AnimatrixVisualizer {
 
   private assignCoordinates(
     layers: string[][],
-    graph: { outgoing: Map<string, Set<string>>; incoming: Map<string, Set<string>>; edges: Array<{ from: string; to: string }> }
+    graph: {
+      outgoing: Map<string, Set<string>>
+      incoming: Map<string, Set<string>>
+      edges: Array<{ from: string; to: string }>
+    }
   ): void {
     const canvasW = this.canvas.width
     const canvasH = this.canvas.height
-    
+
     // Get actual node dimensions (use max dimensions for spacing)
-    const nodeW = 250  // Slightly more than the 240px node width
-    const nodeH = 100  // Slightly more than the 80px node height
-    
+    const nodeW = 250 // Slightly more than the 240px node width
+    const nodeH = 100 // Slightly more than the 80px node height
+
     // Layout constants - spacing includes node size + gap
     const paddingX = 60
     const paddingY = 60
-    const gapX = 40   // Gap between nodes horizontally
-    const gapY = 60   // Gap between layers vertically
-    
+    const gapX = 40 // Gap between nodes horizontally
+    const gapY = 60 // Gap between layers vertically
+
     const nodeSpacingX = nodeW + gapX
     const nodeSpacingY = nodeH + gapY
-    
+
     // Calculate required dimensions
-    const maxNodesInLayer = Math.max(...layers.map(l => l.length))
+    const maxNodesInLayer = Math.max(...layers.map((l) => l.length))
     const numLayers = layers.length
-    
+
     // Calculate total graph size
     const totalWidth = maxNodesInLayer * nodeSpacingX - gapX
     const totalHeight = numLayers * nodeSpacingY - gapY
-    
+
     // Center the graph in canvas
     const startX = Math.max(paddingX + nodeW / 2, (canvasW - totalWidth) / 2 + nodeW / 2)
     const startY = Math.max(paddingY + nodeH / 2, (canvasH - totalHeight) / 2 + nodeH / 2)
-    
+
     // Position each layer
     for (let layerIdx = 0; layerIdx < layers.length; layerIdx++) {
       const layer = layers[layerIdx]
       const y = startY + layerIdx * nodeSpacingY
-      
+
       // Center this layer horizontally
       const layerWidth = (layer.length - 1) * nodeSpacingX
       const layerStartX = (canvasW - layerWidth) / 2
-      
+
       for (let nodeIdx = 0; nodeIdx < layer.length; nodeIdx++) {
         const node = layer[nodeIdx]
         const x = layer.length === 1 ? canvasW / 2 : layerStartX + nodeIdx * nodeSpacingX
         this.node_positions.set(node, { x, y })
       }
     }
-    
+
     // Apply priority layout adjustment to reduce edge lengths
     this.priorityLayoutAdjustment(layers, graph, nodeSpacingX)
   }
@@ -1030,17 +1012,17 @@ export default class AnimatrixVisualizer {
     minSpacing: number
   ): void {
     const { incoming } = graph
-    const nodeHalfWidth = 125  // Half of node width for bounds
-    
+    const nodeHalfWidth = 125 // Half of node width for bounds
+
     // Adjust each node to be closer to its parents' average position
     for (let layerIdx = 1; layerIdx < layers.length; layerIdx++) {
       const layer = layers[layerIdx]
       const positions: Array<{ node: string; idealX: number; currentX: number }> = []
-      
+
       for (const node of layer) {
         const pos = this.node_positions.get(node)!
         const parents = incoming.get(node) || new Set()
-        
+
         if (parents.size > 0) {
           // Calculate average parent X position
           let sumX = 0
@@ -1054,36 +1036,36 @@ export default class AnimatrixVisualizer {
           positions.push({ node, idealX: pos.x, currentX: pos.x })
         }
       }
-      
+
       // Sort by ideal position
       positions.sort((a, b) => a.idealX - b.idealX)
-      
+
       // Assign new positions maintaining minimum spacing
       const canvasW = this.canvas.width
       const padding = nodeHalfWidth + 20
-      
+
       for (let i = 0; i < positions.length; i++) {
         let newX = positions[i].idealX
-        
+
         // Ensure minimum spacing from previous node
         if (i > 0) {
           const prevX = this.node_positions.get(positions[i - 1].node)!.x
           newX = Math.max(newX, prevX + minSpacing)
         }
-        
+
         // Keep within bounds
         newX = Math.max(padding, Math.min(canvasW - padding, newX))
-        
+
         this.node_positions.get(positions[i].node)!.x = newX
       }
-      
+
       // Center the layer if it got pushed to one side
-      const xs = layer.map(n => this.node_positions.get(n)!.x)
+      const xs = layer.map((n) => this.node_positions.get(n)!.x)
       const minX = Math.min(...xs)
       const maxX = Math.max(...xs)
       const centerX = (minX + maxX) / 2
       const offset = canvasW / 2 - centerX
-      
+
       // Only apply centering if it doesn't push nodes out of bounds
       if (minX + offset >= padding && maxX + offset <= canvasW - padding) {
         for (const node of layer) {
@@ -1150,13 +1132,12 @@ export default class AnimatrixVisualizer {
 
     if (hitNode) {
       if (hitExpander) {
-        if (this.nodeDrawerOpen.has(hitNode))
-          this.nodeDrawerOpen.delete(hitNode)
+        if (this.nodeDrawerOpen.has(hitNode)) this.nodeDrawerOpen.delete(hitNode)
         else this.nodeDrawerOpen.add(hitNode)
         this.render()
         return
       }
-      
+
       // Check for double-click to enter drill-down view
       const now = Date.now()
       if (this.lastClickNode === hitNode && now - this.lastClickTime < 300) {
@@ -1167,7 +1148,7 @@ export default class AnimatrixVisualizer {
       }
       this.lastClickNode = hitNode
       this.lastClickTime = now
-      
+
       const pos = this.node_positions.get(hitNode)!
       this.dragging_node = hitNode
       this.drag_offset = { x: x - pos.x, y: y - pos.y }
@@ -1339,9 +1320,7 @@ export default class AnimatrixVisualizer {
     const params = document.getElementById("params-panel") as HTMLElement | null
     const headerHeight = 40
     const paramsWidth =
-      params && params.style.display !== "none"
-        ? params.getBoundingClientRect().width || 180
-        : 0
+      params && params.style.display !== "none" ? params.getBoundingClientRect().width || 180 : 0
     const height = Math.max(120, rect.height - headerHeight)
     const width = Math.max(200, rect.width - paramsWidth)
     this.canvas.width = Math.floor(width)
@@ -1377,10 +1356,10 @@ export default class AnimatrixVisualizer {
 
   private enterDrillDown(stateName: string): void {
     if (!this.current_animator_name) return
-    
+
     const treeConfig = AnimationGraphComponent.getTreeConfig(this.current_animator_name, stateName)
     if (!treeConfig) return
-    
+
     this.drillDownState = stateName
     this.drillDownTreeConfig = treeConfig
     this.render()
@@ -1439,7 +1418,8 @@ export default class AnimatrixVisualizer {
     if (children.length === 0) return
 
     // Get current parameter value
-    const paramValue = AnimationGraphComponent.getParameterValue(this.current_animator_name, tree.parameter) || 0
+    const paramValue =
+      AnimationGraphComponent.getParameterValue(this.current_animator_name, tree.parameter) || 0
     const currentAnim = AnimationGraphComponent.getCurrentAnimation(this.current_animator_name)
 
     // Draw parameter name and value
@@ -1449,7 +1429,11 @@ export default class AnimatrixVisualizer {
     ctx.fillText(`Parameter: ${tree.parameter}`, w / 2, 60)
     ctx.fillStyle = "#FFEE58"
     ctx.font = "bold 16px monospace"
-    ctx.fillText(`Value: ${typeof paramValue === 'number' ? paramValue.toFixed(2) : paramValue}`, w / 2, 85)
+    ctx.fillText(
+      `Value: ${typeof paramValue === "number" ? paramValue.toFixed(2) : paramValue}`,
+      w / 2,
+      85
+    )
 
     // Draw threshold slider
     const sliderY = 130
@@ -1476,7 +1460,7 @@ export default class AnimatrixVisualizer {
       ctx.moveTo(x, sliderY - 10)
       ctx.lineTo(x, sliderY + 10)
       ctx.stroke()
-      
+
       ctx.fillStyle = "#888"
       ctx.font = "10px monospace"
       ctx.textAlign = "center"
@@ -1495,18 +1479,21 @@ export default class AnimatrixVisualizer {
     const cardStartY = 170
     const cardHeight = 50
     const cardGap = 10
-    const cardWidth = Math.min(200, (w - padding * 2 - cardGap * (children.length - 1)) / children.length)
+    const cardWidth = Math.min(
+      200,
+      (w - padding * 2 - cardGap * (children.length - 1)) / children.length
+    )
 
     const totalCardsWidth = cardWidth * children.length + cardGap * (children.length - 1)
     let cardX = (w - totalCardsWidth) / 2
 
     for (const child of sortedChildren) {
       const isActive = currentAnim === child.animation
-      
+
       // Card background
       ctx.fillStyle = isActive ? "rgba(76, 175, 80, 0.3)" : "rgba(255, 255, 255, 0.05)"
       ctx.fillRect(cardX, cardStartY, cardWidth, cardHeight)
-      
+
       // Card border
       ctx.strokeStyle = isActive ? "#4CAF50" : "#444"
       ctx.lineWidth = isActive ? 2 : 1
@@ -1548,21 +1535,16 @@ export default class AnimatrixVisualizer {
 
     transitions.forEach((transition) => {
       const from_pos =
-        transition.from === "*"
-          ? { x: 40, y: 40 }
-          : this.node_positions.get(transition.from)
+        transition.from === "*" ? { x: 40, y: 40 } : this.node_positions.get(transition.from)
       const to_pos = this.node_positions.get(transition.to)
 
       if (from_pos && to_pos) {
         const is_active =
           active_transition &&
-          (active_transition.from_state === transition.from ||
-            transition.from === "*") &&
+          (active_transition.from_state === transition.from || transition.from === "*") &&
           active_transition.to_state === transition.to
 
-        this.ctx.strokeStyle = is_active
-          ? this.CONNECTION_COLOR_ACTIVE
-          : this.CONNECTION_COLOR
+        this.ctx.strokeStyle = is_active ? this.CONNECTION_COLOR_ACTIVE : this.CONNECTION_COLOR
         this.ctx.lineWidth = is_active ? 3 : 2
         this.ctx.setLineDash(transition.from === "*" ? [5, 5] : [])
 
@@ -1577,7 +1559,7 @@ export default class AnimatrixVisualizer {
           const toIsBlend = this.animator?.is_blend_tree_state(transition.to) || false
           const fromDims = this.get_node_dimensions(transition.from, fromIsBlend)
           const toDims = this.get_node_dimensions(transition.to, toIsBlend)
-          
+
           // Calculate intersection points with rectangle edges
           const startPoint = this.getRectEdgePoint(from_pos, to_pos, fromDims.w / 2, fromDims.h / 2)
           const endPoint = this.getRectEdgePoint(to_pos, from_pos, toDims.w / 2, toDims.h / 2)
@@ -1591,12 +1573,12 @@ export default class AnimatrixVisualizer {
           const arrow_angle = Math.PI / 6
           this.ctx.lineTo(
             endPoint.x - arrow_length * Math.cos(angle - arrow_angle),
-            endPoint.y - arrow_length * Math.sin(angle - arrow_angle),
+            endPoint.y - arrow_length * Math.sin(angle - arrow_angle)
           )
           this.ctx.moveTo(endPoint.x, endPoint.y)
           this.ctx.lineTo(
             endPoint.x - arrow_length * Math.cos(angle + arrow_angle),
-            endPoint.y - arrow_length * Math.sin(angle + arrow_angle),
+            endPoint.y - arrow_length * Math.sin(angle + arrow_angle)
           )
         }
 
@@ -1638,19 +1620,19 @@ export default class AnimatrixVisualizer {
   ): { x: number; y: number } {
     const dx = target.x - center.x
     const dy = target.y - center.y
-    
+
     if (dx === 0 && dy === 0) {
       return { x: center.x, y: center.y }
     }
-    
+
     // Calculate the scale factor to reach the rectangle edge
     const scaleX = halfWidth / Math.abs(dx || 0.001)
     const scaleY = halfHeight / Math.abs(dy || 0.001)
     const scale = Math.min(scaleX, scaleY)
-    
+
     return {
       x: center.x + dx * scale,
-      y: center.y + dy * scale
+      y: center.y + dy * scale,
     }
   }
 
@@ -1668,9 +1650,7 @@ export default class AnimatrixVisualizer {
       const clip = clips.get(state_id)
       const is_blend = this.animator!.is_blend_tree_state(state_id)
 
-      let fill_color = is_blend
-        ? this.NODE_COLOR_BLENDTREE
-        : this.NODE_COLOR_IDLE
+      let fill_color = is_blend ? this.NODE_COLOR_BLENDTREE : this.NODE_COLOR_IDLE
       if (is_current && !active_transition) {
         fill_color = this.NODE_COLOR_ACTIVE
       } else if (is_transitioning_from || is_transitioning_to) {
@@ -1695,7 +1675,7 @@ export default class AnimatrixVisualizer {
         10,
         "#20252a",
         is_current ? "#FFF" : "#666",
-        is_current ? 2 : 1,
+        is_current ? 2 : 1
       )
       this.ctx.fillStyle = fill_color
       this.ctx.fillRect(nx + 1, ny + 1, nodeW - 2, headerH)
@@ -1721,7 +1701,7 @@ export default class AnimatrixVisualizer {
         "center",
         "middle",
         headerFont,
-        this.TEXT_COLOR,
+        this.TEXT_COLOR
       )
 
       // If blend tree, draw its 1D line with thresholds and current value below the node
@@ -1740,9 +1720,7 @@ export default class AnimatrixVisualizer {
             this.ctx.stroke()
 
             // Draw thresholds as small ticks with compact labels
-            const children = [...cfg.children].sort(
-              (a, b) => a.threshold - b.threshold,
-            )
+            const children = [...cfg.children].sort((a, b) => a.threshold - b.threshold)
             if (children.length > 0) {
               const minT = children[0].threshold
               const maxT = children[children.length - 1].threshold
@@ -1764,16 +1742,14 @@ export default class AnimatrixVisualizer {
                     "center",
                     "top",
                     "11px monospace",
-                    "#CFD8DC",
+                    "#CFD8DC"
                   )
                 }
               }
 
               // Current parameter marker
               const p = this.animator!.get_float(cfg.parameter)
-              const px =
-                lineX +
-                ((Math.min(maxT, Math.max(minT, p)) - minT) / range) * lineW
+              const px = lineX + ((Math.min(maxT, Math.max(minT, p)) - minT) / range) * lineW
               this.ctx.fillStyle = "#FFEE58"
               this.ctx.beginPath()
               this.ctx.arc(px, lineY, 3, 0, Math.PI * 2)
@@ -1789,7 +1765,7 @@ export default class AnimatrixVisualizer {
                   "center",
                   "top",
                   pf,
-                  "#B0BEC5",
+                  "#B0BEC5"
                 )
               }
 
@@ -1809,44 +1785,31 @@ export default class AnimatrixVisualizer {
                     weight = 1
                   } else if (idx === 0) {
                     // First child
-                    const nextThreshold =
-                      children[idx + 1]?.threshold ?? ch.threshold
+                    const nextThreshold = children[idx + 1]?.threshold ?? ch.threshold
                     weight =
                       paramValue <= ch.threshold
                         ? 1
                         : paramValue <= nextThreshold
-                          ? (nextThreshold - paramValue) /
-                            (nextThreshold - ch.threshold)
+                          ? (nextThreshold - paramValue) / (nextThreshold - ch.threshold)
                           : 0
                   } else if (idx === children.length - 1) {
                     // Last child
-                    const prevThreshold =
-                      children[idx - 1]?.threshold ?? ch.threshold
+                    const prevThreshold = children[idx - 1]?.threshold ?? ch.threshold
                     weight =
                       paramValue >= ch.threshold
                         ? 1
                         : paramValue >= prevThreshold
-                          ? (paramValue - prevThreshold) /
-                            (ch.threshold - prevThreshold)
+                          ? (paramValue - prevThreshold) / (ch.threshold - prevThreshold)
                           : 0
                   } else {
                     // Middle child - blend between neighbors
-                    const prevThreshold =
-                      children[idx - 1]?.threshold ?? ch.threshold
-                    const nextThreshold =
-                      children[idx + 1]?.threshold ?? ch.threshold
-                    if (
-                      paramValue >= prevThreshold &&
-                      paramValue <= nextThreshold
-                    ) {
+                    const prevThreshold = children[idx - 1]?.threshold ?? ch.threshold
+                    const nextThreshold = children[idx + 1]?.threshold ?? ch.threshold
+                    if (paramValue >= prevThreshold && paramValue <= nextThreshold) {
                       if (paramValue <= ch.threshold) {
-                        weight =
-                          (paramValue - prevThreshold) /
-                          (ch.threshold - prevThreshold)
+                        weight = (paramValue - prevThreshold) / (ch.threshold - prevThreshold)
                       } else {
-                        weight =
-                          (nextThreshold - paramValue) /
-                          (nextThreshold - ch.threshold)
+                        weight = (nextThreshold - paramValue) / (nextThreshold - ch.threshold)
                       }
                     }
                   }
@@ -1876,8 +1839,7 @@ export default class AnimatrixVisualizer {
                     this.ctx.fillRect(listX - 4, listY - 2, 200, 14)
                   }
 
-                  const weightText =
-                    weight > 0.01 ? ` (${(weight * 100).toFixed(0)}%)` : ""
+                  const weightText = weight > 0.01 ? ` (${(weight * 100).toFixed(0)}%)` : ""
                   this.queue_label(
                     `${bullet} ${ch.state_id}${weightText}  @ ${ch.threshold}`,
                     listX,
@@ -1885,7 +1847,7 @@ export default class AnimatrixVisualizer {
                     "left",
                     "top",
                     "12px monospace",
-                    color,
+                    color
                   )
                   listY += 16
                 }
@@ -1895,10 +1857,7 @@ export default class AnimatrixVisualizer {
         }
       }
 
-      if (
-        (is_current || is_transitioning_from || is_transitioning_to) &&
-        this.animator
-      ) {
+      if ((is_current || is_transitioning_from || is_transitioning_to) && this.animator) {
         const playback_progress = this.animator.get_clip_progress(state_id)
         const weight = is_transitioning_from
           ? 1 - active_transition!.progress
@@ -1909,22 +1868,13 @@ export default class AnimatrixVisualizer {
               : 0
         if (lod <= 1) {
           const barY = ny + nodeH + 12
-          this.draw_playback_indicator(
-            pos.x,
-            barY,
-            playback_progress,
-            weight,
-            clip?.loop || false,
-          )
+          this.draw_playback_indicator(pos.x, barY, playback_progress, weight, clip?.loop || false)
         }
       }
     })
   }
 
-  private get_node_dimensions(
-    state_id: string,
-    is_blend: boolean,
-  ): { w: number; h: number } {
+  private get_node_dimensions(state_id: string, is_blend: boolean): { w: number; h: number } {
     const lod = this.getLOD()
     const baseW = lod === 0 ? 240 : lod === 1 ? 220 : 200
     const baseH = is_blend ? (lod === 0 ? 130 : 110) : lod === 0 ? 80 : 70
@@ -1944,7 +1894,7 @@ export default class AnimatrixVisualizer {
     align: CanvasTextAlign,
     baseline: CanvasTextBaseline,
     font: string,
-    color: string,
+    color: string
   ): void {
     // Transform world coords to screen space based on current pan/zoom
     const sx = x * this.viewScale + this.panX
@@ -1973,12 +1923,7 @@ export default class AnimatrixVisualizer {
     this.pendingLabels.length = 0
   }
 
-  private draw_chevron(
-    x: number,
-    y: number,
-    open: boolean,
-    hovered: boolean = false,
-  ): void {
+  private draw_chevron(x: number, y: number, open: boolean, hovered: boolean = false): void {
     const ctx = this.ctx
 
     // Draw hover background
@@ -2015,7 +1960,7 @@ export default class AnimatrixVisualizer {
     r: number,
     fill: string,
     stroke: string,
-    lineWidth: number,
+    lineWidth: number
   ): void {
     const ctx = this.ctx
     ctx.fillStyle = fill
@@ -2041,7 +1986,7 @@ export default class AnimatrixVisualizer {
     y: number,
     progress: number,
     weight: number,
-    is_looping: boolean,
+    is_looping: boolean
   ): void {
     const bar_width = 60
     const bar_height = 8
@@ -2082,8 +2027,7 @@ export default class AnimatrixVisualizer {
     }
 
     const params = this.animator.get_parameters_map()
-    let html =
-      '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">'
+    let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">'
 
     params.forEach((param, name) => {
       let value_display = param.value

@@ -161,10 +161,7 @@ export class InputManager {
 
 // Export simple convenience functions - just key state checking
 export const Input = {
-  isPressed: (action: InputAction) =>
-    InputManager.getInstance().isActionPressed(action),
-  isKeyPressed: (keyCode: string) =>
-    InputManager.getInstance().isKeyPressed(keyCode),
-  setEnabled: (enabled: boolean) =>
-    InputManager.getInstance().setEnabled(enabled),
+  isPressed: (action: InputAction) => InputManager.getInstance().isActionPressed(action),
+  isKeyPressed: (keyCode: string) => InputManager.getInstance().isKeyPressed(keyCode),
+  setEnabled: (enabled: boolean) => InputManager.getInstance().setEnabled(enabled),
 }

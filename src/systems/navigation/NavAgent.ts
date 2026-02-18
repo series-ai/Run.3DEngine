@@ -102,9 +102,7 @@ export class NavAgent extends Component {
 
     // Check if we've completed all waypoints AND are close to the final target
     const hasCompletedPath = this.currentWaypointIndex >= this.waypoints.length
-    const distanceToFinalTarget = this.gameObject.position.distanceTo(
-      this.currentTarget,
-    )
+    const distanceToFinalTarget = this.gameObject.position.distanceTo(this.currentTarget)
     const isCloseToTarget = distanceToFinalTarget <= this.arrivalDistance
 
     return hasCompletedPath && isCloseToTarget
@@ -119,7 +117,7 @@ export class NavAgent extends Component {
     if (this.currentTarget !== null) {
       return true
     }
-    
+
     // Check if we're still moving (velocity magnitude)
     const velocityMagnitude = this.currentVelocity.length()
     return velocityMagnitude > 0.1
@@ -141,7 +139,6 @@ export class NavAgent extends Component {
   public getMovementSpeed(): number {
     return this.currentVelocity.length()
   }
-
 
   /**
    * Enable or disable path visualization
@@ -185,9 +182,7 @@ export class NavAgent extends Component {
     }
 
     // Convert waypoints to Vector3 array internally
-    const waypoints = pathResult.waypoints.map(
-      (wp) => new THREE.Vector3(wp.x, 0, wp.z),
-    )
+    const waypoints = pathResult.waypoints.map((wp) => new THREE.Vector3(wp.x, 0, wp.z))
     this.setWaypoints(waypoints)
 
     return true
@@ -246,10 +241,7 @@ export class NavAgent extends Component {
   private handlePathComplete(deltaTime: number): boolean {
     if (this.currentWaypointIndex >= this.waypoints.length) {
       // Stop moving with smooth deceleration
-      this.currentVelocity.lerp(
-        new THREE.Vector3(),
-        this.deceleration * deltaTime,
-      )
+      this.currentVelocity.lerp(new THREE.Vector3(), this.deceleration * deltaTime)
       this.applyMovement(deltaTime)
 
       if (this.currentVelocity.length() < 0.1) {
@@ -291,10 +283,8 @@ export class NavAgent extends Component {
       direction.normalize()
 
       // Handle rotation - only rotate when not at the final waypoint or when far from final target
-      const isLastWaypoint =
-        this.currentWaypointIndex === this.waypoints.length - 1
-      const shouldRotate =
-        !isLastWaypoint || distance > this.arrivalDistance * 2
+      const isLastWaypoint = this.currentWaypointIndex === this.waypoints.length - 1
+      const shouldRotate = !isLastWaypoint || distance > this.arrivalDistance * 2
 
       if (shouldRotate) {
         this.rotateTowardsDirection(direction, deltaTime)
@@ -318,10 +308,7 @@ export class NavAgent extends Component {
   /**
    * Rotate towards movement direction
    */
-  private rotateTowardsDirection(
-    direction: THREE.Vector3,
-    deltaTime: number,
-  ): void {
+  private rotateTowardsDirection(direction: THREE.Vector3, deltaTime: number): void {
     // Calculate target rotation from direction
     const targetRotationY = Math.atan2(direction.x, direction.z)
 
@@ -341,16 +328,13 @@ export class NavAgent extends Component {
 
     // Clamp rotation to prevent overshooting
     const rotationDelta =
-      Math.sign(angleDifference) *
-      Math.min(Math.abs(angleDifference), maxRotationThisFrame)
+      Math.sign(angleDifference) * Math.min(Math.abs(angleDifference), maxRotationThisFrame)
 
     // Apply rotation
     this.gameObject.rotation.y += rotationDelta
 
     // Normalize rotation to [0, 2π] range for consistency
-    while (this.gameObject.rotation.y < 0)
-      this.gameObject.rotation.y += 2 * Math.PI
-    while (this.gameObject.rotation.y >= 2 * Math.PI)
-      this.gameObject.rotation.y -= 2 * Math.PI
+    while (this.gameObject.rotation.y < 0) this.gameObject.rotation.y += 2 * Math.PI
+    while (this.gameObject.rotation.y >= 2 * Math.PI) this.gameObject.rotation.y -= 2 * Math.PI
   }
 }

@@ -58,9 +58,7 @@ export class PlayerControllerThree extends Component {
     this.updateCameraPosition()
 
     console.log("🎮 Player controller initialized")
-    console.log(
-      "📋 Controls: WASD to move, Shift to run, E to interact, Click to look around",
-    )
+    console.log("📋 Controls: WASD to move, Shift to run, E to interact, Click to look around")
   }
 
   /**
@@ -76,10 +74,7 @@ export class PlayerControllerThree extends Component {
     document.addEventListener("click", this.onClick.bind(this))
 
     // Pointer lock events
-    document.addEventListener(
-      "pointerlockchange",
-      this.onPointerLockChange.bind(this),
-    )
+    document.addEventListener("pointerlockchange", this.onPointerLockChange.bind(this))
   }
 
   /**
@@ -214,9 +209,7 @@ export class PlayerControllerThree extends Component {
       this.direction.normalize()
 
       // Apply movement to player position
-      this.velocity
-        .copy(this.direction)
-        .multiplyScalar(currentSpeed * deltaTime)
+      this.velocity.copy(this.direction).multiplyScalar(currentSpeed * deltaTime)
       this.gameObject.position.add(this.velocity)
     }
 
@@ -269,10 +262,7 @@ export class PlayerControllerThree extends Component {
     document.removeEventListener("keyup", this.onKeyUp.bind(this))
     document.removeEventListener("mousemove", this.onMouseMove.bind(this))
     document.removeEventListener("click", this.onClick.bind(this))
-    document.removeEventListener(
-      "pointerlockchange",
-      this.onPointerLockChange.bind(this),
-    )
+    document.removeEventListener("pointerlockchange", this.onPointerLockChange.bind(this))
 
     // Exit pointer lock if active
     if (this.isPointerLocked) {

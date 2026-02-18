@@ -36,21 +36,16 @@ export class MovementController extends Component {
    * Find the rigid body component on this GameObject
    */
   private findRigidBodyComponentThree(): void {
-    this.rigidBodyComponent =
-      this.gameObject.getComponent(RigidBodyComponentThree) || null
+    this.rigidBodyComponent = this.gameObject.getComponent(RigidBodyComponentThree) || null
     if (!this.rigidBodyComponent) {
-      console.warn(
-        "MovementController: No RigidBodyComponentThree found on GameObject",
-      )
+      console.warn("MovementController: No RigidBodyComponentThree found on GameObject")
     }
   }
 
   /**
    * Set the rigid body component this controller should manage
    */
-  public setRigidBodyComponentThree(
-    rigidBodyComponent: RigidBodyComponentThree,
-  ): void {
+  public setRigidBodyComponentThree(rigidBodyComponent: RigidBodyComponentThree): void {
     this.rigidBodyComponent = rigidBodyComponent
   }
 
@@ -75,9 +70,7 @@ export class MovementController extends Component {
   /**
    * Calculate target velocity based on input direction
    */
-  private calculateTargetVelocity(
-    inputDirection: THREE.Vector3 | null,
-  ): THREE.Vector3 {
+  private calculateTargetVelocity(inputDirection: THREE.Vector3 | null): THREE.Vector3 {
     const targetVelocity = new THREE.Vector3(0, 0, 0)
 
     if (inputDirection && inputDirection.length() > 0.01) {
@@ -94,10 +87,7 @@ export class MovementController extends Component {
   /**
    * Smooth velocity towards target using acceleration
    */
-  private smoothVelocity(
-    targetVelocity: THREE.Vector3,
-    deltaTime: number,
-  ): THREE.Vector3 {
+  private smoothVelocity(targetVelocity: THREE.Vector3, deltaTime: number): THREE.Vector3 {
     if (!this.rigidBodyComponent) return targetVelocity
 
     this.rigidBodyComponent.getVelocity(this._currentVelocity)
@@ -105,16 +95,8 @@ export class MovementController extends Component {
 
     // Smooth X and Z velocities
     const smoothedVelocity = new THREE.Vector3()
-    smoothedVelocity.x = this.moveTowards(
-      this._currentVelocity.x,
-      targetVelocity.x,
-      maxDelta,
-    )
-    smoothedVelocity.z = this.moveTowards(
-      this._currentVelocity.z,
-      targetVelocity.z,
-      maxDelta,
-    )
+    smoothedVelocity.x = this.moveTowards(this._currentVelocity.x, targetVelocity.x, maxDelta)
+    smoothedVelocity.z = this.moveTowards(this._currentVelocity.z, targetVelocity.z, maxDelta)
     smoothedVelocity.y = 0 // Keep grounded
 
     return smoothedVelocity
@@ -123,10 +105,7 @@ export class MovementController extends Component {
   /**
    * Update rotation smoothly towards movement direction using quaternion slerp
    */
-  private updateRotation(
-    inputDirection: THREE.Vector3 | null,
-    deltaTime: number,
-  ): void {
+  private updateRotation(inputDirection: THREE.Vector3 | null, deltaTime: number): void {
     // Always clear angular velocity first to prevent unwanted spinning
     if (this.rigidBodyComponent) {
       const rigidBody = this.rigidBodyComponent.getRigidBody()
@@ -147,28 +126,18 @@ export class MovementController extends Component {
 
     // Create target quaternion
     const targetQuaternion = new THREE.Quaternion()
-    targetQuaternion.setFromAxisAngle(
-      new THREE.Vector3(0, 1, 0),
-      targetRotationY,
-    )
+    targetQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetRotationY)
 
     // Get current quaternion
     const currentQuaternion = new THREE.Quaternion()
-    currentQuaternion.setFromAxisAngle(
-      new THREE.Vector3(0, 1, 0),
-      this.currentRotationY,
-    )
+    currentQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.currentRotationY)
 
     // Calculate slerp factor based on turn speed
     const slerpFactor = Math.min(1.0, this.turnSpeed * deltaTime)
 
     // Slerp between current and target rotation
     const resultQuaternion = new THREE.Quaternion()
-    resultQuaternion.slerpQuaternions(
-      currentQuaternion,
-      targetQuaternion,
-      slerpFactor,
-    )
+    resultQuaternion.slerpQuaternions(currentQuaternion, targetQuaternion, slerpFactor)
 
     // Update current rotation Y for tracking
     const euler = new THREE.Euler()
@@ -200,11 +169,7 @@ export class MovementController extends Component {
   /**
    * Utility function to move a value towards a target at a given rate
    */
-  private moveTowards(
-    current: number,
-    target: number,
-    maxDelta: number,
-  ): number {
+  private moveTowards(current: number, target: number, maxDelta: number): number {
     const delta = target - current
     if (Math.abs(delta) <= maxDelta) {
       return target

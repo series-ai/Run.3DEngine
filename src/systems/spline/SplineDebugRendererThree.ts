@@ -193,17 +193,12 @@ export class SplineDebugRendererThree extends Component {
   private createArrow(
     position: THREE.Vector3,
     direction: THREE.Vector3,
-    length: number,
+    length: number
   ): THREE.Group {
     const group = new THREE.Group()
 
     // Arrow shaft
-    const shaftGeometry = new THREE.CylinderGeometry(
-      0.02,
-      0.02,
-      length * 0.8,
-      4,
-    )
+    const shaftGeometry = new THREE.CylinderGeometry(0.02, 0.02, length * 0.8, 4)
     const shaftMaterial = new THREE.MeshBasicMaterial({
       color: this.options.directionColor,
     })
@@ -226,10 +221,7 @@ export class SplineDebugRendererThree extends Component {
 
     // Orient to face the direction
     const up = new THREE.Vector3(0, 1, 0)
-    const quaternion = new THREE.Quaternion().setFromUnitVectors(
-      up,
-      direction.normalize(),
-    )
+    const quaternion = new THREE.Quaternion().setFromUnitVectors(up, direction.normalize())
     group.setRotationFromQuaternion(quaternion)
 
     return group

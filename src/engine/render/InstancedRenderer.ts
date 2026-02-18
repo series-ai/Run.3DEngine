@@ -31,9 +31,9 @@ export interface InstancedRendererOptions {
  * gameObject.addComponent(new InstancedRenderer("burger"))
  *
  * // With options
- * gameObject.addComponent(new InstancedRenderer("burger", { 
+ * gameObject.addComponent(new InstancedRenderer("burger", {
  *   isDynamic: false,
- *   castShadow: true 
+ *   castShadow: true
  * }))
  *
  * // For stationary objects, switch to static mode
@@ -62,9 +62,7 @@ export class InstancedRenderer extends Component {
     super()
     this.batchKey = batchKey
     // Support legacy boolean parameter for isDynamic
-    this.options = typeof options === 'boolean' 
-      ? { isDynamic: options }
-      : options
+    this.options = typeof options === "boolean" ? { isDynamic: options } : options
   }
 
   /**
@@ -166,7 +164,11 @@ export class InstancedRenderer extends Component {
    */
   public setDynamic(isDynamic: boolean): void {
     if (this.instanceId) {
-      InstancedMeshManager.getInstance().setInstanceDynamic(this.batchKey, this.instanceId, isDynamic)
+      InstancedMeshManager.getInstance().setInstanceDynamic(
+        this.batchKey,
+        this.instanceId,
+        isDynamic
+      )
     }
   }
 
