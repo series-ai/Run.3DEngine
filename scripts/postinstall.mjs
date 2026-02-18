@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, rmSync, readdirSync, copyFileSync, statSync } from "fs";
+import { existsSync, mkdirSync, rmSync, readdirSync, copyFileSync, statSync, readFileSync, appendFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
@@ -49,3 +49,15 @@ function copyDir(src, dest) {
 }
 
 copyDir(docsSource, docsDest);
+
+// Add .rundot/3d-engine-docs to .gitignore if it exists and the entry is missing
+const gitignorePath = join(projectRoot, ".gitignore");
+if (existsSync(gitignorePath)) {
+  const gitignoreContent = readFileSync(gitignorePath, "utf-8");
+  const entry = ".rundot/3d-engine-docs";
+  const lines = gitignoreContent.split(/\r?\n/);
+  if (!lines.some((line) => line.trim() === entry)) {
+    const needsNewline = gitignoreContent.length > 0 && !gitignoreContent.endsWith("\n");
+    appendFileSync(gitignorePath, (needsNewline ? "\n" : "") + entry + "\n");
+  }
+}
