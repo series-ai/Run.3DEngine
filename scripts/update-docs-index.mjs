@@ -9,16 +9,25 @@ export function updateDocsIndex(cwd = resolve(import.meta.dirname, "..")) {
   }
 
   const fresh = readFileSync(indexPath, "utf-8").trimEnd();
-  const label = "Docs Index";
-  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // Extract the label from the index line, e.g. [Run.3DEngine Docs Index]|...
+  const labelMatch = fresh.match(/^\[([^\]]+)\]/);
+  if (!labelMatch) {
+    console.warn("Could not parse label from docs-index.txt, skipping");
+    return;
+  }
+  const escaped = labelMatch[1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const re = new RegExp(`\\[${escaped}\\][^\\n]*(?:\\n(?![\\[<])[^\\n]*)*`);
 
   const targets = ["AGENTS.md", "CLAUDE.md"];
 
   for (const file of targets) {
     const filePath = resolve(cwd, file);
+
     if (!existsSync(filePath)) {
-      console.log(`${file} not found, skipping`);
+      // Create the file with just the index line
+      writeFileSync(filePath, fresh + "\n");
+      console.log(`Created ${file}`);
       continue;
     }
 
