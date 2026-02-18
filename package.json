@@ -36,8 +36,10 @@
         "@stowkit/reader": "^0.1.39",
         "@stowkit/three-loader": "^0.1.40",
         "three": "^0.180.0",
-        "three-stdlib": "^2.36.0",
-        "@series-inc/rundot-game-sdk": "5.3.0"
+        "three-stdlib": "^2.36.0"
+    },
+    "peerDependencies": {
+        "@series-inc/rundot-game-sdk": "^5.3.0"
     },
     "devDependencies": {
         "@types/three": "^0.180.0",
