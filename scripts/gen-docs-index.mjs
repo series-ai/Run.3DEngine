@@ -1,8 +1,9 @@
 import { readdirSync, statSync, writeFileSync } from "fs";
 import { join, relative, resolve, sep } from "path";
+import { DOCS_LABEL } from "./docs-config.mjs";
 
 export function genDocsIndex(
-  label = "Docs Index",
+  label = DOCS_LABEL,
   root = "docs",
   srcDir = resolve(import.meta.dirname, "..", "docs"),
   outPath = resolve(import.meta.dirname, "..", "docs-index.txt"),

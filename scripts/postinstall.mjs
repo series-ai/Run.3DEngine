@@ -82,7 +82,8 @@ if (existsSync(gitignorePath)) {
 // Generate docs index from the copied docs and splice into the consumer's AGENTS.md/CLAUDE.md
 const { genDocsIndex } = await import("./gen-docs-index.mjs");
 const { updateDocsIndex } = await import("./update-docs-index.mjs");
+const { DOCS_LABEL } = await import("./docs-config.mjs");
 
 const indexPath = join(projectRoot, "docs-index.txt");
-genDocsIndex("Run.3DEngine Docs Index", ".rundot/3d-engine-docs", docsDest, indexPath);
+genDocsIndex(DOCS_LABEL, ".rundot/3d-engine-docs", docsDest, indexPath);
 updateDocsIndex(projectRoot);

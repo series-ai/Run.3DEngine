@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "fs";
 import { resolve } from "path";
+import { LEGACY_LABELS } from "./docs-config.mjs";
 
 export function updateDocsIndex(cwd = resolve(import.meta.dirname, "..")) {
   const indexPath = resolve(cwd, "docs-index.txt");
@@ -16,8 +17,13 @@ export function updateDocsIndex(cwd = resolve(import.meta.dirname, "..")) {
     console.warn("Could not parse label from docs-index.txt, skipping");
     return;
   }
-  const escaped = labelMatch[1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const re = new RegExp(`\\[${escaped}\\][^\\n]*(?:\\n(?![\\[<])[^\\n]*)*`);
+
+  // Build regexes for the current label and all legacy labels
+  const allLabels = [labelMatch[1], ...LEGACY_LABELS];
+  const regexes = allLabels.map((label) => {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\[${escaped}\\][^\\n]*(?:\\n(?![\\[<])[^\\n]*)*`);
+  });
 
   const targets = ["AGENTS.md", "CLAUDE.md"];
 
@@ -33,8 +39,9 @@ export function updateDocsIndex(cwd = resolve(import.meta.dirname, "..")) {
 
     let content = readFileSync(filePath, "utf-8");
 
-    if (re.test(content)) {
-      content = content.replace(re, fresh);
+    const matchedRe = regexes.find((re) => re.test(content));
+    if (matchedRe) {
+      content = content.replace(matchedRe, fresh);
     } else {
       content = content.trimEnd() + "\n" + fresh + "\n";
     }
