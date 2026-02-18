@@ -27,5 +27,4 @@ export class AnimationConsoleFilter {
   public static isActive(): boolean {
     return this.isFilterActive
   }
-
 }

@@ -9,8 +9,8 @@ interface InstanceData {
   gameObject: GameObject
   matrix: THREE.Matrix4
   isActive: boolean
-  isDynamic: boolean  // Dynamic instances update every frame, static only when dirty
-  isDirty: boolean    // For static instances - needs matrix update
+  isDynamic: boolean // Dynamic instances update every frame, static only when dirty
+  isDirty: boolean // For static instances - needs matrix update
 }
 
 /**
@@ -19,14 +19,14 @@ interface InstanceData {
 interface InstanceBatch {
   batchKey: string
   instancedMesh: THREE.InstancedMesh
-  dynamicInstances: InstanceData[]  // Updated every frame
-  staticInstances: InstanceData[]   // Only updated when dirty
-  instanceMap: Map<string, InstanceData>  // O(1) lookup by ID
+  dynamicInstances: InstanceData[] // Updated every frame
+  staticInstances: InstanceData[] // Only updated when dirty
+  instanceMap: Map<string, InstanceData> // O(1) lookup by ID
   maxInstances: number
   geometry: THREE.BufferGeometry
   material: THREE.Material
-  needsRebuild: boolean  // True when instances added/removed/visibility changed
-  hasStaticDirty: boolean  // True when any static instance needs update
+  needsRebuild: boolean // True when instances added/removed/visibility changed
+  hasStaticDirty: boolean // True when any static instance needs update
 }
 
 /**
@@ -74,8 +74,8 @@ export class InstancedMeshManager {
   private batches: Map<string, InstanceBatch> = new Map()
   private isInitialized: boolean = false
 
-  private static readonly INITIAL_CAPACITY = 16  // Start small, grow as needed
-  private static readonly GROWTH_FACTOR = 2       // Double capacity when full
+  private static readonly INITIAL_CAPACITY = 16 // Start small, grow as needed
+  private static readonly GROWTH_FACTOR = 2 // Double capacity when full
 
   // Reusable temp objects to avoid per-frame allocations
   private readonly _tempPosition = new THREE.Vector3()
@@ -167,7 +167,7 @@ export class InstancedMeshManager {
       instancedMesh,
       dynamicInstances: [],
       staticInstances: [],
-      instanceMap: new Map(),  // O(1) lookup
+      instanceMap: new Map(), // O(1) lookup
       maxInstances: capacity,
       geometry,
       material,
@@ -212,7 +212,14 @@ export class InstancedMeshManager {
       return null
     }
 
-    return this.getOrCreateBatch(batchKey, geometry, material, castShadow, receiveShadow, initialCapacity)
+    return this.getOrCreateBatch(
+      batchKey,
+      geometry,
+      material,
+      castShadow,
+      receiveShadow,
+      initialCapacity
+    )
   }
 
   /**
@@ -234,7 +241,7 @@ export class InstancedMeshManager {
    */
   private resizeBatch(batch: InstanceBatch, newCapacity: number): void {
     if (!this.scene) return
-    
+
     const capacity = this.nextPowerOf2(newCapacity)
     if (capacity <= batch.maxInstances) return
 
@@ -308,8 +315,8 @@ export class InstancedMeshManager {
    * @returns Instance ID, or null if failed
    */
   public addInstance(
-    batchKey: string, 
-    gameObject: GameObject, 
+    batchKey: string,
+    gameObject: GameObject,
     options: {
       isDynamic?: boolean
       castShadow?: boolean
@@ -325,7 +332,13 @@ export class InstancedMeshManager {
     // Auto-create batch if it doesn't exist
     let batch: InstanceBatch | null = this.batches.get(batchKey) ?? null
     if (!batch) {
-      batch = this.getOrCreateBatchFromGameObject(batchKey, gameObject, castShadow, receiveShadow, initialCapacity)
+      batch = this.getOrCreateBatchFromGameObject(
+        batchKey,
+        gameObject,
+        castShadow,
+        receiveShadow,
+        initialCapacity
+      )
       if (!batch) {
         return null
       }
@@ -344,7 +357,7 @@ export class InstancedMeshManager {
       matrix: new THREE.Matrix4(),
       isActive: true,
       isDynamic,
-      isDirty: true,  // Initial update needed
+      isDirty: true, // Initial update needed
     }
 
     // Set initial matrix from GameObject world transform
@@ -356,9 +369,9 @@ export class InstancedMeshManager {
     } else {
       batch.staticInstances.push(instanceData)
     }
-    
+
     batch.instanceMap.set(instanceId, instanceData)
-    batch.needsRebuild = true  // New instance added
+    batch.needsRebuild = true // New instance added
 
     return instanceId
   }
@@ -389,7 +402,7 @@ export class InstancedMeshManager {
 
     // Remove from map
     batch.instanceMap.delete(instanceId)
-    batch.needsRebuild = true  // Instance removed
+    batch.needsRebuild = true // Instance removed
   }
 
   /**
@@ -408,7 +421,7 @@ export class InstancedMeshManager {
 
     if (instance.isActive !== visible) {
       instance.isActive = visible
-      batch.needsRebuild = true  // Visibility change affects instance count
+      batch.needsRebuild = true // Visibility change affects instance count
     }
   }
 
@@ -467,7 +480,7 @@ export class InstancedMeshManager {
     if (isDynamic) {
       batch.dynamicInstances.push(instance)
     } else {
-      instance.isDirty = true  // Ensure it gets one update
+      instance.isDirty = true // Ensure it gets one update
       batch.staticInstances.push(instance)
       batch.hasStaticDirty = true
     }
@@ -493,7 +506,7 @@ export class InstancedMeshManager {
    * - GPU upload: only if anything changed
    */
   private updateBatch(batch: InstanceBatch): void {
-    const hasDynamicActive = batch.dynamicInstances.some(i => i.isActive)
+    const hasDynamicActive = batch.dynamicInstances.some((i) => i.isActive)
     const needsGpuUpdate = hasDynamicActive || batch.needsRebuild || batch.hasStaticDirty
 
     // Early exit if nothing needs updating
@@ -528,7 +541,7 @@ export class InstancedMeshManager {
     // Update GPU
     batch.instancedMesh.instanceMatrix.needsUpdate = true
     batch.instancedMesh.count = visibleIndex
-    
+
     // Clear flags
     batch.needsRebuild = false
     batch.hasStaticDirty = false
@@ -579,7 +592,9 @@ export class InstancedMeshManager {
       const batch = this.batches.get(key)!
       const dynamicCount = batch.dynamicInstances.length
       const staticCount = batch.staticInstances.length
-      console.log(`  ${key}: ${count}/${batch.maxInstances} active (${dynamicCount} dynamic, ${staticCount} static)`)
+      console.log(
+        `  ${key}: ${count}/${batch.maxInstances} active (${dynamicCount} dynamic, ${staticCount} static)`
+      )
     }
   }
 

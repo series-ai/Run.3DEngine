@@ -33,16 +33,16 @@ export class RenderingDebugger {
     console.log("🎬 === RENDERING PERFORMANCE REPORT ===")
     console.log(`📊 Total Instances: ${stats.totalInstances}`)
     console.log(
-      `🚀 GPU Instances: ${stats.gpuInstances} in ${stats.gpuBatches} batches (${Math.round((stats.gpuInstances / Math.max(stats.totalInstances, 1)) * 100)}%)`,
+      `🚀 GPU Instances: ${stats.gpuInstances} in ${stats.gpuBatches} batches (${Math.round((stats.gpuInstances / Math.max(stats.totalInstances, 1)) * 100)}%)`
     )
     console.log(
-      `🔗 Shared Instances: ${stats.sharedInstances} (${Math.round((stats.sharedInstances / Math.max(stats.totalInstances, 1)) * 100)}%)`,
+      `🔗 Shared Instances: ${stats.sharedInstances} (${Math.round((stats.sharedInstances / Math.max(stats.totalInstances, 1)) * 100)}%)`
     )
     console.log(
-      `📋 Cloned Instances: ${stats.clonedInstances} (${Math.round((stats.clonedInstances / Math.max(stats.totalInstances, 1)) * 100)}%)`,
+      `📋 Cloned Instances: ${stats.clonedInstances} (${Math.round((stats.clonedInstances / Math.max(stats.totalInstances, 1)) * 100)}%)`
     )
     console.log(
-      `⚠️ Broken Instances: ${stats.brokenInstances} (${Math.round((stats.brokenInstances / Math.max(stats.totalInstances, 1)) * 100)}%)`,
+      `⚠️ Broken Instances: ${stats.brokenInstances} (${Math.round((stats.brokenInstances / Math.max(stats.totalInstances, 1)) * 100)}%)`
     )
     console.log(`♻️ Geometry Reuse: ${stats.geometryReuse}x`)
     console.log(`🎨 Material Reuse: ${stats.materialReuse}x`)
@@ -54,12 +54,8 @@ export class RenderingDebugger {
     } else if (stats.gpuInstances > stats.totalInstances * 0.5) {
       console.log("👍 GOOD: >50% GPU instancing - decent performance")
     } else {
-      console.log(
-        "⚠️ WARNING: Low GPU instancing usage - performance could be improved",
-      )
-      console.log(
-        "💡 Consider using RenderingMode.GPU_INSTANCING for more objects",
-      )
+      console.log("⚠️ WARNING: Low GPU instancing usage - performance could be improved")
+      console.log("💡 Consider using RenderingMode.GPU_INSTANCING for more objects")
     }
   }
 
@@ -71,9 +67,7 @@ export class RenderingDebugger {
 
     // Get global scene reference
     const scene =
-      (window as any).renderer?.scene ||
-      (window as any).game?.scene ||
-      (window as any).scene
+      (window as any).renderer?.scene || (window as any).game?.scene || (window as any).scene
     const renderer = (window as any).renderer
 
     if (!scene) {
@@ -109,7 +103,7 @@ export class RenderingDebugger {
       if (i < 20) {
         // Log first 20 objects to avoid spam
         console.log(
-          `${i}: ${child.type} - "${child.name}" (${child.children?.length || 0} children)`,
+          `${i}: ${child.type} - "${child.name}" (${child.children?.length || 0} children)`
         )
       }
 
@@ -123,9 +117,7 @@ export class RenderingDebugger {
           if (i < 10 && meshCount <= 3) {
             // Log details for first few objects only
             if (obj.isInstancedMesh) {
-              console.log(
-                `    ├─ InstancedMesh: "${obj.name}" (${obj.count} instances)`,
-              )
+              console.log(`    ├─ InstancedMesh: "${obj.name}" (${obj.count} instances)`)
             } else {
               console.log(`    ├─ Regular Mesh: "${obj.name}"`)
             }
@@ -144,10 +136,7 @@ export class RenderingDebugger {
         lightCount++
       } else if (child.isCamera) {
         cameraCount++
-      } else if (
-        child.name?.includes("Helper") ||
-        child.name?.includes("Debug")
-      ) {
+      } else if (child.name?.includes("Helper") || child.name?.includes("Debug")) {
         helperCount++
       }
 
@@ -169,9 +158,7 @@ export class RenderingDebugger {
     const expectedDrawCalls = instancedMeshCount + regularMeshCount
     console.log(`Expected draw calls (geometry): ${expectedDrawCalls}`)
     console.log(`Actual draw calls: ${renderer.info.render.calls}`)
-    console.log(
-      `Extra draw calls: ${renderer.info.render.calls - expectedDrawCalls}`,
-    )
+    console.log(`Extra draw calls: ${renderer.info.render.calls - expectedDrawCalls}`)
 
     if (renderer.info.render.calls > expectedDrawCalls) {
       console.log("🤔 POSSIBLE CAUSES OF EXTRA DRAW CALLS:")
@@ -185,14 +172,10 @@ export class RenderingDebugger {
 
     // Check for post-processing
     if ((window as any).postProcessing || renderer.domElement?.style?.filter) {
-      console.log(
-        "📸 Post-processing detected - this adds multiple render passes",
-      )
+      console.log("📸 Post-processing detected - this adds multiple render passes")
     }
 
-    console.log(
-      "💡 Run this function again after toggling post-processing to compare",
-    )
+    console.log("💡 Run this function again after toggling post-processing to compare")
   }
 
   /**
@@ -214,9 +197,7 @@ export class RenderingDebugger {
       renderer.info.reset()
       renderer.render((window as any).scene, camera)
       const trianglesBefore = renderer.info.render.triangles
-      console.log(
-        `📊 Triangle count BEFORE frustum culling: ${trianglesBefore.toLocaleString()}`,
-      )
+      console.log(`📊 Triangle count BEFORE frustum culling: ${trianglesBefore.toLocaleString()}`)
 
       // Apply frustum culling
       console.log("🔄 Applying frustum culling to all GPU batches...")
@@ -228,32 +209,26 @@ export class RenderingDebugger {
       const trianglesAfter = renderer.info.render.triangles
       const reduction = trianglesBefore - trianglesAfter
       const percentReduction =
-        trianglesBefore > 0
-          ? Math.round((reduction / trianglesBefore) * 100)
-          : 0
+        trianglesBefore > 0 ? Math.round((reduction / trianglesBefore) * 100) : 0
 
+      console.log(`📊 Triangle count AFTER frustum culling: ${trianglesAfter.toLocaleString()}`)
       console.log(
-        `📊 Triangle count AFTER frustum culling: ${trianglesAfter.toLocaleString()}`,
-      )
-      console.log(
-        `📉 Triangle reduction: ${reduction.toLocaleString()} triangles (${percentReduction}% reduction)`,
+        `📉 Triangle reduction: ${reduction.toLocaleString()} triangles (${percentReduction}% reduction)`
       )
 
       if (reduction > 0) {
         console.log(
-          "✅ Frustum culling is working! Try moving the camera to see different results.",
+          "✅ Frustum culling is working! Try moving the camera to see different results."
         )
       } else {
-        console.log(
-          "ℹ️ No triangle reduction - all instances are currently visible to the camera.",
-        )
+        console.log("ℹ️ No triangle reduction - all instances are currently visible to the camera.")
       }
     } else {
       console.log("❌ No renderer found for triangle counting")
     }
 
     console.log(
-      "💡 Move the camera around and call testFrustumCulling() again to see the difference!",
+      "💡 Move the camera around and call testFrustumCulling() again to see the difference!"
     )
   }
 
@@ -283,14 +258,14 @@ export class RenderingDebugger {
     console.log(`📦 Found batch with ${batch.instances.length} instances`)
 
     console.log(
-      `🔵 Culling radius: ${batch.cullingRadius.toFixed(2)} (encompasses entire geometry)`,
+      `🔵 Culling radius: ${batch.cullingRadius.toFixed(2)} (encompasses entire geometry)`
     )
 
     // Test frustum culling for each instance
     const frustum = new THREE.Frustum()
     const cameraMatrix = new THREE.Matrix4().multiplyMatrices(
       camera.projectionMatrix,
-      camera.matrixWorldInverse,
+      camera.matrixWorldInverse
     )
     frustum.setFromProjectionMatrix(cameraMatrix)
 
@@ -298,22 +273,18 @@ export class RenderingDebugger {
     let culledCount = 0
 
     batch.instances.forEach((instance: any, index: number) => {
-      const position = new THREE.Vector3().setFromMatrixPosition(
-        instance.matrix,
-      )
+      const position = new THREE.Vector3().setFromMatrixPosition(instance.matrix)
       const scale = new THREE.Vector3().setFromMatrixScale(instance.matrix)
       const maxScale = Math.max(scale.x, scale.y, scale.z)
 
       const actualRadius = batch.cullingRadius * maxScale
       const paddedRadius = actualRadius * 1.2
-      const isVisible = frustum.intersectsSphere(
-        new THREE.Sphere(position, paddedRadius),
-      )
+      const isVisible = frustum.intersectsSphere(new THREE.Sphere(position, paddedRadius))
 
       if (index < 5) {
         // Log details for first 5 instances
         console.log(
-          `  Instance ${index}: pos(${position.x.toFixed(1)}, ${position.z.toFixed(1)}), radius: ${paddedRadius.toFixed(2)}, visible: ${isVisible}`,
+          `  Instance ${index}: pos(${position.x.toFixed(1)}, ${position.z.toFixed(1)}), radius: ${paddedRadius.toFixed(2)}, visible: ${isVisible}`
         )
       }
 
@@ -324,18 +295,14 @@ export class RenderingDebugger {
       }
     })
 
-    console.log(
-      `👁️ Visible instances: ${visibleCount}/${batch.instances.length}`,
-    )
+    console.log(`👁️ Visible instances: ${visibleCount}/${batch.instances.length}`)
     console.log(`✂️ Culled instances: ${culledCount}/${batch.instances.length}`)
 
     if (culledCount === 0) {
       console.log(
-        "💡 No instances are being culled. This might explain why you see objects on screen being culled incorrectly.",
+        "💡 No instances are being culled. This might explain why you see objects on screen being culled incorrectly."
       )
-      console.log(
-        "💡 Try moving the camera to point away from the objects to test culling.",
-      )
+      console.log("💡 Try moving the camera to point away from the objects to test culling.")
     }
   }
 
@@ -344,9 +311,7 @@ export class RenderingDebugger {
    */
   public static inspectScene(): void {
     const scene =
-      (window as any).renderer?.scene ||
-      (window as any).game?.scene ||
-      (window as any).scene
+      (window as any).renderer?.scene || (window as any).game?.scene || (window as any).scene
 
     if (!scene) {
       console.log("❌ No scene available for inspection")
@@ -380,7 +345,7 @@ export class RenderingDebugger {
       if (index < 15) {
         // Log first 15 objects
         console.log(
-          `  ${index}: ${child.type} - "${child.name}" (${child.children?.length || 0} children)`,
+          `  ${index}: ${child.type} - "${child.name}" (${child.children?.length || 0} children)`
         )
       }
     })
@@ -393,9 +358,7 @@ export class RenderingDebugger {
 
     if (assetGroups.length > 0) {
       console.log("⚠️ POTENTIAL DUPLICATE RENDERING DETECTED!")
-      console.log(
-        "📦 Asset groups in scene (these may cause duplicate rendering):",
-      )
+      console.log("📦 Asset groups in scene (these may cause duplicate rendering):")
       assetGroups.slice(0, 10).forEach((name) => console.log(`    - ${name}`)) // Limit to first 10
       if (assetGroups.length > 10) {
         console.log(`    ... and ${assetGroups.length - 10} more`)
@@ -412,14 +375,12 @@ export class RenderingDebugger {
    * Make all debug functions globally available
    */
   public static makeGloballyAvailable(): void {
-    ;(window as any).printRenderingReport =
-      RenderingDebugger.printRenderingReport
+    ;(window as any).printRenderingReport = RenderingDebugger.printRenderingReport
     ;(window as any).analyzeDrawCalls = RenderingDebugger.analyzeDrawCalls
     ;(window as any).testFrustumCulling = RenderingDebugger.testFrustumCulling
     ;(window as any).inspectScene = RenderingDebugger.inspectScene
     ;(window as any).getRenderingStats = RenderingDebugger.getRenderingStats
-    ;(window as any).debugFrustumCulling =
-      RenderingDebugger.debugFrustumCullingForAsset
+    ;(window as any).debugFrustumCulling = RenderingDebugger.debugFrustumCullingForAsset
     ;(window as any).setFrustumPadding = AssetManager.setFrustumCullingPadding
     ;(window as any).getFrustumPadding = AssetManager.getFrustumCullingPadding
     ;(window as any).debugBatchTypes = AssetManager.debugBatchTypes

@@ -25,7 +25,7 @@ export class InteractionZone extends Component {
   constructor(
     onEnter?: (other: GameObject) => void,
     onExit?: (other: GameObject) => void,
-    options: InteractionZoneOptions = {},
+    options: InteractionZoneOptions = {}
   ) {
     super()
     this.id = `interaction_${Math.random().toString(36).substr(2, 9)}`
@@ -128,9 +128,7 @@ export class InteractionZone extends Component {
     // console.log(`🎯 ENTER: ${other.name} → InteractionZone ${this.id}`); // Reduced spam
 
     if (!this.active) {
-      console.warn(
-        `🎯 InteractionZone ${this.id}: Ignoring enter event - zone is inactive`,
-      )
+      console.warn(`🎯 InteractionZone ${this.id}: Ignoring enter event - zone is inactive`)
       return
     }
 

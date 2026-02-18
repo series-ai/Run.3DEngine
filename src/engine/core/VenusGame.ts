@@ -165,9 +165,7 @@ export abstract class VenusGame {
    * Static factory method to create, initialize and start a VenusGame instance
    * @returns A fully initialized and running VenusGame instance
    */
-  public static async create<T extends VenusGame>(
-    this: new () => T,
-  ): Promise<T> {
+  public static async create<T extends VenusGame>(this: new () => T): Promise<T> {
     // Create the instance
     const instance = new this()
 
@@ -178,7 +176,7 @@ export abstract class VenusGame {
     VenusGame._camera = instance.camera
 
     const context = await RundotGameAPI.initializeAsync({
-      usePreloader: true
+      usePreloader: true,
     })
     console.log("[Venus SDK] Venus API initialized: ", context)
 
@@ -290,7 +288,7 @@ export abstract class VenusGame {
     const cappedPixelRatio = Math.min(window.devicePixelRatio, maxPixelRatio)
     this.renderer.setPixelRatio(cappedPixelRatio)
     console.log(
-      `[VenusGame] Device pixel ratio: ${window.devicePixelRatio}, Using: ${cappedPixelRatio} (iPhone: ${this.isIPhone()})`,
+      `[VenusGame] Device pixel ratio: ${window.devicePixelRatio}, Using: ${cappedPixelRatio} (iPhone: ${this.isIPhone()})`
     )
 
     // Apply rendering configuration from config
@@ -307,7 +305,7 @@ export abstract class VenusGame {
       75, // fov
       window.innerWidth / window.innerHeight, // aspect
       0.1, // near
-      1000, // far
+      1000 // far
     )
 
     // Create clock for delta time
@@ -341,9 +339,7 @@ export abstract class VenusGame {
     // Shadow map configuration
     this.renderer.shadowMap.enabled = this.config.shadowMapEnabled
     this.renderer.shadowMap.type =
-      this.config.shadowMapType === "pcf_soft"
-        ? THREE.PCFSoftShadowMap
-        : THREE.VSMShadowMap
+      this.config.shadowMapType === "pcf_soft" ? THREE.PCFSoftShadowMap : THREE.VSMShadowMap
     this.renderer.shadowMap.autoUpdate = true
 
     // Color space
@@ -388,9 +384,7 @@ export abstract class VenusGame {
    */
   private isMobileDevice(): boolean {
     return (
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-        navigator.userAgent,
-      ) ||
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
       "ontouchstart" in window ||
       navigator.maxTouchPoints > 0
     )
@@ -539,9 +533,7 @@ export abstract class VenusGame {
         if (object.material instanceof THREE.Material) {
           object.material.dispose()
         } else if (Array.isArray(object.material)) {
-          object.material.forEach((material: THREE.Material) =>
-            material.dispose(),
-          )
+          object.material.forEach((material: THREE.Material) => material.dispose())
         }
       }
     })

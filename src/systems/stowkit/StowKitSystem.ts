@@ -27,9 +27,9 @@ export interface StowKitLoadConfig {
    * Decoder paths for StowKit loaders.
    */
   decoderPaths?: {
-    basis?: string   // default: "basis/"
-    draco?: string   // default: "stowkit/draco/"
-    wasm?: string    // default: "stowkit_reader.wasm"
+    basis?: string // default: "basis/"
+    draco?: string // default: "stowkit/draco/"
+    wasm?: string // default: "stowkit_reader.wasm"
   }
 }
 
@@ -123,7 +123,9 @@ export class StowKitSystem {
     }
 
     // Load prefab collection
-    const prefabCollection = PrefabCollection.createFromJSON(buildJson as Parameters<typeof PrefabCollection.createFromJSON>[0])
+    const prefabCollection = PrefabCollection.createFromJSON(
+      buildJson as Parameters<typeof PrefabCollection.createFromJSON>[0]
+    )
     this._prefabCollection = prefabCollection
 
     // Load all packs from mounts
@@ -326,7 +328,7 @@ export class StowKitSystem {
             if ((child as THREE.Mesh).isMesh) {
               const meshChild = child as THREE.Mesh
               if (Array.isArray(meshChild.material)) {
-                meshChild.material = meshChild.material.map(m => this.materialConverter!(m))
+                meshChild.material = meshChild.material.map((m) => this.materialConverter!(m))
               } else if (meshChild.material) {
                 meshChild.material = this.materialConverter!(meshChild.material)
               }
@@ -483,7 +485,10 @@ export class StowKitSystem {
     return this.animations
   }
 
-  private async loadAnimationFromPacks(name: string, meshName: string): Promise<THREE.AnimationClip> {
+  private async loadAnimationFromPacks(
+    name: string,
+    meshName: string
+  ): Promise<THREE.AnimationClip> {
     const mesh = await this.getMesh(meshName)
 
     for (const [, pack] of this.packs) {
@@ -589,7 +594,14 @@ export class StowKitSystem {
 
     // Register batch
     const manager = InstancedMeshManager.getInstance()
-    const batch = manager.getOrCreateBatch(batchKey, geometry, material, castShadow, receiveShadow, initialCapacity)
+    const batch = manager.getOrCreateBatch(
+      batchKey,
+      geometry,
+      material,
+      castShadow,
+      receiveShadow,
+      initialCapacity
+    )
 
     if (!batch) {
       console.error(`StowKitSystem: Failed to create batch "${batchKey}"`)
@@ -624,12 +636,20 @@ export class StowKitSystem {
     ) as { type: string; mesh?: { pack?: string; assetId?: string } } | undefined
 
     if (!stowMeshComponent?.mesh?.assetId) {
-      console.error(`[StowKitSystem] Prefab "${prefabName}" has no stow_mesh component with mesh.assetId`)
+      console.error(
+        `[StowKitSystem] Prefab "${prefabName}" has no stow_mesh component with mesh.assetId`
+      )
       return false
     }
 
     const meshName = stowMeshComponent.mesh.assetId
-    return this.registerMeshForInstancing(prefabName, meshName, castShadow, receiveShadow, initialCapacity)
+    return this.registerMeshForInstancing(
+      prefabName,
+      meshName,
+      castShadow,
+      receiveShadow,
+      initialCapacity
+    )
   }
 
   private extractGeometry(meshGroup: THREE.Group): THREE.BufferGeometry | null {

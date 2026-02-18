@@ -56,7 +56,7 @@ function randVec3(r: Vec3Range, out: THREE.Vector3): THREE.Vector3 {
   out.set(
     min.x + Math.random() * (max.x - min.x),
     min.y + Math.random() * (max.y - min.y),
-    min.z + Math.random() * (max.z - min.z),
+    min.z + Math.random() * (max.z - min.z)
   )
   return out
 }
@@ -70,7 +70,7 @@ function randVec4(r: Vec4Range, out: THREE.Vector4): THREE.Vector4 {
     min.x + Math.random() * (max.x - min.x),
     min.y + Math.random() * (max.y - min.y),
     min.z + Math.random() * (max.z - min.z),
-    min.w + Math.random() * (max.w - min.w),
+    min.w + Math.random() * (max.w - min.w)
   )
   return out
 }
@@ -81,14 +81,9 @@ function lerpVec4(
   a: THREE.Vector4,
   b: THREE.Vector4,
   t: number,
-  out: THREE.Vector4,
+  out: THREE.Vector4
 ): THREE.Vector4 {
-  out.set(
-    lerp(a.x, b.x, t),
-    lerp(a.y, b.y, t),
-    lerp(a.z, b.z, t),
-    lerp(a.w, b.w, t),
-  )
+  out.set(lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t), lerp(a.w, b.w, t))
   return out
 }
 
@@ -108,18 +103,19 @@ const permMod12 = new Uint8Array(512)
 // Initialize permutation tables with a fixed seed for deterministic results
 ;(function initNoise() {
   const p = [
-    151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,
-    8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,
-    35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,
-    134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,
-    55,46,245,40,244,102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,
-    18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,
-    250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,
-    189,28,42,223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,
-    172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,
-    228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,
-    107,49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,
-    138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
+    151, 160, 137, 91, 90, 15, 131, 13, 201, 95, 96, 53, 194, 233, 7, 225, 140, 36, 103, 30, 69,
+    142, 8, 99, 37, 240, 21, 10, 23, 190, 6, 148, 247, 120, 234, 75, 0, 26, 197, 62, 94, 252, 219,
+    203, 117, 35, 11, 32, 57, 177, 33, 88, 237, 149, 56, 87, 174, 20, 125, 136, 171, 168, 68, 175,
+    74, 165, 71, 134, 139, 48, 27, 166, 77, 146, 158, 231, 83, 111, 229, 122, 60, 211, 133, 230,
+    220, 105, 92, 41, 55, 46, 245, 40, 244, 102, 143, 54, 65, 25, 63, 161, 1, 216, 80, 73, 209, 76,
+    132, 187, 208, 89, 18, 169, 200, 196, 135, 130, 116, 188, 159, 86, 164, 100, 109, 198, 173, 186,
+    3, 64, 52, 217, 226, 250, 124, 123, 5, 202, 38, 147, 118, 126, 255, 82, 85, 212, 207, 206, 59,
+    227, 47, 16, 58, 17, 182, 189, 28, 42, 223, 183, 170, 213, 119, 248, 152, 2, 44, 154, 163, 70,
+    221, 153, 101, 155, 167, 43, 172, 9, 129, 22, 39, 253, 19, 98, 108, 110, 79, 113, 224, 232, 178,
+    185, 112, 104, 218, 246, 97, 228, 251, 34, 242, 193, 238, 210, 144, 12, 191, 179, 162, 241, 81,
+    51, 145, 235, 249, 14, 239, 107, 49, 192, 214, 31, 181, 199, 106, 157, 184, 84, 204, 176, 115,
+    121, 50, 45, 127, 4, 150, 254, 138, 236, 205, 93, 222, 114, 67, 29, 24, 72, 243, 141, 128, 195,
+    78, 66, 215, 61, 156, 180,
   ]
   for (let i = 0; i < 256; i++) {
     perm[i] = perm[i + 256] = p[i]
@@ -129,9 +125,18 @@ const permMod12 = new Uint8Array(512)
 
 // Gradient vectors for 3D
 const grad3 = [
-  [1,1,0], [-1,1,0], [1,-1,0], [-1,-1,0],
-  [1,0,1], [-1,0,1], [1,0,-1], [-1,0,-1],
-  [0,1,1], [0,-1,1], [0,1,-1], [0,-1,-1]
+  [1, 1, 0],
+  [-1, 1, 0],
+  [1, -1, 0],
+  [-1, -1, 0],
+  [1, 0, 1],
+  [-1, 0, 1],
+  [1, 0, -1],
+  [-1, 0, -1],
+  [0, 1, 1],
+  [0, -1, 1],
+  [0, 1, -1],
+  [0, -1, -1],
 ]
 
 // Skewing factors for 2D and 3D
@@ -158,8 +163,13 @@ function simplex2D(x: number, y: number): number {
 
   // Determine which simplex we're in
   let i1: number, j1: number
-  if (x0 > y0) { i1 = 1; j1 = 0 }
-  else { i1 = 0; j1 = 1 }
+  if (x0 > y0) {
+    i1 = 1
+    j1 = 0
+  } else {
+    i1 = 0
+    j1 = 1
+  }
 
   const x1 = x0 - i1 + G2
   const y1 = y0 - j1 + G2
@@ -174,21 +184,23 @@ function simplex2D(x: number, y: number): number {
   const gi2 = permMod12[ii + 1 + perm[jj + 1]]
 
   // Calculate contribution from three corners
-  let n0 = 0, n1 = 0, n2 = 0
+  let n0 = 0,
+    n1 = 0,
+    n2 = 0
 
-  let t0 = 0.5 - x0*x0 - y0*y0
+  let t0 = 0.5 - x0 * x0 - y0 * y0
   if (t0 >= 0) {
     t0 *= t0
     n0 = t0 * t0 * (grad3[gi0][0] * x0 + grad3[gi0][1] * y0)
   }
 
-  let t1 = 0.5 - x1*x1 - y1*y1
+  let t1 = 0.5 - x1 * x1 - y1 * y1
   if (t1 >= 0) {
     t1 *= t1
     n1 = t1 * t1 * (grad3[gi1][0] * x1 + grad3[gi1][1] * y1)
   }
 
-  let t2 = 0.5 - x2*x2 - y2*y2
+  let t2 = 0.5 - x2 * x2 - y2 * y2
   if (t2 >= 0) {
     t2 *= t2
     n2 = t2 * t2 * (grad3[gi2][0] * x2 + grad3[gi2][1] * y2)
@@ -222,24 +234,62 @@ function simplex3D(x: number, y: number, z: number): number {
   let i2: number, j2: number, k2: number
 
   if (x0 >= y0) {
-    if (y0 >= z0) { i1=1; j1=0; k1=0; i2=1; j2=1; k2=0 }
-    else if (x0 >= z0) { i1=1; j1=0; k1=0; i2=1; j2=0; k2=1 }
-    else { i1=0; j1=0; k1=1; i2=1; j2=0; k2=1 }
+    if (y0 >= z0) {
+      i1 = 1
+      j1 = 0
+      k1 = 0
+      i2 = 1
+      j2 = 1
+      k2 = 0
+    } else if (x0 >= z0) {
+      i1 = 1
+      j1 = 0
+      k1 = 0
+      i2 = 1
+      j2 = 0
+      k2 = 1
+    } else {
+      i1 = 0
+      j1 = 0
+      k1 = 1
+      i2 = 1
+      j2 = 0
+      k2 = 1
+    }
   } else {
-    if (y0 < z0) { i1=0; j1=0; k1=1; i2=0; j2=1; k2=1 }
-    else if (x0 < z0) { i1=0; j1=1; k1=0; i2=0; j2=1; k2=1 }
-    else { i1=0; j1=1; k1=0; i2=1; j2=1; k2=0 }
+    if (y0 < z0) {
+      i1 = 0
+      j1 = 0
+      k1 = 1
+      i2 = 0
+      j2 = 1
+      k2 = 1
+    } else if (x0 < z0) {
+      i1 = 0
+      j1 = 1
+      k1 = 0
+      i2 = 0
+      j2 = 1
+      k2 = 1
+    } else {
+      i1 = 0
+      j1 = 1
+      k1 = 0
+      i2 = 1
+      j2 = 1
+      k2 = 0
+    }
   }
 
   const x1 = x0 - i1 + G3
   const y1 = y0 - j1 + G3
   const z1 = z0 - k1 + G3
-  const x2 = x0 - i2 + 2*G3
-  const y2 = y0 - j2 + 2*G3
-  const z2 = z0 - k2 + 2*G3
-  const x3 = x0 - 1 + 3*G3
-  const y3 = y0 - 1 + 3*G3
-  const z3 = z0 - 1 + 3*G3
+  const x2 = x0 - i2 + 2 * G3
+  const y2 = y0 - j2 + 2 * G3
+  const z2 = z0 - k2 + 2 * G3
+  const x3 = x0 - 1 + 3 * G3
+  const y3 = y0 - 1 + 3 * G3
+  const z3 = z0 - 1 + 3 * G3
 
   // Hash coordinates
   const ii = i & 255
@@ -251,30 +301,33 @@ function simplex3D(x: number, y: number, z: number): number {
   const gi3 = permMod12[ii + 1 + perm[jj + 1 + perm[kk + 1]]]
 
   // Calculate contributions
-  let n0 = 0, n1 = 0, n2 = 0, n3 = 0
+  let n0 = 0,
+    n1 = 0,
+    n2 = 0,
+    n3 = 0
 
-  let t0 = 0.6 - x0*x0 - y0*y0 - z0*z0
+  let t0 = 0.6 - x0 * x0 - y0 * y0 - z0 * z0
   if (t0 >= 0) {
     t0 *= t0
-    n0 = t0 * t0 * (grad3[gi0][0]*x0 + grad3[gi0][1]*y0 + grad3[gi0][2]*z0)
+    n0 = t0 * t0 * (grad3[gi0][0] * x0 + grad3[gi0][1] * y0 + grad3[gi0][2] * z0)
   }
 
-  let t1 = 0.6 - x1*x1 - y1*y1 - z1*z1
+  let t1 = 0.6 - x1 * x1 - y1 * y1 - z1 * z1
   if (t1 >= 0) {
     t1 *= t1
-    n1 = t1 * t1 * (grad3[gi1][0]*x1 + grad3[gi1][1]*y1 + grad3[gi1][2]*z1)
+    n1 = t1 * t1 * (grad3[gi1][0] * x1 + grad3[gi1][1] * y1 + grad3[gi1][2] * z1)
   }
 
-  let t2 = 0.6 - x2*x2 - y2*y2 - z2*z2
+  let t2 = 0.6 - x2 * x2 - y2 * y2 - z2 * z2
   if (t2 >= 0) {
     t2 *= t2
-    n2 = t2 * t2 * (grad3[gi2][0]*x2 + grad3[gi2][1]*y2 + grad3[gi2][2]*z2)
+    n2 = t2 * t2 * (grad3[gi2][0] * x2 + grad3[gi2][1] * y2 + grad3[gi2][2] * z2)
   }
 
-  let t3 = 0.6 - x3*x3 - y3*y3 - z3*z3
+  let t3 = 0.6 - x3 * x3 - y3 * y3 - z3 * z3
   if (t3 >= 0) {
     t3 *= t3
-    n3 = t3 * t3 * (grad3[gi3][0]*x3 + grad3[gi3][1]*y3 + grad3[gi3][2]*z3)
+    n3 = t3 * t3 * (grad3[gi3][0] * x3 + grad3[gi3][1] * y3 + grad3[gi3][2] * z3)
   }
 
   return 32 * (n0 + n1 + n2 + n3)
@@ -325,46 +378,46 @@ export const EmitterShape = {
 export type EmitterShapeKey = (typeof EmitterShape)[keyof typeof EmitterShape]
 
 export type BurstConfig = {
-  time: number              // When to burst (seconds from start)
-  count: number             // How many particles to spawn
-  cycles?: number           // How many times to repeat (1 = once, default)
-  interval?: number         // Time between cycles
+  time: number // When to burst (seconds from start)
+  count: number // How many particles to spawn
+  cycles?: number // How many times to repeat (1 = once, default)
+  interval?: number // Time between cycles
 }
 
 export type EmissionConfig = {
-  mode: 'constant' | 'burst'
-  rateOverTime?: number     // For constant mode (particles per second)
-  bursts?: BurstConfig[]    // For burst mode
+  mode: "constant" | "burst"
+  rateOverTime?: number // For constant mode (particles per second)
+  bursts?: BurstConfig[] // For burst mode
 }
 
 export type NoiseConfig = {
   enabled?: boolean
   // What to affect
-  positionAmount?: number     // How much noise affects position (world units)
-  rotationAmount?: number     // How much noise affects rotation (radians)
-  sizeAmount?: number         // How much noise affects size (multiplier, 0-1 range typically)
+  positionAmount?: number // How much noise affects position (world units)
+  rotationAmount?: number // How much noise affects rotation (radians)
+  sizeAmount?: number // How much noise affects size (multiplier, 0-1 range typically)
   // Noise parameters
-  frequency?: number          // How fast the noise changes spatially (default 1)
-  scrollSpeed?: number        // How fast noise scrolls over time (default 0)
-  octaves?: number            // Number of noise layers for detail (1-4, default 1)
-  strengthX?: number          // Noise strength multiplier for X axis (default 1)
-  strengthY?: number          // Noise strength multiplier for Y axis (default 1)
+  frequency?: number // How fast the noise changes spatially (default 1)
+  scrollSpeed?: number // How fast noise scrolls over time (default 0)
+  octaves?: number // Number of noise layers for detail (1-4, default 1)
+  strengthX?: number // Noise strength multiplier for X axis (default 1)
+  strengthY?: number // Noise strength multiplier for Y axis (default 1)
 }
 
 export type FlipConfig = {
-  x?: number                  // Probability (0-1) of flipping particle horizontally
-  y?: number                  // Probability (0-1) of flipping particle vertically
+  x?: number // Probability (0-1) of flipping particle horizontally
+  y?: number // Probability (0-1) of flipping particle vertically
 }
 
-export type RenderMode = 'billboard' | 'quad'
+export type RenderMode = "billboard" | "quad"
 
 export type EmitterConfig = {
   maxParticles?: number
 
   // Playback control
-  duration?: number         // System duration in seconds (0 = infinite)
-  looping?: boolean         // Restart after duration ends
-  playOnAwake?: boolean     // Start playing immediately on creation
+  duration?: number // System duration in seconds (0 = infinite)
+  looping?: boolean // Restart after duration ends
+  playOnAwake?: boolean // Start playing immediately on creation
 
   // Emission
   emission?: EmissionConfig
@@ -382,13 +435,13 @@ export type EmitterConfig = {
   size?: { start: NumRange; end: NumRange }
   speed?: NumRange
   gravity?: THREE.Vector3
-  damping?: number          // Velocity damping over lifetime (0 = no damping, higher = more drag)
+  damping?: number // Velocity damping over lifetime (0 = no damping, higher = more drag)
 
   // Orbital velocity - particles orbit around axes (radians per second)
   orbital?: {
-    x?: number  // Orbit around X axis (rotation in YZ plane)
-    y?: number  // Orbit around Y axis (rotation in XZ plane)
-    z?: number  // Orbit around Z axis (rotation in XY plane)
+    x?: number // Orbit around X axis (rotation in YZ plane)
+    y?: number // Orbit around Y axis (rotation in XZ plane)
+    z?: number // Orbit around Z axis (rotation in XY plane)
   }
   alignment?: {
     velocityScale?: number
@@ -399,9 +452,9 @@ export type EmitterConfig = {
   rotation?: { angle?: NumRange; velocity?: NumRange }
 
   // Curves - "over lifetime" multipliers (all default to 1.0 constant)
-  sizeOverLifetime?: CurveableValue     // Multiplier applied to interpolated size
-  speedOverLifetime?: CurveableValue    // Multiplier applied to velocity magnitude
-  opacityOverLifetime?: CurveableValue  // Direct alpha value (0-1), overrides color alpha
+  sizeOverLifetime?: CurveableValue // Multiplier applied to interpolated size
+  speedOverLifetime?: CurveableValue // Multiplier applied to velocity magnitude
+  opacityOverLifetime?: CurveableValue // Direct alpha value (0-1), overrides color alpha
   rotationOverLifetime?: CurveableValue // Multiplier applied to angular velocity
 
   // Noise - affects position, rotation, and size over lifetime
@@ -410,16 +463,16 @@ export type EmitterConfig = {
   // Rendering
   color?: {
     start: Vec4Range
-    startList?: THREE.Vector4[]  // Random start colors to pick from
-    useStartAsEnd?: boolean      // If true, end color matches start (for no-fade when using random colors)
+    startList?: THREE.Vector4[] // Random start colors to pick from
+    useStartAsEnd?: boolean // If true, end color matches start (for no-fade when using random colors)
     mid?: Vec4Range
     end: Vec4Range
   }
   blending?: THREE.Blending
   premultipliedAlpha?: boolean
   maskFromLuminance?: boolean
-  flip?: FlipConfig             // Probability of flipping particles on X/Y axes
-  renderMode?: RenderMode       // 'billboard' (default) or 'quad' (uses emitter rotation)
+  flip?: FlipConfig // Probability of flipping particles on X/Y axes
+  renderMode?: RenderMode // 'billboard' (default) or 'quad' (uses emitter rotation)
 
   // Collision
   collision?: {
@@ -435,10 +488,10 @@ export type EmitterConfig = {
     rows: number
     columns: number
     frameCount?: number
-    timeMode?: 'fps' | 'startLifetime'  // fps = animate at fps rate, startLifetime = fixed frame based on lifetime value
+    timeMode?: "fps" | "startLifetime" // fps = animate at fps rate, startLifetime = fixed frame based on lifetime value
     fps?: number
     loop?: boolean
-    randomStartFrame?: boolean  // If true, each particle starts at a random frame in the animation
+    randomStartFrame?: boolean // If true, each particle starts at a random frame in the animation
   }
 
   debug?: boolean
@@ -453,7 +506,7 @@ export type EmitterAssets = {
 
 export function createParticleEmitter(
   cfg: EmitterConfig = {},
-  assets: EmitterAssets = {},
+  assets: EmitterAssets = {}
 ): ParticleSystem {
   cfg.alignment = { ...(cfg.alignment ?? {}) }
   cfg.collision = { ...(cfg.collision ?? {}) }
@@ -482,10 +535,7 @@ export function createParticleEmitter(
       map: { value: texture },
       spriteSheetEnabled: { value: cfg.spriteSheet ? 1.0 : 0.0 },
       spriteGrid: {
-        value: new THREE.Vector2(
-          cfg.spriteSheet?.columns ?? 1,
-          cfg.spriteSheet?.rows ?? 1,
-        ),
+        value: new THREE.Vector2(cfg.spriteSheet?.columns ?? 1, cfg.spriteSheet?.rows ?? 1),
       },
       spriteTotalFrames: {
         value: cfg.spriteSheet
@@ -576,8 +626,7 @@ export function createParticleEmitter(
     side: THREE.DoubleSide,
   })
   // Set premultiplied alpha mode if requested (works best with NormalBlending)
-  ;(material as THREE.RawShaderMaterial).premultipliedAlpha =
-    cfg.premultipliedAlpha ?? false
+  ;(material as THREE.RawShaderMaterial).premultipliedAlpha = cfg.premultipliedAlpha ?? false
 
   const geometry = new THREE.PlaneGeometry(1, 1)
   const mesh = new THREE.InstancedMesh(geometry, material, particleCount)
@@ -587,15 +636,9 @@ export function createParticleEmitter(
   mesh.instanceColor = new THREE.InstancedBufferAttribute(instanceColors, 3)
 
   const instanceOpacity = new Float32Array(particleCount)
-  geometry.setAttribute(
-    "instanceOpacity",
-    new THREE.InstancedBufferAttribute(instanceOpacity, 1),
-  )
+  geometry.setAttribute("instanceOpacity", new THREE.InstancedBufferAttribute(instanceOpacity, 1))
   const instanceFrame = new Float32Array(particleCount)
-  geometry.setAttribute(
-    "instanceFrame",
-    new THREE.InstancedBufferAttribute(instanceFrame, 1),
-  )
+  geometry.setAttribute("instanceFrame", new THREE.InstancedBufferAttribute(instanceFrame, 1))
 
   const positions = new Float32Array(particleCount * 3)
   const velocities = new Float32Array(particleCount * 3)
@@ -629,9 +672,7 @@ export function createParticleEmitter(
   const noiseStrengthX = noiseCfg.strengthX ?? 1
   const noiseStrengthY = noiseCfg.strengthY ?? 1
 
-  const gravity = cfg.gravity
-    ? cfg.gravity.clone()
-    : new THREE.Vector3(0, -9.8, 0)
+  const gravity = cfg.gravity ? cfg.gravity.clone() : new THREE.Vector3(0, -9.8, 0)
   const damping = cfg.damping ?? 0
 
   // Orbital velocity (radians per second around each axis)
@@ -643,13 +684,11 @@ export function createParticleEmitter(
   const emitterRadius = cfg.radius ?? 0.25
 
   // Emission config
-  const emission = cfg.emission ?? { mode: 'constant' as const, rateOverTime: 50 }
-  let currentSpawnRate = emission.mode === 'constant' ? (emission.rateOverTime ?? 50) : 0
+  const emission = cfg.emission ?? { mode: "constant" as const, rateOverTime: 50 }
+  let currentSpawnRate = emission.mode === "constant" ? (emission.rateOverTime ?? 50) : 0
 
   const shape: EmitterShapeKey = cfg.shape ?? EmitterShape.CONE
-  const coneDirection = (cfg.coneDirection ?? new THREE.Vector3(0, 1, 0))
-    .clone()
-    .normalize()
+  const coneDirection = (cfg.coneDirection ?? new THREE.Vector3(0, 1, 0)).clone().normalize()
   const coneAngleRange: NumRange = cfg.coneAngle ?? [Math.PI / 16, Math.PI / 12]
   const speedRange: NumRange = cfg.speed ?? [1.0, 3.0]
   const lifeRange: NumRange = cfg.lifetime ?? [1.5, 3.0]
@@ -658,13 +697,11 @@ export function createParticleEmitter(
   // When rotation is disabled (undefined), use zero angle and velocity so particles don't rotate
   const rotAngleRange: NumRange = cfg.rotation ? (cfg.rotation.angle ?? [0, Math.PI * 2]) : [0, 0]
   const rotVelRange: NumRange = cfg.rotation ? (cfg.rotation.velocity ?? [-6.0, 6.0]) : [0, 0]
-  const colorStartRange: Vec4Range =
-    cfg.color?.start ?? new THREE.Vector4(1, 0.8, 0.2, 1)
+  const colorStartRange: Vec4Range = cfg.color?.start ?? new THREE.Vector4(1, 0.8, 0.2, 1)
   const colorStartList: THREE.Vector4[] | undefined = cfg.color?.startList
   const colorUseStartAsEnd: boolean = cfg.color?.useStartAsEnd ?? false
   const colorMidRange: Vec4Range | undefined = cfg.color?.mid
-  const colorEndRange: Vec4Range =
-    cfg.color?.end ?? new THREE.Vector4(0.8, 0.1, 0.02, 0)
+  const colorEndRange: Vec4Range = cfg.color?.end ?? new THREE.Vector4(0.8, 0.1, 0.02, 0)
 
   const collisionCfg = cfg.collision ?? {}
   const floorCollisionEnabled = collisionCfg.enabled ?? true
@@ -682,9 +719,9 @@ export function createParticleEmitter(
   let systemComplete = false
 
   // Burst tracking (for burst mode with cycles)
-  const bursts = emission.mode === 'burst' ? (emission.bursts ?? []) : []
+  const bursts = emission.mode === "burst" ? (emission.bursts ?? []) : []
   const burstCycleCount: number[] = bursts.map(() => 0)
-  const nextBurstTime: number[] = bursts.map(b => b.time)
+  const nextBurstTime: number[] = bursts.map((b) => b.time)
 
   function resetBurstTracking() {
     for (let i = 0; i < bursts.length; i++) {
@@ -703,12 +740,8 @@ export function createParticleEmitter(
   if (cfg.debug && shape === EmitterShape.CONE) {
     debugGroup = new THREE.Group()
     const L = 2.0
-    const minA = Array.isArray(coneAngleRange)
-      ? coneAngleRange[0]
-      : coneAngleRange
-    const maxA = Array.isArray(coneAngleRange)
-      ? coneAngleRange[1]
-      : coneAngleRange
+    const minA = Array.isArray(coneAngleRange) ? coneAngleRange[0] : coneAngleRange
+    const maxA = Array.isArray(coneAngleRange) ? coneAngleRange[1] : coneAngleRange
     const axis = coneDirection
     const u = new THREE.Vector3()
     const v = new THREE.Vector3()
@@ -742,12 +775,7 @@ export function createParticleEmitter(
       new THREE.Vector3(0, 0, 0),
       new THREE.Vector3().copy(axis).multiplyScalar(L),
     ])
-    debugGroup.add(
-      new THREE.Line(
-        axisGeom,
-        new THREE.LineBasicMaterial({ color: 0x66ccff }),
-      ),
-    )
+    debugGroup.add(new THREE.Line(axisGeom, new THREE.LineBasicMaterial({ color: 0x66ccff })))
     debugGroup.add(ring(minA, 0x44ff44))
     debugGroup.add(ring(maxA, 0xff4444))
     ;(mesh as THREE.Object3D).add(debugGroup)
@@ -800,11 +828,7 @@ export function createParticleEmitter(
       }
       case EmitterShape.SPHERE:
       case EmitterShape.POINT: {
-        out.set(
-          Math.random() * 2 - 1,
-          Math.random() * 2 - 1,
-          Math.random() * 2 - 1,
-        ).normalize()
+        out.set(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalize()
         return out
       }
       default:
@@ -828,17 +852,16 @@ export function createParticleEmitter(
         else tmpVec3B.set(0, 1, 0)
         tmpVec3B.cross(axis).normalize()
         tmpVec3C.copy(axis).cross(tmpVec3B).normalize()
-        out.copy(origin)
+        out
+          .copy(origin)
           .addScaledVector(tmpVec3B, Math.cos(t) * r)
           .addScaledVector(tmpVec3C, Math.sin(t) * r)
         return out
       }
       case EmitterShape.SPHERE: {
-        tmpVec3B.set(
-          Math.random() * 2 - 1,
-          Math.random() * 2 - 1,
-          Math.random() * 2 - 1,
-        ).normalize()
+        tmpVec3B
+          .set(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1)
+          .normalize()
         const r = (cfg.sphereRadius ?? emitterRadius) * Math.cbrt(Math.random())
         out.copy(origin).addScaledVector(tmpVec3B, r)
         return out
@@ -847,7 +870,7 @@ export function createParticleEmitter(
         out.set(
           origin.x + (Math.random() - 0.5) * boxSize.x,
           origin.y + (Math.random() - 0.5) * boxSize.y,
-          origin.z + (Math.random() - 0.5) * boxSize.z,
+          origin.z + (Math.random() - 0.5) * boxSize.z
         )
         return out
       }
@@ -863,9 +886,8 @@ export function createParticleEmitter(
     : 1
   const spriteFps = cfg.spriteSheet?.fps ?? 15
   const spriteLoop = cfg.spriteSheet?.loop ?? true
-  const spriteTimeMode = cfg.spriteSheet?.timeMode ?? 'fps'
+  const spriteTimeMode = cfg.spriteSheet?.timeMode ?? "fps"
   const spriteRandomStartFrame = cfg.spriteSheet?.randomStartFrame ?? false
-
 
   function respawn(i: number, origin: THREE.Vector3 = burstOrigin) {
     const idx = i * 3
@@ -899,8 +921,8 @@ export function createParticleEmitter(
 
     // Determine flip state based on probability (random check against flipX/flipY values)
     let flip = 0
-    if (flipX > 0 && Math.random() < flipX) flip |= 1  // bit 0 = flip X
-    if (flipY > 0 && Math.random() < flipY) flip |= 2  // bit 1 = flip Y
+    if (flipX > 0 && Math.random() < flipX) flip |= 1 // bit 0 = flip X
+    if (flipY > 0 && Math.random() < flipY) flip |= 2 // bit 1 = flip Y
     flipState[i] = flip
 
     // Write colors directly to typed arrays without allocating Vector4
@@ -916,7 +938,7 @@ export function createParticleEmitter(
     color0[base + 1] = tmp4a.y
     color0[base + 2] = tmp4a.z
     color0[base + 3] = tmp4a.w
-    
+
     if (colorMidRange) {
       randVec4(colorMidRange, tmp4b)
       color1[base + 0] = tmp4b.x
@@ -929,7 +951,7 @@ export function createParticleEmitter(
       color1[base + 2] = tmp4a.z
       color1[base + 3] = tmp4a.w
     }
-    
+
     // If useStartAsEnd is true, copy start color to end (no fade effect)
     // This ensures random start colors stay constant when colorOverLifetime is disabled
     if (colorUseStartAsEnd) {
@@ -968,7 +990,7 @@ export function createParticleEmitter(
   }
 
   // Render mode configuration
-  const renderMode = cfg.renderMode ?? 'billboard'
+  const renderMode = cfg.renderMode ?? "billboard"
 
   // Reusable vectors for emitter orientation (quad mode)
   const emitterRight = new THREE.Vector3()
@@ -978,9 +1000,7 @@ export function createParticleEmitter(
   const update = (dt: number, camera: THREE.Camera, emitterWorldMatrix?: THREE.Matrix4) => {
     if (debugGroup) debugGroup.position.copy(burstOrigin)
     if (debugVelSegments) {
-      const attr = debugVelSegments.geometry.getAttribute(
-        "position",
-      ) as THREE.BufferAttribute
+      const attr = debugVelSegments.geometry.getAttribute("position") as THREE.BufferAttribute
       const arr = attr.array as Float32Array
       let w = 0
       const scale = 0.25
@@ -1013,7 +1033,7 @@ export function createParticleEmitter(
       elapsed += dt
 
       // Handle emission based on mode
-      if (emission.mode === 'constant' && withinDuration) {
+      if (emission.mode === "constant" && withinDuration) {
         // Constant emission - spawn over time
         if (currentSpawnRate > 0) {
           spawnAccumulator += currentSpawnRate * dt
@@ -1029,7 +1049,7 @@ export function createParticleEmitter(
             }
           }
         }
-      } else if (emission.mode === 'burst' && withinDuration) {
+      } else if (emission.mode === "burst" && withinDuration) {
         // Burst emission - process burst triggers
         for (let bi = 0; bi < bursts.length; bi++) {
           const b = bursts[bi]
@@ -1086,7 +1106,7 @@ export function createParticleEmitter(
 
     // For quad mode, use local/identity vectors since the parent hierarchy
     // already applies the emitter's world transform to the instanced mesh
-    const isQuadMode = renderMode === 'quad'
+    const isQuadMode = renderMode === "quad"
     if (isQuadMode) {
       // Use identity axes - parent transform handles the rotation
       emitterRight.set(1, 0, 0)
@@ -1101,7 +1121,7 @@ export function createParticleEmitter(
 
     // GPU write index - alive particles are packed contiguously for rendering
     let writeIdx = 0
-    
+
     for (let i = 0; i < particleCount; i++) {
       // Early exit for dead particles - skip all processing
       if (ages[i] >= lifetimes[i]) continue
@@ -1113,7 +1133,11 @@ export function createParticleEmitter(
 
       // Evaluate speed and rotation curves
       const speedCurveMultiplier = evaluateCurveableValue(cfg.speedOverLifetime, preLifeRatio, 1)
-      const rotationCurveMultiplier = evaluateCurveableValue(cfg.rotationOverLifetime, preLifeRatio, 1)
+      const rotationCurveMultiplier = evaluateCurveableValue(
+        cfg.rotationOverLifetime,
+        preLifeRatio,
+        1
+      )
 
       // Physics update
       velocities[idx + 0] += gravity.x * dt
@@ -1193,11 +1217,7 @@ export function createParticleEmitter(
       spinAngle[i] += spinVelocity[i] * dt * rotationCurveMultiplier
 
       // Floor collision
-      if (
-        floorCollisionEnabled &&
-        positions[idx + 1] <= floorY &&
-        velocities[idx + 1] < 0
-      ) {
+      if (floorCollisionEnabled && positions[idx + 1] <= floorY && velocities[idx + 1] < 0) {
         positions[idx + 1] = floorY
         velocities[idx + 1] = -velocities[idx + 1] * floorBounceRestitution
         velocities[idx + 0] *= floorFriction
@@ -1224,15 +1244,26 @@ export function createParticleEmitter(
         const timeOffset = ages[i] * noiseScrollSpeed
 
         // Sample noise at particle's unique seed + time offset
-        const noiseX = noiseOctaves > 1
-          ? fbm2D((seedX + timeOffset) * noiseFrequency, seedY * noiseFrequency, noiseOctaves)
-          : simplex2D((seedX + timeOffset) * noiseFrequency, seedY * noiseFrequency)
-        const noiseY = noiseOctaves > 1
-          ? fbm2D((seedX + 100 + timeOffset) * noiseFrequency, (seedY + 100) * noiseFrequency, noiseOctaves)
-          : simplex2D((seedX + 100 + timeOffset) * noiseFrequency, (seedY + 100) * noiseFrequency)
-        const noiseZ = noiseOctaves > 1
-          ? fbm2D((seedX + 200 + timeOffset) * noiseFrequency, (seedY + 200) * noiseFrequency, noiseOctaves)
-          : simplex2D((seedX + 200 + timeOffset) * noiseFrequency, (seedY + 200) * noiseFrequency)
+        const noiseX =
+          noiseOctaves > 1
+            ? fbm2D((seedX + timeOffset) * noiseFrequency, seedY * noiseFrequency, noiseOctaves)
+            : simplex2D((seedX + timeOffset) * noiseFrequency, seedY * noiseFrequency)
+        const noiseY =
+          noiseOctaves > 1
+            ? fbm2D(
+                (seedX + 100 + timeOffset) * noiseFrequency,
+                (seedY + 100) * noiseFrequency,
+                noiseOctaves
+              )
+            : simplex2D((seedX + 100 + timeOffset) * noiseFrequency, (seedY + 100) * noiseFrequency)
+        const noiseZ =
+          noiseOctaves > 1
+            ? fbm2D(
+                (seedX + 200 + timeOffset) * noiseFrequency,
+                (seedY + 200) * noiseFrequency,
+                noiseOctaves
+              )
+            : simplex2D((seedX + 200 + timeOffset) * noiseFrequency, (seedY + 200) * noiseFrequency)
 
         // Apply position noise with strength modifiers
         if (noisePositionAmount > 0) {
@@ -1243,17 +1274,33 @@ export function createParticleEmitter(
 
         // Calculate rotation noise offset
         if (noiseRotationAmount > 0) {
-          const noiseRot = noiseOctaves > 1
-            ? fbm2D((seedX + 300 + timeOffset) * noiseFrequency, (seedY + 300) * noiseFrequency, noiseOctaves)
-            : simplex2D((seedX + 300 + timeOffset) * noiseFrequency, (seedY + 300) * noiseFrequency)
+          const noiseRot =
+            noiseOctaves > 1
+              ? fbm2D(
+                  (seedX + 300 + timeOffset) * noiseFrequency,
+                  (seedY + 300) * noiseFrequency,
+                  noiseOctaves
+                )
+              : simplex2D(
+                  (seedX + 300 + timeOffset) * noiseFrequency,
+                  (seedY + 300) * noiseFrequency
+                )
           noiseRotOffset = noiseRot * noiseRotationAmount
         }
 
         // Calculate size noise multiplier (centered around 1)
         if (noiseSizeAmount > 0) {
-          const noiseSz = noiseOctaves > 1
-            ? fbm2D((seedX + 400 + timeOffset) * noiseFrequency, (seedY + 400) * noiseFrequency, noiseOctaves)
-            : simplex2D((seedX + 400 + timeOffset) * noiseFrequency, (seedY + 400) * noiseFrequency)
+          const noiseSz =
+            noiseOctaves > 1
+              ? fbm2D(
+                  (seedX + 400 + timeOffset) * noiseFrequency,
+                  (seedY + 400) * noiseFrequency,
+                  noiseOctaves
+                )
+              : simplex2D(
+                  (seedX + 400 + timeOffset) * noiseFrequency,
+                  (seedY + 400) * noiseFrequency
+                )
           // noiseSz is [-1, 1], map to [1-amount, 1+amount]
           noiseSizeMultiplier = 1 + noiseSz * noiseSizeAmount
         }
@@ -1292,7 +1339,7 @@ export function createParticleEmitter(
         prevPos.set(
           positions[idx + 0] - effVelX * dt,
           positions[idx + 1] - effVelY * dt,
-          positions[idx + 2] - effVelZ * dt,
+          positions[idx + 2] - effVelZ * dt
         )
         prevNdc.copy(prevPos).project(camera)
         currNdc.copy(pos).project(camera)
@@ -1309,33 +1356,29 @@ export function createParticleEmitter(
         rightRot.set(
           emitterRight.x * cosA + emitterUp.x * sinA,
           emitterRight.y * cosA + emitterUp.y * sinA,
-          emitterRight.z * cosA + emitterUp.z * sinA,
+          emitterRight.z * cosA + emitterUp.z * sinA
         )
         upRot.set(
           -emitterRight.x * sinA + emitterUp.x * cosA,
           -emitterRight.y * sinA + emitterUp.y * cosA,
-          -emitterRight.z * sinA + emitterUp.z * cosA,
+          -emitterRight.z * sinA + emitterUp.z * cosA
         )
       } else {
         // Billboard mode: use camera's orientation
         rightRot.set(
           right.x * cosA + up.x * sinA,
           right.y * cosA + up.y * sinA,
-          right.z * cosA + up.z * sinA,
+          right.z * cosA + up.z * sinA
         )
         upRot.set(
           -right.x * sinA + up.x * cosA,
           -right.y * sinA + up.y * cosA,
-          -right.z * sinA + up.z * cosA,
+          -right.z * sinA + up.z * cosA
         )
       }
 
       currentVelocityScale = velStretchEnabled ? velScaleConfig : 0
-      const vmag = Math.hypot(
-        velocities[idx + 0],
-        velocities[idx + 1],
-        velocities[idx + 2],
-      )
+      const vmag = Math.hypot(velocities[idx + 0], velocities[idx + 1], velocities[idx + 2])
       const stretch = 1 + vmag * currentVelocityScale
       // No artificial attenuation - perspective camera handles depth scaling naturally
 
@@ -1343,18 +1386,20 @@ export function createParticleEmitter(
 
       // Evaluate curve multipliers for this particle's lifetime
       const sizeCurveMultiplier = evaluateCurveableValue(cfg.sizeOverLifetime, lifeRatio, 1)
-      const opacityCurveValue = cfg.opacityOverLifetime !== undefined
-        ? evaluateCurveableValue(cfg.opacityOverLifetime, lifeRatio, 1)
-        : null // null means use color alpha interpolation
+      const opacityCurveValue =
+        cfg.opacityOverLifetime !== undefined
+          ? evaluateCurveableValue(cfg.opacityOverLifetime, lifeRatio, 1)
+          : null // null means use color alpha interpolation
 
-      const s = lerp(sizeStart[i], sizeEnd[i], lifeRatio) * noiseSizeMultiplier * sizeCurveMultiplier
+      const s =
+        lerp(sizeStart[i], sizeEnd[i], lifeRatio) * noiseSizeMultiplier * sizeCurveMultiplier
       let sx = baseSizeX * s
       let sy = baseSizeY * s * stretch
 
       // Apply flip (negate scale to flip the particle)
       const flip = flipState[i]
-      if (flip & 1) sx = -sx  // flip X (horizontal)
-      if (flip & 2) sy = -sy  // flip Y (vertical)
+      if (flip & 1) sx = -sx // flip X (horizontal)
+      if (flip & 2) sy = -sy // flip Y (vertical)
 
       // Color interpolation
       const colorBase = i * 4
@@ -1362,20 +1407,20 @@ export function createParticleEmitter(
         color0[colorBase + 0],
         color0[colorBase + 1],
         color0[colorBase + 2],
-        color0[colorBase + 3],
+        color0[colorBase + 3]
       )
       tmp4b.set(
         color2[colorBase + 0],
         color2[colorBase + 1],
         color2[colorBase + 2],
-        color2[colorBase + 3],
+        color2[colorBase + 3]
       )
       if (colorMidRange) {
         tmp4c.set(
           color1[colorBase + 0],
           color1[colorBase + 1],
           color1[colorBase + 2],
-          color1[colorBase + 3],
+          color1[colorBase + 3]
         )
         if (lifeRatio < 0.5) {
           lerpVec4(tmp4a, tmp4c, lifeRatio * 2, tmp4a)
@@ -1410,21 +1455,20 @@ export function createParticleEmitter(
         0,
         0,
         0,
-        1,
+        1
       )
       mesh.setMatrixAt(writeIdx, m4)
 
       // Per-particle sprite frame
       if (cfg.spriteSheet) {
         let frameF: number
-        if (spriteTimeMode === 'startLifetime') {
+        if (spriteTimeMode === "startLifetime") {
           // Frame is fixed based on particle's assigned lifetime value (normalized within range)
           // Particles with shorter lifetimes get lower frames, longer lifetimes get higher frames
-          const lifeMin = Array.isArray(lifeRange) ? lifeRange[0] : lifeRange as number
-          const lifeMax = Array.isArray(lifeRange) ? lifeRange[1] : lifeRange as number
-          const normalizedLife = lifeMax > lifeMin
-            ? (lifetimes[i] - lifeMin) / (lifeMax - lifeMin)
-            : 0
+          const lifeMin = Array.isArray(lifeRange) ? lifeRange[0] : (lifeRange as number)
+          const lifeMax = Array.isArray(lifeRange) ? lifeRange[1] : (lifeRange as number)
+          const normalizedLife =
+            lifeMax > lifeMin ? (lifetimes[i] - lifeMin) / (lifeMax - lifeMin) : 0
           // Use spriteTotalFrames (not -1) because normalizedLife is in [0,1) due to Math.random()
           // This ensures all frames including the last one can be selected
           frameF = normalizedLife * spriteTotalFrames
@@ -1445,18 +1489,11 @@ export function createParticleEmitter(
 
     // Set instance count to only render alive particles
     mesh.count = writeIdx
-
-    ;(
-      mesh.instanceMatrix as unknown as THREE.InstancedBufferAttribute
-    ).needsUpdate = true
+    ;(mesh.instanceMatrix as unknown as THREE.InstancedBufferAttribute).needsUpdate = true
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
-    const op = geometry.getAttribute(
-      "instanceOpacity",
-    ) as THREE.InstancedBufferAttribute
+    const op = geometry.getAttribute("instanceOpacity") as THREE.InstancedBufferAttribute
     if (op) op.needsUpdate = true
-    const ifr = geometry.getAttribute(
-      "instanceFrame",
-    ) as THREE.InstancedBufferAttribute
+    const ifr = geometry.getAttribute("instanceFrame") as THREE.InstancedBufferAttribute
     if (ifr) ifr.needsUpdate = true
 
     const spriteCfg = cfg.spriteSheet
@@ -1523,7 +1560,7 @@ export function createParticleEmitter(
   }
 
   // Helper to cascade action to child particle emitters
-  const cascadeToChildren = (action: 'play' | 'stop' | 'restart') => {
+  const cascadeToChildren = (action: "play" | "stop" | "restart") => {
     // Get the parent object (the one that owns this particle system)
     const parent = mesh.parent
     if (!parent) return
@@ -1536,9 +1573,9 @@ export function createParticleEmitter(
       const childEmitter = child.userData.__particleEmitter as ParticleSystem | undefined
       if (childEmitter) {
         // Call internal methods to avoid infinite recursion
-        if (action === 'play') childEmitter.playInternal?.()
-        else if (action === 'stop') childEmitter.stopInternal?.()
-        else if (action === 'restart') childEmitter.restartInternal?.()
+        if (action === "play") childEmitter.playInternal?.()
+        else if (action === "stop") childEmitter.stopInternal?.()
+        else if (action === "restart") childEmitter.restartInternal?.()
       }
     })
   }
@@ -1546,17 +1583,17 @@ export function createParticleEmitter(
   // Playback controls - cascade to children
   const play = () => {
     playInternal()
-    cascadeToChildren('play')
+    cascadeToChildren("play")
   }
 
   const stop = () => {
     stopInternal()
-    cascadeToChildren('stop')
+    cascadeToChildren("stop")
   }
 
   const restart = () => {
     restartInternal()
-    cascadeToChildren('restart')
+    cascadeToChildren("restart")
   }
 
   const isPlaying = () => isPlayingState

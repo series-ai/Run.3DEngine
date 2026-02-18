@@ -26,14 +26,17 @@ export class SkeletonCache {
     if (this.loading.has(path)) {
       return this.loading.get(path)!
     }
-    const p = this.loader.loadAsync(path).then((object) => {
-      this.originals.set(path, object)
-      this.loading.delete(path)
-      return object
-    }).catch((err) => {
-      this.loading.delete(path)
-      throw err
-    })
+    const p = this.loader
+      .loadAsync(path)
+      .then((object) => {
+        this.originals.set(path, object)
+        this.loading.delete(path)
+        return object
+      })
+      .catch((err) => {
+        this.loading.delete(path)
+        throw err
+      })
 
     this.loading.set(path, p)
     return p

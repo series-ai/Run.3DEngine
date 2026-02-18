@@ -23,15 +23,12 @@ export class DirectionalLightComponent extends Component {
         near?: number
         far?: number
       }
-    } = {},
+    } = {}
   ) {
     super()
 
     // Create the light with Three.js defaults
-    this.light = new THREE.DirectionalLight(
-      options.color || 0xffffff,
-      options.intensity || 1,
-    )
+    this.light = new THREE.DirectionalLight(options.color || 0xffffff, options.intensity || 1)
 
     // Set up shadows if requested - Three.js native approach
     if (options.castShadow) {
@@ -46,18 +43,12 @@ export class DirectionalLightComponent extends Component {
       // Configure shadow camera
       if (options.shadowCamera) {
         const cam = this.light.shadow.camera
-        if (options.shadowCamera.left !== undefined)
-          cam.left = options.shadowCamera.left
-        if (options.shadowCamera.right !== undefined)
-          cam.right = options.shadowCamera.right
-        if (options.shadowCamera.top !== undefined)
-          cam.top = options.shadowCamera.top
-        if (options.shadowCamera.bottom !== undefined)
-          cam.bottom = options.shadowCamera.bottom
-        if (options.shadowCamera.near !== undefined)
-          cam.near = options.shadowCamera.near
-        if (options.shadowCamera.far !== undefined)
-          cam.far = options.shadowCamera.far
+        if (options.shadowCamera.left !== undefined) cam.left = options.shadowCamera.left
+        if (options.shadowCamera.right !== undefined) cam.right = options.shadowCamera.right
+        if (options.shadowCamera.top !== undefined) cam.top = options.shadowCamera.top
+        if (options.shadowCamera.bottom !== undefined) cam.bottom = options.shadowCamera.bottom
+        if (options.shadowCamera.near !== undefined) cam.near = options.shadowCamera.near
+        if (options.shadowCamera.far !== undefined) cam.far = options.shadowCamera.far
       }
     }
   }

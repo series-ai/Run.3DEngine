@@ -30,7 +30,8 @@ export class AnimationControllerComponent extends Component {
 
       for (const instance of AnimationControllerComponent.instances) {
         if (instance.animator) {
-          const name = instance.gameObject?.name || `animator_${AnimationControllerComponent.instances.size}`
+          const name =
+            instance.gameObject?.name || `animator_${AnimationControllerComponent.instances.size}`
           AnimationControllerComponent.sharedVisualizer.add_animator(name, instance.animator)
         }
       }
@@ -84,8 +85,12 @@ export class AnimationControllerComponent extends Component {
     AnimationControllerComponent.instances.add(this)
     this.animator = new Animatrix()
 
-    if (AnimationControllerComponent.debugViewEnabled && AnimationControllerComponent.sharedVisualizer) {
-      const name = this.gameObject?.name || `animator_${AnimationControllerComponent.instances.size}`
+    if (
+      AnimationControllerComponent.debugViewEnabled &&
+      AnimationControllerComponent.sharedVisualizer
+    ) {
+      const name =
+        this.gameObject?.name || `animator_${AnimationControllerComponent.instances.size}`
       AnimationControllerComponent.sharedVisualizer.add_animator(name, this.animator)
     }
   }

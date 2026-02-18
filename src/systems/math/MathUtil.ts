@@ -20,11 +20,7 @@ export class MathUtil {
    * @param maxDelta Maximum change per call
    * @returns New value moved towards target
    */
-  static moveTowards(
-    current: number,
-    target: number,
-    maxDelta: number,
-  ): number {
+  static moveTowards(current: number, target: number, maxDelta: number): number {
     const diff = target - current
     if (Math.abs(diff) <= maxDelta) {
       return target

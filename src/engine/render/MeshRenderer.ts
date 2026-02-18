@@ -1,16 +1,21 @@
 import * as THREE from "three"
 import { Component } from "@engine/core"
-import { PrefabComponent, PrefabInstance, type ComponentJSON, type PrefabNode } from "@systems/prefabs"
+import {
+  PrefabComponent,
+  PrefabInstance,
+  type ComponentJSON,
+  type PrefabNode,
+} from "@systems/prefabs"
 import { StowKitSystem } from "@systems/stowkit"
 
 interface StowMeshJSON extends ComponentJSON {
-    type: "stow_mesh"
-    mesh: {
-        pack: string
-        assetId: string
-    }
-    castShadow?: boolean
-    receiveShadow?: boolean
+  type: "stow_mesh"
+  mesh: {
+    pack: string
+    assetId: string
+  }
+  castShadow?: boolean
+  receiveShadow?: boolean
 }
 
 /**
@@ -27,237 +32,237 @@ interface StowMeshJSON extends ComponentJSON {
  */
 @PrefabComponent("stow_mesh")
 export class MeshRenderer extends Component {
-    static fromPrefabJSON(json: StowMeshJSON, _node: PrefabNode): MeshRenderer {
-        if (!json.mesh?.assetId) {
-            console.error(`[MeshRenderer] stow_mesh component missing mesh.assetId:`, json)
-            return new MeshRenderer("unknown")
-        }
-        // Priority: JSON property > context options > default (true)
-        const options = PrefabInstance.currentOptions
-        const castShadow = json.castShadow ?? options?.castShadow ?? true
-        const receiveShadow = json.receiveShadow ?? options?.receiveShadow ?? true
-        return new MeshRenderer(json.mesh.assetId, castShadow, receiveShadow)
+  static fromPrefabJSON(json: StowMeshJSON, _node: PrefabNode): MeshRenderer {
+    if (!json.mesh?.assetId) {
+      console.error(`[MeshRenderer] stow_mesh component missing mesh.assetId:`, json)
+      return new MeshRenderer("unknown")
+    }
+    // Priority: JSON property > context options > default (true)
+    const options = PrefabInstance.currentOptions
+    const castShadow = json.castShadow ?? options?.castShadow ?? true
+    const receiveShadow = json.receiveShadow ?? options?.receiveShadow ?? true
+    return new MeshRenderer(json.mesh.assetId, castShadow, receiveShadow)
+  }
+
+  private mesh: THREE.Group | null = null
+  private readonly meshName: string
+  private readonly castShadow: boolean
+  private readonly receiveShadow: boolean
+  private _isStatic: boolean
+  private isMeshLoaded: boolean = false
+  private materialOverride: THREE.Material | null = null
+
+  /**
+   * @param meshName The name of the mesh in the StowKit pack
+   * @param castShadow Whether meshes should cast shadows (default: true)
+   * @param receiveShadow Whether meshes should receive shadows (default: true)
+   * @param isStatic Whether this mesh is static (default: false). Static meshes have matrixAutoUpdate disabled for better performance.
+   * @param materialOverride Optional material to use instead of the default StowKit material
+   */
+  constructor(
+    meshName: string,
+    castShadow: boolean = true,
+    receiveShadow: boolean = true,
+    isStatic: boolean = false,
+    materialOverride: THREE.Material | null = null
+  ) {
+    super()
+    this.meshName = meshName
+    this.castShadow = castShadow
+    this.receiveShadow = receiveShadow
+    this._isStatic = isStatic
+    this.materialOverride = materialOverride
+  }
+
+  protected onCreate(): void {
+    const stowkit = StowKitSystem.getInstance()
+
+    // Check if mesh is already cached
+    const cachedMesh = stowkit.getMeshSync(this.meshName)
+    if (cachedMesh) {
+      this.addMesh(cachedMesh)
+    } else {
+      // Start async load - will add mesh in update when ready
+      stowkit.getMesh(this.meshName)
+    }
+  }
+
+  public update(_deltaTime: number): void {
+    if (this.isMeshLoaded) return
+
+    const stowkit = StowKitSystem.getInstance()
+    const cachedMesh = stowkit.getMeshSync(this.meshName)
+    if (cachedMesh) {
+      this.addMesh(cachedMesh)
+    }
+  }
+
+  private addMesh(original: THREE.Group): void {
+    this.isMeshLoaded = true
+
+    // Clone mesh with material conversion
+    this.mesh = StowKitSystem.getInstance().cloneMeshSync(
+      original,
+      this.castShadow,
+      this.receiveShadow
+    )
+
+    // Apply material override if set
+    if (this.materialOverride) {
+      this.applyMaterialOverride()
     }
 
-    private mesh: THREE.Group | null = null
-    private readonly meshName: string
-    private readonly castShadow: boolean
-    private readonly receiveShadow: boolean
-    private _isStatic: boolean
-    private isMeshLoaded: boolean = false
-    private materialOverride: THREE.Material | null = null
+    this.gameObject.add(this.mesh)
 
-    /**
-     * @param meshName The name of the mesh in the StowKit pack
-     * @param castShadow Whether meshes should cast shadows (default: true)
-     * @param receiveShadow Whether meshes should receive shadows (default: true)
-     * @param isStatic Whether this mesh is static (default: false). Static meshes have matrixAutoUpdate disabled for better performance.
-     * @param materialOverride Optional material to use instead of the default StowKit material
-     */
-    constructor(
-        meshName: string,
-        castShadow: boolean = true,
-        receiveShadow: boolean = true,
-        isStatic: boolean = false,
-        materialOverride: THREE.Material | null = null
-    ) {
-        super()
-        this.meshName = meshName
-        this.castShadow = castShadow
-        this.receiveShadow = receiveShadow
-        this._isStatic = isStatic
-        this.materialOverride = materialOverride
+    // For static meshes, disable matrix auto-update to save CPU
+    if (this._isStatic) {
+      this.setStatic(true)
     }
+  }
 
-    protected onCreate(): void {
-        const stowkit = StowKitSystem.getInstance()
+  /**
+   * Apply the material override to all meshes
+   */
+  private applyMaterialOverride(): void {
+    if (!this.mesh || !this.materialOverride) return
 
-        // Check if mesh is already cached
-        const cachedMesh = stowkit.getMeshSync(this.meshName)
-        if (cachedMesh) {
-            this.addMesh(cachedMesh)
-        } else {
-            // Start async load - will add mesh in update when ready
-            stowkit.getMesh(this.meshName)
-        }
+    this.mesh.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.material = this.materialOverride!
+      }
+    })
+  }
+
+  /**
+   * Set a material override for all meshes in this renderer.
+   * Call this after the mesh is loaded, or pass it in the constructor.
+   */
+  public setMaterial(material: THREE.Material): void {
+    this.materialOverride = material
+    if (this.mesh) {
+      this.applyMaterialOverride()
     }
+  }
 
-    public update(_deltaTime: number): void {
-        if (this.isMeshLoaded) return
+  /**
+   * Check if this mesh is currently static (no automatic matrix updates)
+   */
+  public get isStatic(): boolean {
+    return this._isStatic
+  }
 
-        const stowkit = StowKitSystem.getInstance()
-        const cachedMesh = stowkit.getMeshSync(this.meshName)
-        if (cachedMesh) {
-            this.addMesh(cachedMesh)
-        }
+  /**
+   * Set whether this mesh is static (no automatic matrix updates).
+   * Static meshes save CPU by not recalculating transforms every frame.
+   * Call forceMatrixUpdate() after moving a static mesh.
+   */
+  public setStatic(isStatic: boolean): void {
+    this._isStatic = isStatic
+    if (!this.mesh) return
+
+    if (isStatic) {
+      // Update matrices one final time before freezing
+      this.forceMatrixUpdate()
+
+      // Disable auto-update on mesh and all descendants
+      this.mesh.matrixAutoUpdate = false
+      this.mesh.traverse((child) => {
+        child.matrixAutoUpdate = false
+      })
+      this.gameObject.matrixAutoUpdate = false
+    } else {
+      // Enable auto-update
+      this.mesh.matrixAutoUpdate = true
+      this.mesh.traverse((child) => {
+        child.matrixAutoUpdate = true
+      })
+      this.gameObject.matrixAutoUpdate = true
     }
+  }
 
-    private addMesh(original: THREE.Group): void {
-        this.isMeshLoaded = true
-
-        // Clone mesh with material conversion
-        this.mesh = StowKitSystem.getInstance().cloneMeshSync(
-            original,
-            this.castShadow,
-            this.receiveShadow
-        )
-
-        // Apply material override if set
-        if (this.materialOverride) {
-            this.applyMaterialOverride()
-        }
-
-        this.gameObject.add(this.mesh)
-
-        // For static meshes, disable matrix auto-update to save CPU
-        if (this._isStatic) {
-            this.setStatic(true)
-        }
+  /**
+   * Force a one-time matrix update. Call this after moving a static mesh.
+   * Does not change the static/dynamic state.
+   */
+  public forceMatrixUpdate(): void {
+    if (this.mesh) {
+      this.mesh.updateMatrix()
+      this.mesh.updateMatrixWorld(true)
     }
+    this.gameObject.updateMatrix()
+    this.gameObject.updateMatrixWorld(true)
+  }
 
-    /**
-     * Apply the material override to all meshes
-     */
-    private applyMaterialOverride(): void {
-        if (!this.mesh || !this.materialOverride) return
+  /**
+   * Get the mesh group (null if not yet loaded)
+   */
+  public getMesh(): THREE.Group | null {
+    return this.mesh
+  }
 
-        this.mesh.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-                child.material = this.materialOverride!
+  /**
+   * Get the name of the mesh this component is managing
+   */
+  public getMeshName(): string {
+    return this.meshName
+  }
+
+  /**
+   * Check if the mesh was successfully loaded
+   */
+  public isLoaded(): boolean {
+    return this.mesh !== null
+  }
+
+  /**
+   * Set the visibility of the mesh
+   */
+  public setVisible(visible: boolean): void {
+    if (this.mesh) {
+      this.mesh.visible = visible
+    }
+  }
+
+  /**
+   * Get bounds of the mesh (useful for physics)
+   */
+  public getBounds(): THREE.Vector3 | null {
+    if (!this.mesh) {
+      return null
+    }
+    return StowKitSystem.getInstance().getBounds(this.mesh)
+  }
+
+  /**
+   * Cleanup - remove mesh from scene and dispose of resources
+   */
+  protected onCleanup(): void {
+    if (this.mesh) {
+      // Remove from GameObject/scene
+      this.gameObject.remove(this.mesh)
+
+      // Traverse and dispose of geometries and materials
+      this.mesh.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          if (child.geometry) {
+            child.geometry.dispose()
+          }
+
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach((m) => {
+                if (m.map) m.map.dispose()
+                m.dispose()
+              })
+            } else {
+              if (child.material.map) child.material.map.dispose()
+              child.material.dispose()
             }
-        })
-    }
-
-    /**
-     * Set a material override for all meshes in this renderer.
-     * Call this after the mesh is loaded, or pass it in the constructor.
-     */
-    public setMaterial(material: THREE.Material): void {
-        this.materialOverride = material
-        if (this.mesh) {
-            this.applyMaterialOverride()
+          }
         }
+      })
+
+      this.mesh = null
     }
-
-    /**
-     * Check if this mesh is currently static (no automatic matrix updates)
-     */
-    public get isStatic(): boolean {
-        return this._isStatic
-    }
-
-    /**
-     * Set whether this mesh is static (no automatic matrix updates).
-     * Static meshes save CPU by not recalculating transforms every frame.
-     * Call forceMatrixUpdate() after moving a static mesh.
-     */
-    public setStatic(isStatic: boolean): void {
-        this._isStatic = isStatic
-        if (!this.mesh) return
-
-        if (isStatic) {
-            // Update matrices one final time before freezing
-            this.forceMatrixUpdate()
-
-            // Disable auto-update on mesh and all descendants
-            this.mesh.matrixAutoUpdate = false
-            this.mesh.traverse((child) => {
-                child.matrixAutoUpdate = false
-            })
-            this.gameObject.matrixAutoUpdate = false
-        } else {
-            // Enable auto-update
-            this.mesh.matrixAutoUpdate = true
-            this.mesh.traverse((child) => {
-                child.matrixAutoUpdate = true
-            })
-            this.gameObject.matrixAutoUpdate = true
-        }
-    }
-
-    /**
-     * Force a one-time matrix update. Call this after moving a static mesh.
-     * Does not change the static/dynamic state.
-     */
-    public forceMatrixUpdate(): void {
-        if (this.mesh) {
-            this.mesh.updateMatrix()
-            this.mesh.updateMatrixWorld(true)
-        }
-        this.gameObject.updateMatrix()
-        this.gameObject.updateMatrixWorld(true)
-    }
-
-    /**
-     * Get the mesh group (null if not yet loaded)
-     */
-    public getMesh(): THREE.Group | null {
-        return this.mesh
-    }
-
-    /**
-     * Get the name of the mesh this component is managing
-     */
-    public getMeshName(): string {
-        return this.meshName
-    }
-
-    /**
-     * Check if the mesh was successfully loaded
-     */
-    public isLoaded(): boolean {
-        return this.mesh !== null
-    }
-
-    /**
-     * Set the visibility of the mesh
-     */
-    public setVisible(visible: boolean): void {
-        if (this.mesh) {
-            this.mesh.visible = visible
-        }
-    }
-
-    /**
-     * Get bounds of the mesh (useful for physics)
-     */
-    public getBounds(): THREE.Vector3 | null {
-        if (!this.mesh) {
-            return null
-        }
-        return StowKitSystem.getInstance().getBounds(this.mesh)
-    }
-
-    /**
-     * Cleanup - remove mesh from scene and dispose of resources
-     */
-    protected onCleanup(): void {
-        if (this.mesh) {
-            // Remove from GameObject/scene
-            this.gameObject.remove(this.mesh)
-
-            // Traverse and dispose of geometries and materials
-            this.mesh.traverse((child) => {
-                if (child instanceof THREE.Mesh) {
-                    if (child.geometry) {
-                        child.geometry.dispose()
-                    }
-
-                    if (child.material) {
-                        if (Array.isArray(child.material)) {
-                            child.material.forEach((m) => {
-                                if (m.map) m.map.dispose()
-                                m.dispose()
-                            })
-                        } else {
-                            if (child.material.map) child.material.map.dispose()
-                            child.material.dispose()
-                        }
-                    }
-                }
-            })
-
-            this.mesh = null
-        }
-    }
+  }
 }

@@ -5,7 +5,7 @@ import { UIUtils } from "./UIUtils"
  * HTML/CSS-based UI system for Three.js
  * Provides overlay elements for HUD, interaction prompts, menus, and dialogs
  * Uses modern CSS and HTML instead of canvas-based UI
- * 
+ *
  * The system uses two separate containers:
  * - Main container: For HUD, menus, etc. Respects safe area insets
  * - World container: For world-space UI (indicators above 3D objects). Not affected by safe areas
@@ -416,15 +416,9 @@ export class UISystem {
     id: string,
     content: string,
     position: { x: number; y: number },
-    options: { className?: string; style?: string } = {},
+    options: { className?: string; style?: string } = {}
   ): UIElement {
-    const element = UISystem.createElement(
-      id,
-      "hud",
-      content,
-      position,
-      options,
-    )
+    const element = UISystem.createElement(id, "hud", content, position, options)
     element.element.classList.add("ui-hud")
     return element
   }
@@ -435,7 +429,7 @@ export class UISystem {
   public static createInteractionPrompt(
     id: string,
     text: string,
-    position: { x: number; y: number },
+    position: { x: number; y: number }
   ): UIElement {
     const element = UISystem.createElement(id, "interaction", text, position)
     element.element.classList.add("ui-interaction-prompt")
@@ -449,7 +443,7 @@ export class UISystem {
     id: string,
     position: { x: number; y: number },
     size: { width: number; height: number },
-    progress: number = 0,
+    progress: number = 0
   ): UIProgressBar {
     const container = document.createElement("div")
     container.className = "ui-element ui-progress-bar"
@@ -498,7 +492,7 @@ export class UISystem {
     id: string,
     text: string,
     position: { x: number; y: number },
-    onClick: () => void,
+    onClick: () => void
   ): UIElement {
     const element = UISystem.createElement(id, "button", text, position)
     element.element.classList.add("ui-button")
@@ -518,7 +512,7 @@ export class UISystem {
       width?: number
       height?: number
       fullScreenOverlay?: boolean // If true, backdrop will ignore safe areas and cover the full screen
-    } = {},
+    } = {}
   ): UIElement {
     const modal = document.createElement("div")
     modal.className = "ui-element ui-modal ui-fade-in"
@@ -543,8 +537,7 @@ export class UISystem {
     html += `<div style="margin-bottom: 16px;">${content}</div>`
 
     if (options.buttons) {
-      html +=
-        '<div style="display: flex; gap: 8px; justify-content: flex-end;">'
+      html += '<div style="display: flex; gap: 8px; justify-content: flex-end;">'
       options.buttons.forEach((button, index) => {
         html += `<button class="ui-button" data-button-index="${index}">${button.text}</button>`
       })
@@ -556,9 +549,7 @@ export class UISystem {
     // Add button event listeners
     if (options.buttons) {
       options.buttons.forEach((button, index) => {
-        const buttonElement = modal.querySelector(
-          `[data-button-index="${index}"]`,
-        ) as HTMLElement
+        const buttonElement = modal.querySelector(`[data-button-index="${index}"]`) as HTMLElement
         if (buttonElement) {
           buttonElement.addEventListener("click", button.onClick)
         }
@@ -576,9 +567,11 @@ export class UISystem {
       background: rgba(0, 0, 0, 0.5);
       z-index: 1099;
     `
-    
+
     // Use worldContainer for full-screen overlays that ignore safe areas, otherwise use main container
-    const backdropContainer = options.fullScreenOverlay ? UISystem.worldContainer! : UISystem.container!
+    const backdropContainer = options.fullScreenOverlay
+      ? UISystem.worldContainer!
+      : UISystem.container!
     backdropContainer.appendChild(backdrop)
 
     UISystem.container!.appendChild(modal)
@@ -618,8 +611,7 @@ export class UISystem {
     const existing = UISystem.activeElements.get("money-display")
     if (existing) {
       // Check if money increased for juice animation
-      const shouldJuice =
-        UISystem.lastMoneyAmount >= 0 && amount > UISystem.lastMoneyAmount
+      const shouldJuice = UISystem.lastMoneyAmount >= 0 && amount > UISystem.lastMoneyAmount
 
       // Money display updated
       existing.element.innerHTML = `<span class="money-display-icon"></span>${amount.toLocaleString()}`
@@ -633,7 +625,7 @@ export class UISystem {
         window.dispatchEvent(
           new CustomEvent("moneyIncreased", {
             detail: { oldAmount: UISystem.lastMoneyAmount, newAmount: amount },
-          }),
+          })
         )
 
         // No more animations - let MoneyChangeIndicator handle attention-grabbing
@@ -646,7 +638,7 @@ export class UISystem {
       const money = UISystem.createHUD(
         "money-display",
         `<span class="money-display-icon"></span>${amount.toLocaleString()}`,
-        { x: window.innerWidth - 150, y: 20 }, // Top-right positioning
+        { x: window.innerWidth - 150, y: 20 } // Top-right positioning
       )
       money.element.classList.add("ui-money-display")
 
@@ -707,7 +699,7 @@ export class UISystem {
     content: string,
     worldPosition: THREE.Vector3,
     camera: THREE.Camera,
-    options: { offset?: { x: number; y: number }; className?: string } = {},
+    options: { offset?: { x: number; y: number }; className?: string } = {}
   ): UIWorldElement {
     const element = document.createElement("div")
     element.className = `ui-element ${options.className || "ui-tooltip"}`
@@ -771,39 +763,41 @@ export class UISystem {
 
   /**
    * Unity-style Canvas Scaler with "Match Width Or Height" support
-   * 
+   *
    * How it works:
    * - Reference resolution (e.g., 800x600) - screen size where UI is 100% scale
    * - matchWidthOrHeight: 0 = match width, 1 = match height, 0.5 = blend both
    * - UI components use CSS: transform: scale(var(--ui-scale, 1))
-   * 
+   *
    * The blend formula (same as Unity):
    * scale = widthScale^(1-match) * heightScale^match
-   * 
+   *
    * This means on portrait mobile (narrow width, tall height):
    * - Width-only (match=0): very small UI
-   * - Height-only (match=1): large UI  
+   * - Height-only (match=1): large UI
    * - Blend (match=0.5): balanced UI that looks good
    */
   public static updateResponsiveScale(): void {
     const screenWidth = window.innerWidth
     const screenHeight = window.innerHeight
-    
+
     // Calculate scale factors for width and height
     const widthScale = screenWidth / UISystem.referenceWidth
     const heightScale = screenHeight / UISystem.referenceHeight
-    
+
     // Unity's blend formula: scale = widthScale^(1-match) * heightScale^match
     const match = UISystem.matchWidthOrHeight
     const rawScale = Math.pow(widthScale, 1 - match) * Math.pow(heightScale, match)
-    
+
     // Clamp the scale to prevent extremes
     const prevScale = UISystem.currentScale
     UISystem.currentScale = Math.max(UISystem.minScale, Math.min(UISystem.maxScale, rawScale))
-    
+
     // Log scale changes for debugging
     if (Math.abs(prevScale - UISystem.currentScale) > 0.01) {
-      console.log(`[UISystem] Canvas Scale: ${UISystem.currentScale.toFixed(2)} (screen: ${screenWidth}x${screenHeight}, ref: ${UISystem.referenceWidth}x${UISystem.referenceHeight}, match: ${match})`)
+      console.log(
+        `[UISystem] Canvas Scale: ${UISystem.currentScale.toFixed(2)} (screen: ${screenWidth}x${screenHeight}, ref: ${UISystem.referenceWidth}x${UISystem.referenceHeight}, match: ${match})`
+      )
     }
 
     // Set CSS custom property that UI components use via: transform: scale(var(--ui-scale, 1))
@@ -820,7 +814,7 @@ export class UISystem {
     content: string,
     anchor: { x: number; y: number }, // 0-1 values (0 = left/top, 1 = right/bottom)
     offset: { x: number; y: number } = { x: 0, y: 0 }, // Pixel offset from anchor
-    options: { className?: string; style?: string } = {},
+    options: { className?: string; style?: string } = {}
   ): UIElement {
     const element = document.createElement("div")
     element.className = `ui-element ui-responsive ${options.className || ""}`
@@ -906,7 +900,7 @@ export class UISystem {
     type: string,
     content: string,
     position: { x: number; y: number },
-    options: { className?: string; style?: string } = {},
+    options: { className?: string; style?: string } = {}
   ): UIElement {
     const element = document.createElement("div")
     element.className = `ui-element ${options.className || ""}`

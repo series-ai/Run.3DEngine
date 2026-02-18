@@ -47,9 +47,7 @@ export class NavGridDebugDisplayThree {
       !NavGridDebugDisplayThree.scene ||
       !navigationGrid
     ) {
-      console.warn(
-        "NavGridDebugDisplayThree not initialized or no grid provided",
-      )
+      console.warn("NavGridDebugDisplayThree not initialized or no grid provided")
       return
     }
 
@@ -64,11 +62,7 @@ export class NavGridDebugDisplayThree {
     NavGridDebugDisplayThree.createGridLines(navigationGrid, dimensions)
 
     // Create blocked area visualization
-    NavGridDebugDisplayThree.createBlockedAreas(
-      navigationGrid,
-      dimensions,
-      gridData,
-    )
+    NavGridDebugDisplayThree.createBlockedAreas(navigationGrid, dimensions, gridData)
 
     // Log statistics
     let walkableCount = 0
@@ -90,10 +84,7 @@ export class NavGridDebugDisplayThree {
   /**
    * Create grid lines for the navigation grid
    */
-  private static createGridLines(
-    navigationGrid: NavigationGrid,
-    dimensions: any,
-  ): void {
+  private static createGridLines(navigationGrid: NavigationGrid, dimensions: any): void {
     const points: THREE.Vector3[] = []
 
     // Create grid lines
@@ -126,10 +117,7 @@ export class NavGridDebugDisplayThree {
     })
 
     // Create line segments
-    NavGridDebugDisplayThree.debugLines = new THREE.LineSegments(
-      geometry,
-      material,
-    )
+    NavGridDebugDisplayThree.debugLines = new THREE.LineSegments(geometry, material)
     NavGridDebugDisplayThree.scene!.add(NavGridDebugDisplayThree.debugLines)
   }
 
@@ -139,7 +127,7 @@ export class NavGridDebugDisplayThree {
   private static createBlockedAreas(
     navigationGrid: NavigationGrid,
     dimensions: any,
-    gridData: number[][],
+    gridData: number[][]
   ): void {
     // Create a group to hold all blocked cubes
     NavGridDebugDisplayThree.blockedCubes = new THREE.Group()
@@ -149,7 +137,7 @@ export class NavGridDebugDisplayThree {
     const cubeGeometry = new THREE.BoxGeometry(
       dimensions.gridSize * 0.8,
       0.2,
-      dimensions.gridSize * 0.8,
+      dimensions.gridSize * 0.8
     )
     const blockedMaterial = new THREE.MeshBasicMaterial({
       color: 0xff0000, // Red for blocked areas
@@ -183,20 +171,13 @@ export class NavGridDebugDisplayThree {
     if (NavGridDebugDisplayThree.debugLines && NavGridDebugDisplayThree.scene) {
       NavGridDebugDisplayThree.scene.remove(NavGridDebugDisplayThree.debugLines)
       NavGridDebugDisplayThree.debugLines.geometry.dispose()
-      ;(
-        NavGridDebugDisplayThree.debugLines.material as THREE.Material
-      ).dispose()
+      ;(NavGridDebugDisplayThree.debugLines.material as THREE.Material).dispose()
       NavGridDebugDisplayThree.debugLines = null
     }
 
     // Clear blocked cubes
-    if (
-      NavGridDebugDisplayThree.blockedCubes &&
-      NavGridDebugDisplayThree.scene
-    ) {
-      NavGridDebugDisplayThree.scene.remove(
-        NavGridDebugDisplayThree.blockedCubes,
-      )
+    if (NavGridDebugDisplayThree.blockedCubes && NavGridDebugDisplayThree.scene) {
+      NavGridDebugDisplayThree.scene.remove(NavGridDebugDisplayThree.blockedCubes)
 
       // Dispose of all cube geometries and materials
       NavGridDebugDisplayThree.blockedCubes.children.forEach((child) => {

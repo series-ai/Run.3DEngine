@@ -35,7 +35,7 @@ export class ComponentUpdater {
   static registerLateUpdateComponent(component: Component): void {
     ComponentUpdater.lateUpdateableComponents.add(component)
     console.log(
-      `📝 ComponentUpdater: Registered ${component.constructor.name} for late updates. Total: ${ComponentUpdater.lateUpdateableComponents.size}`,
+      `📝 ComponentUpdater: Registered ${component.constructor.name} for late updates. Total: ${ComponentUpdater.lateUpdateableComponents.size}`
     )
   }
 
@@ -65,10 +65,7 @@ export class ComponentUpdater {
         try {
           component.update?.(deltaTime)
         } catch (error) {
-          console.error(
-            `❌ Error updating component ${component.constructor.name}:`,
-            error,
-          )
+          console.error(`❌ Error updating component ${component.constructor.name}:`, error)
         }
       }
     }
@@ -83,10 +80,7 @@ export class ComponentUpdater {
         try {
           component.lateUpdate?.(deltaTime)
         } catch (error) {
-          console.error(
-            `❌ Error late updating component ${component.constructor.name}:`,
-            error,
-          )
+          console.error(`❌ Error late updating component ${component.constructor.name}:`, error)
         }
       }
     }

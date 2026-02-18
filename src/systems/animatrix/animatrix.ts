@@ -103,7 +103,11 @@ export default class Animatrix {
     })
   }
 
-  add_blend_tree_1d(id: string, parameter: string, children: { state_id: string; threshold: number }[]): void {
+  add_blend_tree_1d(
+    id: string,
+    parameter: string,
+    children: { state_id: string; threshold: number }[]
+  ): void {
     this.states.set(id, { name: id, isTree: true, duration: 1 })
     this.treeStates.add(id)
     this.blendTreeConfigs.set(id, { parameter, children })
@@ -115,11 +119,13 @@ export default class Animatrix {
 
   set_state(name: string): void {
     if (this.currentState === name) return
-    
+
     if (!this.states.has(name)) {
-      console.warn(`[Animatrix] set_state: State '${name}' not registered! Available: ${[...this.states.keys()].join(', ')}`)
+      console.warn(
+        `[Animatrix] set_state: State '${name}' not registered! Available: ${[...this.states.keys()].join(", ")}`
+      )
     }
-    
+
     this.currentState = name
     this.emit_event(AnimationEvent.STATE_CHANGED)
   }

@@ -38,9 +38,7 @@ export class GameObject extends THREE.Object3D {
     const componentType = component.constructor as new (...args: any[]) => T
 
     if (this.components.has(componentType)) {
-      throw new Error(
-        `Component ${componentType.name} already exists on GameObject ${this.name}`,
-      )
+      throw new Error(`Component ${componentType.name} already exists on GameObject ${this.name}`)
     }
 
     try {
@@ -63,18 +61,14 @@ export class GameObject extends THREE.Object3D {
    * Gets a component of the specified type
    * @returns The component if found, undefined otherwise
    */
-  getComponent<T extends Component>(
-    componentType: new (...args: any[]) => T,
-  ): T | undefined {
+  getComponent<T extends Component>(componentType: new (...args: any[]) => T): T | undefined {
     return this.components.get(componentType) as T | undefined
   }
 
   /**
    * Checks if the GameObject has a component of the specified type
    */
-  hasComponent<T extends Component>(
-    componentType: new (...args: any[]) => T,
-  ): boolean {
+  hasComponent<T extends Component>(componentType: new (...args: any[]) => T): boolean {
     return this.components.has(componentType)
   }
 
@@ -82,9 +76,7 @@ export class GameObject extends THREE.Object3D {
    * Removes a component of the specified type
    * @returns true if component was found and removed
    */
-  removeComponent<T extends Component>(
-    componentType: new (...args: any[]) => T,
-  ): boolean {
+  removeComponent<T extends Component>(componentType: new (...args: any[]) => T): boolean {
     const component = this.components.get(componentType)
     if (!component) return false
 
@@ -109,7 +101,7 @@ export class GameObject extends THREE.Object3D {
         childGameObjects.push(child)
       }
     }
-    
+
     // Dispose each child GameObject (this will recursively dispose their children too)
     for (const child of childGameObjects) {
       child.dispose()
@@ -135,9 +127,7 @@ export class GameObject extends THREE.Object3D {
         if (object.material instanceof THREE.Material) {
           object.material.dispose()
         } else if (Array.isArray(object.material)) {
-          object.material.forEach((material: THREE.Material) =>
-            material.dispose(),
-          )
+          object.material.forEach((material: THREE.Material) => material.dispose())
         }
       }
     })
@@ -391,9 +381,7 @@ export abstract class Component {
    * Gets a component of the specified type from the same GameObject
    * @returns The component if found, undefined otherwise
    */
-  getComponent<T extends Component>(
-    componentType: new (...args: any[]) => T,
-  ): T | undefined {
+  getComponent<T extends Component>(componentType: new (...args: any[]) => T): T | undefined {
     return this.gameObject.getComponent(componentType)
   }
 }

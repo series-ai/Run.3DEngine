@@ -15,10 +15,7 @@ export class SkeletalRenderer extends Component {
   private _material: THREE.Material | null
   private _skeletalModel: THREE.Object3D | null = null
 
-  constructor(
-    assetPath: string,
-    material?: THREE.Material,
-  ) {
+  constructor(assetPath: string, material?: THREE.Material) {
     super()
     this._assetPath = assetPath
     this._material = material || null
@@ -40,7 +37,7 @@ export class SkeletalRenderer extends Component {
 
     // Get properly cloned skeletal model from AssetManager's skeleton cache
     this._skeletalModel = AssetManager.getSkeletalClone(this._assetPath)
-    
+
     if (!this._skeletalModel) {
       throw new Error(
         `No skeletal model found for '${this._assetPath}'. Make sure to preload with AssetManager.preloadSkeletalModel() first.`
@@ -100,8 +97,6 @@ export class SkeletalRenderer extends Component {
   public getAssetPath(): string {
     return this._assetPath
   }
-
-
 
   /**
    * Enable or disable visibility

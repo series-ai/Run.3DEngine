@@ -57,10 +57,7 @@ export class SplineDebugManager {
   /**
    * Register a spline for debug visualization
    */
-  public registerSpline(
-    spline: SplineThree,
-    config: SplineDebugConfig = {},
-  ): void {
+  public registerSpline(spline: SplineThree, config: SplineDebugConfig = {}): void {
     if (this.registrations.has(spline)) {
       return
     }
@@ -178,4 +175,3 @@ export class SplineDebugManager {
     this.registrations.clear()
   }
 }
-

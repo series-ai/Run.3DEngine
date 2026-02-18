@@ -18,25 +18,20 @@ export class AnimationLibraryComponent extends Component {
   /**
    * Load a single animation and add it to the library
    */
-  public async loadAnimation(
-    id: string,
-    path: string,
-  ): Promise<THREE.AnimationClip> {
+  public async loadAnimation(id: string, path: string): Promise<THREE.AnimationClip> {
     try {
       const clip = await AnimationLibrary.loadAnimation(id, path)
       this.loadedAnimations.add(id)
 
       if (this.debug) {
-        console.log(
-          `[AnimationLibraryComponent] Loaded animation: ${id} from ${path}`,
-        )
+        console.log(`[AnimationLibraryComponent] Loaded animation: ${id} from ${path}`)
       }
 
       return clip
     } catch (error) {
       console.error(
         `[AnimationLibraryComponent] Failed to load animation ${id} from ${path}:`,
-        error,
+        error
       )
       throw error
     }
@@ -55,14 +50,11 @@ export class AnimationLibraryComponent extends Component {
       if (this.debug) {
         console.log(
           `[AnimationLibraryComponent] Loaded ${Object.keys(paths).length} animations:`,
-          Object.keys(paths),
+          Object.keys(paths)
         )
       }
     } catch (error) {
-      console.error(
-        `[AnimationLibraryComponent] Failed to load animations:`,
-        error,
-      )
+      console.error(`[AnimationLibraryComponent] Failed to load animations:`, error)
       throw error
     }
   }
@@ -114,9 +106,7 @@ export class AnimationLibraryComponent extends Component {
 
   protected onCreate(): void {
     if (this.debug) {
-      console.log(
-        `[AnimationLibraryComponent] Component created on ${this.gameObject.name}`,
-      )
+      console.log(`[AnimationLibraryComponent] Component created on ${this.gameObject.name}`)
     }
   }
 
@@ -126,24 +116,20 @@ export class AnimationLibraryComponent extends Component {
 
     if (this.debug) {
       console.log(
-        `[AnimationLibraryComponent] Component cleaned up on ${this.gameObject.name}. Animations remain in global library.`,
+        `[AnimationLibraryComponent] Component cleaned up on ${this.gameObject.name}. Animations remain in global library.`
       )
     }
   }
 
   public onEnabled(): void {
     if (this.debug) {
-      console.log(
-        `[AnimationLibraryComponent] Component enabled on ${this.gameObject.name}`,
-      )
+      console.log(`[AnimationLibraryComponent] Component enabled on ${this.gameObject.name}`)
     }
   }
 
   public onDisabled(): void {
     if (this.debug) {
-      console.log(
-        `[AnimationLibraryComponent] Component disabled on ${this.gameObject.name}`,
-      )
+      console.log(`[AnimationLibraryComponent] Component disabled on ${this.gameObject.name}`)
     }
   }
 
@@ -153,9 +139,7 @@ export class AnimationLibraryComponent extends Component {
    * Preload a standard set of character animations
    * Useful for common character animation setups
    */
-  public async preloadCharacterAnimations(
-    basePath: string = "assets/characters/",
-  ): Promise<void> {
+  public async preloadCharacterAnimations(basePath: string = "assets/characters/"): Promise<void> {
     const standardAnimations = {
       idle: `${basePath}anim_idle.fbx`,
       walk: `${basePath}anim_walk.fbx`,

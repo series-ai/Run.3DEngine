@@ -23,8 +23,8 @@ interface DebugOption {
  */
 export class DebugPanelThree {
   // Static variable to always hide debug panel for release builds
-  public static alwaysHide: boolean = false  
-  
+  public static alwaysHide: boolean = false
+
   protected container!: HTMLElement
   protected contentContainer!: HTMLElement
   protected options: DebugOption[] = []
@@ -44,7 +44,7 @@ export class DebugPanelThree {
     this.setupKeyboardToggle()
     this.setupPerformanceMonitoring()
     this.addCoreOptions()
-    
+
     // Hide the panel immediately if alwaysHide is enabled
     if (DebugPanelThree.alwaysHide) {
       this.hide()
@@ -127,19 +127,15 @@ export class DebugPanelThree {
 
     // Create content container
     this.contentContainer = document.createElement("div")
-    this.contentContainer.style.display = this.contentsExpanded
-      ? "block"
-      : "none"
+    this.contentContainer.style.display = this.contentsExpanded ? "block" : "none"
     this.container.appendChild(this.contentContainer)
 
     // Add expand/collapse functionality
     const toggleContents = () => {
       this.contentsExpanded = !this.contentsExpanded
       expandCheckbox.checked = this.contentsExpanded
-      this.contentContainer.style.display = this.contentsExpanded
-        ? "block"
-        : "none"
-      
+      this.contentContainer.style.display = this.contentsExpanded ? "block" : "none"
+
       // Adjust panel width and styling based on expanded state
       if (this.contentsExpanded) {
         this.container.style.width = "240px" // Full width when expanded
@@ -170,7 +166,7 @@ export class DebugPanelThree {
       // Fallback to document.body if UISystem is not initialized
       document.body.appendChild(this.container)
     }
-    
+
     // Set initial width and styling based on expanded state
     if (this.contentsExpanded) {
       this.container.style.width = "240px"
@@ -245,14 +241,13 @@ export class DebugPanelThree {
         console.log(report)
 
         // Also expose to global for easy access
-        ;(window as any).getInstanceReport = () =>
-          AssetManager.getInstanceReport()
+        ;(window as any).getInstanceReport = () => AssetManager.getInstanceReport()
         console.log("💡 Use getInstanceReport() in console for updated reports")
 
         // Remove this option after use (reset checkbox)
         setTimeout(() => {
           const checkbox = document.querySelector(
-            `input[type="checkbox"][data-label="Print Instance Report"]`,
+            `input[type="checkbox"][data-label="Print Instance Report"]`
           ) as HTMLInputElement
           if (checkbox) {
             checkbox.checked = false
@@ -260,7 +255,7 @@ export class DebugPanelThree {
         }, 100)
       }
     })
-    
+
     // Toggle to hide skinned meshes (for performance testing)
     this.addOption("Hide Skinned Meshes", false, (checked) => {
       const scene = this.findScene()
@@ -271,7 +266,7 @@ export class DebugPanelThree {
         }
       })
     })
-    
+
     // Toggle to hide transparent objects (for performance testing)
     // DISABLED: Breaks purchase area displays which use transparent materials
     /*
@@ -291,29 +286,31 @@ export class DebugPanelThree {
       if (checked) console.log(`Hidden ${count} transparent objects`)
     })
     */
-    
+
     // Toggle to hide blob shadows specifically
     this.addOption("Hide Blob Shadows", false, (checked) => {
       const scene = this.findScene()
       if (!scene) return
       let count = 0
       scene.traverse((obj: THREE.Object3D) => {
-        if (obj.name?.toLowerCase().includes('shadow') || 
-            obj.name?.toLowerCase().includes('blob')) {
+        if (
+          obj.name?.toLowerCase().includes("shadow") ||
+          obj.name?.toLowerCase().includes("blob")
+        ) {
           obj.visible = !checked
           count++
         }
       })
       if (checked) console.log(`Hidden ${count} blob shadows`)
     })
-    
+
     // Toggle to use real shadows on characters instead of blob shadows
     this.addOption("Real Character Shadows", false, (checked) => {
       const scene = this.findScene()
       if (!scene) return
       let skinnedCount = 0
       let blobCount = 0
-      
+
       scene.traverse((obj: THREE.Object3D) => {
         // Enable/disable real shadows on skinned meshes
         if (obj instanceof THREE.SkinnedMesh) {
@@ -321,20 +318,24 @@ export class DebugPanelThree {
           skinnedCount++
         }
         // Hide/show blob shadows (opposite of real shadows)
-        if (obj.name?.toLowerCase().includes('shadow') || 
-            obj.name?.toLowerCase().includes('blob')) {
+        if (
+          obj.name?.toLowerCase().includes("shadow") ||
+          obj.name?.toLowerCase().includes("blob")
+        ) {
           obj.visible = !checked
           blobCount++
         }
       })
-      
+
       if (checked) {
-        console.log(`Enabled real shadows on ${skinnedCount} skinned meshes, hidden ${blobCount} blob shadows`)
+        console.log(
+          `Enabled real shadows on ${skinnedCount} skinned meshes, hidden ${blobCount} blob shadows`
+        )
       } else {
         console.log(`Disabled real shadows, restored ${blobCount} blob shadows`)
       }
     })
-    
+
     // Toggle to hide UI canvases (sprites/planes with canvas textures)
     // DISABLED: Breaks UI elements like purchase areas, indicators, etc.
     /*
@@ -372,7 +373,7 @@ export class DebugPanelThree {
       if (checked) console.log(`Hidden ${count} UI canvas elements`)
     })
     */
-    
+
     // Bake instancing for duplicate meshes (one-time performance optimization)
     this.addOption("Bake Instancing", false, (checked) => {
       if (checked) {
@@ -380,7 +381,7 @@ export class DebugPanelThree {
         // Reset checkbox after running
         setTimeout(() => {
           const checkbox = document.querySelector(
-            `input[type="checkbox"][data-label="Bake Instancing"]`,
+            `input[type="checkbox"][data-label="Bake Instancing"]`
           ) as HTMLInputElement
           if (checkbox) {
             checkbox.checked = false
@@ -396,7 +397,7 @@ export class DebugPanelThree {
         // Reset checkbox after running
         setTimeout(() => {
           const checkbox = document.querySelector(
-            `input[type="checkbox"][data-label="Run Scene Analysis"]`,
+            `input[type="checkbox"][data-label="Run Scene Analysis"]`
           ) as HTMLInputElement
           if (checkbox) {
             checkbox.checked = false
@@ -404,7 +405,7 @@ export class DebugPanelThree {
         }, 100)
       }
     })
-    
+
     // Add render cost analysis command (one-time action)
     this.addOption("Run Render Cost Analysis", false, (checked) => {
       if (checked) {
@@ -412,7 +413,7 @@ export class DebugPanelThree {
         // Reset checkbox after running
         setTimeout(() => {
           const checkbox = document.querySelector(
-            `input[type="checkbox"][data-label="Run Render Cost Analysis"]`,
+            `input[type="checkbox"][data-label="Run Render Cost Analysis"]`
           ) as HTMLInputElement
           if (checkbox) {
             checkbox.checked = false
@@ -421,7 +422,7 @@ export class DebugPanelThree {
       }
     })
   }
-  
+
   /**
    * Run scene analysis to find instancing opportunities
    */
@@ -431,14 +432,17 @@ export class DebugPanelThree {
       console.warn("Scene not found for analysis")
       return
     }
-    
-    console.log('%c=== SCENE ANALYSIS ===', 'font-size: 16px; font-weight: bold; color: #00ff00')
-    
-    const geometryGroups: Map<string, { count: number; name: string; triangles: number; examples: string[] }> = new Map()
+
+    console.log("%c=== SCENE ANALYSIS ===", "font-size: 16px; font-weight: bold; color: #00ff00")
+
+    const geometryGroups: Map<
+      string,
+      { count: number; name: string; triangles: number; examples: string[] }
+    > = new Map()
     const nameGroups: Map<string, number> = new Map()
     let skinnedMeshCount = 0
     let totalMeshes = 0
-    
+
     scene.traverse((obj: THREE.Object3D) => {
       if (obj instanceof THREE.SkinnedMesh) {
         skinnedMeshCount++
@@ -446,53 +450,58 @@ export class DebugPanelThree {
       } else if (obj instanceof THREE.Mesh && obj.visible) {
         totalMeshes++
         const geomId = obj.geometry.uuid
-        const triangles = obj.geometry.index 
-          ? obj.geometry.index.count / 3 
+        const triangles = obj.geometry.index
+          ? obj.geometry.index.count / 3
           : (obj.geometry.attributes.position?.count || 0) / 3
-        
+
         if (!geometryGroups.has(geomId)) {
-          geometryGroups.set(geomId, { 
-            count: 0, 
-            name: obj.geometry.name || obj.name || 'unnamed',
+          geometryGroups.set(geomId, {
+            count: 0,
+            name: obj.geometry.name || obj.name || "unnamed",
             triangles: Math.floor(triangles),
-            examples: []
+            examples: [],
           })
         }
         const group = geometryGroups.get(geomId)!
         group.count++
         if (group.examples.length < 3) {
-          group.examples.push(obj.name || obj.parent?.name || 'unnamed')
+          group.examples.push(obj.name || obj.parent?.name || "unnamed")
         }
-        
-        const baseName = (obj.name || 'unnamed').replace(/[0-9_]+$/, '').trim() || 'unnamed'
+
+        const baseName = (obj.name || "unnamed").replace(/[0-9_]+$/, "").trim() || "unnamed"
         nameGroups.set(baseName, (nameGroups.get(baseName) || 0) + 1)
       }
     })
-    
+
     const instanceCandidates = [...geometryGroups.entries()]
       .filter(([_, data]) => data.count > 1)
       .sort((a, b) => b[1].count - a[1].count)
       .slice(0, 15)
-    
-    console.log('%c📦 TOP INSTANCING CANDIDATES:', 'font-weight: bold; color: #ffff00')
-    console.table(instanceCandidates.map(([id, data]) => ({
-      'Geometry': data.name.substring(0, 30),
-      'Count': data.count,
-      'Triangles Each': data.triangles,
-      'Potential Savings': `${data.count - 1} draw calls`,
-      'Examples': data.examples.join(', ').substring(0, 40)
-    })))
-    
-    console.log('%c📊 SUMMARY:', 'font-weight: bold; color: #ff00ff')
+
+    console.log("%c📦 TOP INSTANCING CANDIDATES:", "font-weight: bold; color: #ffff00")
+    console.table(
+      instanceCandidates.map(([id, data]) => ({
+        Geometry: data.name.substring(0, 30),
+        Count: data.count,
+        "Triangles Each": data.triangles,
+        "Potential Savings": `${data.count - 1} draw calls`,
+        Examples: data.examples.join(", ").substring(0, 40),
+      }))
+    )
+
+    console.log("%c📊 SUMMARY:", "font-weight: bold; color: #ff00ff")
     console.table({
-      'Total Visible Meshes': totalMeshes,
-      'Skinned Meshes (animated)': skinnedMeshCount,
-      'Regular Meshes': totalMeshes - skinnedMeshCount,
-      'Unique Geometries': geometryGroups.size,
-      'Potential Draw Call Savings': instanceCandidates.reduce((sum, [_, d]) => sum + d.count - 1, 0)
+      "Total Visible Meshes": totalMeshes,
+      "Skinned Meshes (animated)": skinnedMeshCount,
+      "Regular Meshes": totalMeshes - skinnedMeshCount,
+      "Unique Geometries": geometryGroups.size,
+      "Potential Draw Call Savings": instanceCandidates.reduce(
+        (sum, [_, d]) => sum + d.count - 1,
+        0
+      ),
     })
   }
-  
+
   /**
    * Run render cost analysis to identify bottlenecks
    */
@@ -502,9 +511,12 @@ export class DebugPanelThree {
       console.warn("Scene not found for analysis")
       return
     }
-    
-    console.log('%c=== RENDER COST BREAKDOWN ===', 'font-size: 16px; font-weight: bold; color: #ff6600')
-    
+
+    console.log(
+      "%c=== RENDER COST BREAKDOWN ===",
+      "font-size: 16px; font-weight: bold; color: #ff6600"
+    )
+
     let staticCandidates = 0
     let alreadyStatic = 0
     let skinnedMeshes = 0
@@ -513,85 +525,91 @@ export class DebugPanelThree {
     let shadowReceivers = 0
     let transparentObjects = 0
     let totalObjects = 0
-    
+
     scene.traverse((obj: THREE.Object3D) => {
       totalObjects++
-      
+
       if (obj.matrixAutoUpdate) {
-        if (!(obj instanceof THREE.SkinnedMesh) && 
-            !(obj.parent instanceof THREE.SkinnedMesh) &&
-            !obj.name.toLowerCase().includes('player')) {
+        if (
+          !(obj instanceof THREE.SkinnedMesh) &&
+          !(obj.parent instanceof THREE.SkinnedMesh) &&
+          !obj.name.toLowerCase().includes("player")
+        ) {
           staticCandidates++
         }
       } else {
         alreadyStatic++
       }
-      
+
       if (obj instanceof THREE.SkinnedMesh) {
         skinnedMeshes++
         if (obj.skeleton) {
           skinnedBoneCount += obj.skeleton.bones.length
         }
       }
-      
+
       if (obj instanceof THREE.Mesh || obj instanceof THREE.SkinnedMesh) {
         if (obj.castShadow) shadowCasters++
         if (obj.receiveShadow) shadowReceivers++
-        
+
         const mat = obj.material as THREE.Material
         if (mat && mat.transparent) {
           transparentObjects++
         }
       }
     })
-    
+
     let shadowLights = 0
     scene.traverse((obj: THREE.Object3D) => {
       if (obj instanceof THREE.Light && (obj as any).castShadow) {
         shadowLights++
       }
     })
-    
-    console.log('%c🔄 MATRIX UPDATES:', 'font-weight: bold; color: #ffff00')
+
+    console.log("%c🔄 MATRIX UPDATES:", "font-weight: bold; color: #ffff00")
     console.table({
-      'Total Objects': totalObjects,
-      'With matrixAutoUpdate ON': staticCandidates + skinnedMeshes,
-      'Could be static': staticCandidates,
-      'Already static': alreadyStatic,
-      'Potential CPU savings': `${staticCandidates} matrix calcs/frame`
+      "Total Objects": totalObjects,
+      "With matrixAutoUpdate ON": staticCandidates + skinnedMeshes,
+      "Could be static": staticCandidates,
+      "Already static": alreadyStatic,
+      "Potential CPU savings": `${staticCandidates} matrix calcs/frame`,
     })
-    
-    console.log('%c🦴 SKINNED MESH (Animation) COST:', 'font-weight: bold; color: #ff00ff')
+
+    console.log("%c🦴 SKINNED MESH (Animation) COST:", "font-weight: bold; color: #ff00ff")
     console.table({
-      'Skinned Meshes': skinnedMeshes,
-      'Total Bones': skinnedBoneCount,
-      'Avg Bones per Character': skinnedMeshes > 0 ? Math.round(skinnedBoneCount / skinnedMeshes) : 0,
-      'Impact': skinnedBoneCount > 500 ? '⚠️ HIGH' : '✅ Reasonable'
+      "Skinned Meshes": skinnedMeshes,
+      "Total Bones": skinnedBoneCount,
+      "Avg Bones per Character":
+        skinnedMeshes > 0 ? Math.round(skinnedBoneCount / skinnedMeshes) : 0,
+      Impact: skinnedBoneCount > 500 ? "⚠️ HIGH" : "✅ Reasonable",
     })
-    
-    console.log('%c🌑 SHADOW COST:', 'font-weight: bold; color: #00ffff')
+
+    console.log("%c🌑 SHADOW COST:", "font-weight: bold; color: #00ffff")
     console.table({
-      'Shadow-casting Lights': shadowLights,
-      'Shadow Casters': shadowCasters,
-      'Shadow Receivers': shadowReceivers,
-      'Impact': shadowLights > 1 ? '⚠️ Multiple shadow maps' : '✅ OK'
+      "Shadow-casting Lights": shadowLights,
+      "Shadow Casters": shadowCasters,
+      "Shadow Receivers": shadowReceivers,
+      Impact: shadowLights > 1 ? "⚠️ Multiple shadow maps" : "✅ OK",
     })
-    
-    console.log('%c🔮 TRANSPARENCY:', 'font-weight: bold; color: #00ff00')
+
+    console.log("%c🔮 TRANSPARENCY:", "font-weight: bold; color: #00ff00")
     console.table({
-      'Transparent Objects': transparentObjects,
-      'Impact': transparentObjects > 50 ? '⚠️ Sorting overhead' : '✅ OK'
+      "Transparent Objects": transparentObjects,
+      Impact: transparentObjects > 50 ? "⚠️ Sorting overhead" : "✅ OK",
     })
-    
-    console.log('%c📋 PRIORITY ACTIONS:', 'font-weight: bold; color: #ffffff; background: #333')
+
+    console.log("%c📋 PRIORITY ACTIONS:", "font-weight: bold; color: #ffffff; background: #333")
     const priorities: string[] = []
-    if (staticCandidates > 50) priorities.push(`• Set ${staticCandidates} objects to matrixAutoUpdate=false`)
-    if (skinnedBoneCount > 300) priorities.push(`• Consider LOD for characters (${skinnedBoneCount} bones)`)
+    if (staticCandidates > 50)
+      priorities.push(`• Set ${staticCandidates} objects to matrixAutoUpdate=false`)
+    if (skinnedBoneCount > 300)
+      priorities.push(`• Consider LOD for characters (${skinnedBoneCount} bones)`)
     if (shadowCasters > 50) priorities.push(`• Reduce shadow casters (${shadowCasters})`)
-    if (transparentObjects > 30) priorities.push(`• Reduce transparent objects (${transparentObjects})`)
-    console.log(priorities.length > 0 ? priorities.join('\n') : '✅ No major issues')
+    if (transparentObjects > 30)
+      priorities.push(`• Reduce transparent objects (${transparentObjects})`)
+    console.log(priorities.length > 0 ? priorities.join("\n") : "✅ No major issues")
   }
-  
+
   /**
    * Get the scene from VenusGame
    */
@@ -602,7 +620,7 @@ export class DebugPanelThree {
       return null
     }
   }
-  
+
   /**
    * Bake duplicate meshes into InstancedMeshes for better performance.
    * Finds meshes with the same geometry and replaces them with a single InstancedMesh.
@@ -613,17 +631,20 @@ export class DebugPanelThree {
       console.warn("Scene not found for instancing")
       return
     }
-    
-    console.log('%c=== BAKING INSTANCED MESHES ===', 'font-size: 16px; font-weight: bold; color: #00ff00')
-    
+
+    console.log(
+      "%c=== BAKING INSTANCED MESHES ===",
+      "font-size: 16px; font-weight: bold; color: #00ff00"
+    )
+
     // Group meshes by geometry UUID
     const geometryGroups: Map<string, THREE.Mesh[]> = new Map()
-    
+
     scene.traverse((obj: THREE.Object3D) => {
       // Skip skinned meshes and instanced meshes
       if (obj instanceof THREE.SkinnedMesh) return
       if (obj instanceof THREE.InstancedMesh) return
-      
+
       if (obj instanceof THREE.Mesh && obj.visible) {
         const geomId = obj.geometry.uuid
         if (!geometryGroups.has(geomId)) {
@@ -632,31 +653,27 @@ export class DebugPanelThree {
         geometryGroups.get(geomId)!.push(obj)
       }
     })
-    
+
     // Find groups with 3+ meshes (worth instancing)
     let totalInstanced = 0
     let totalSaved = 0
-    
+
     for (const [geomId, meshes] of geometryGroups) {
       if (meshes.length < 3) continue
-      
+
       const firstMesh = meshes[0]
       const geometry = firstMesh.geometry
       const material = firstMesh.material
-      
+
       // Skip if mesh has multiple materials (complex case)
       if (Array.isArray(material)) continue
-      
+
       // Create InstancedMesh
-      const instancedMesh = new THREE.InstancedMesh(
-        geometry,
-        material,
-        meshes.length
-      )
-      instancedMesh.name = `Instanced_${firstMesh.name || 'unnamed'}`
+      const instancedMesh = new THREE.InstancedMesh(geometry, material, meshes.length)
+      instancedMesh.name = `Instanced_${firstMesh.name || "unnamed"}`
       instancedMesh.castShadow = firstMesh.castShadow
       instancedMesh.receiveShadow = firstMesh.receiveShadow
-      
+
       // Set transforms for each instance
       const matrix = new THREE.Matrix4()
       for (let i = 0; i < meshes.length; i++) {
@@ -666,23 +683,25 @@ export class DebugPanelThree {
         instancedMesh.setMatrixAt(i, matrix)
       }
       instancedMesh.instanceMatrix.needsUpdate = true
-      
+
       // Add instanced mesh to scene
       scene.add(instancedMesh)
-      
+
       // Remove original meshes
       for (const mesh of meshes) {
         if (mesh.parent) {
           mesh.parent.remove(mesh)
         }
       }
-      
-      console.log(`✅ Instanced ${meshes.length}x "${firstMesh.name || 'unnamed'}" → 1 draw call (saved ${meshes.length - 1})`)
+
+      console.log(
+        `✅ Instanced ${meshes.length}x "${firstMesh.name || "unnamed"}" → 1 draw call (saved ${meshes.length - 1})`
+      )
       totalInstanced += meshes.length
       totalSaved += meshes.length - 1
     }
-    
-    console.log('%c📊 INSTANCING COMPLETE:', 'font-weight: bold; color: #ff00ff')
+
+    console.log("%c📊 INSTANCING COMPLETE:", "font-weight: bold; color: #ff00ff")
     console.log(`   Meshes instanced: ${totalInstanced}`)
     console.log(`   Draw calls saved: ${totalSaved}`)
   }
@@ -695,7 +714,7 @@ export class DebugPanelThree {
   public addOption(
     label: string,
     defaultValue: boolean,
-    onChange: (checked: boolean) => void,
+    onChange: (checked: boolean) => void
   ): void {
     const optionContainer = document.createElement("div")
     optionContainer.style.cssText = `
@@ -760,7 +779,7 @@ export class DebugPanelThree {
     defaultValue: number,
     min: number,
     max: number,
-    onChange: (value: number) => void,
+    onChange: (value: number) => void
   ): void {
     const optionContainer = document.createElement("div")
     optionContainer.style.cssText = `
@@ -900,9 +919,7 @@ export class DebugPanelThree {
 
       // Update FPS every second
       if (currentTime - fpsUpdateTime >= 1000) {
-        this.performanceStats.fps = Math.round(
-          frameCount / ((currentTime - fpsUpdateTime) / 1000),
-        )
+        this.performanceStats.fps = Math.round(frameCount / ((currentTime - fpsUpdateTime) / 1000))
         frameCount = 0
         fpsUpdateTime = currentTime
       }
@@ -984,8 +1001,7 @@ export class DebugPanelThree {
     const brokenDisplay = document.getElementById("broken-instances-display")
     const geoReuseDisplay = document.getElementById("geometry-reuse-display")
 
-    if (totalDisplay)
-      totalDisplay.textContent = `Total: ${instanceStats.totalInstances}`
+    if (totalDisplay) totalDisplay.textContent = `Total: ${instanceStats.totalInstances}`
 
     if (gpuDisplay) {
       gpuDisplay.textContent = `GPU: ${instanceStats.gpuInstances}`
@@ -993,9 +1009,7 @@ export class DebugPanelThree {
       // Color code GPU instances (higher is better for performance)
       const gpuPercent =
         instanceStats.totalInstances > 0
-          ? Math.round(
-              (instanceStats.gpuInstances / instanceStats.totalInstances) * 100,
-            )
+          ? Math.round((instanceStats.gpuInstances / instanceStats.totalInstances) * 100)
           : 0
 
       if (gpuPercent > 70) {
@@ -1010,10 +1024,7 @@ export class DebugPanelThree {
     if (sharedDisplay) {
       const sharedPercent =
         instanceStats.totalInstances > 0
-          ? Math.round(
-              (instanceStats.sharedInstances / instanceStats.totalInstances) *
-                100,
-            )
+          ? Math.round((instanceStats.sharedInstances / instanceStats.totalInstances) * 100)
           : 0
       sharedDisplay.textContent = `Shared: ${instanceStats.sharedInstances} (${sharedPercent}%)`
 
@@ -1030,10 +1041,7 @@ export class DebugPanelThree {
     if (clonedDisplay) {
       const clonedPercent =
         instanceStats.totalInstances > 0
-          ? Math.round(
-              (instanceStats.clonedInstances / instanceStats.totalInstances) *
-                100,
-            )
+          ? Math.round((instanceStats.clonedInstances / instanceStats.totalInstances) * 100)
           : 0
       clonedDisplay.textContent = `Cloned: ${instanceStats.clonedInstances} (${clonedPercent}%)`
     }
@@ -1131,7 +1139,7 @@ export class DebugPanelThree {
     if (DebugPanelThree.alwaysHide) {
       return
     }
-    
+
     this.isVisible = true
     this.container.style.display = "block"
   }
@@ -1152,7 +1160,7 @@ export class DebugPanelThree {
     if (DebugPanelThree.alwaysHide) {
       return
     }
-    
+
     if (this.isVisible) {
       this.hide()
     } else {

@@ -16,7 +16,7 @@ export class AmbientLightComponent extends Component {
       intensity?: number
       groundColor?: THREE.ColorRepresentation // If provided, creates hemispheric lighting
       direction?: THREE.Vector3 // For hemispheric lighting
-    } = {},
+    } = {}
   ) {
     super()
 
@@ -26,7 +26,7 @@ export class AmbientLightComponent extends Component {
       this.hemisphereLight = new THREE.HemisphereLight(
         options.color || 0xffffff, // sky color
         options.groundColor, // ground color
-        options.intensity || 0.4,
+        options.intensity || 0.4
       )
 
       // Set direction if provided
@@ -37,7 +37,7 @@ export class AmbientLightComponent extends Component {
       // Use simple ambient light
       this.ambientLight = new THREE.AmbientLight(
         options.color || 0x404040,
-        options.intensity || 0.4,
+        options.intensity || 0.4
       )
     }
   }
@@ -64,9 +64,7 @@ export class AmbientLightComponent extends Component {
    * Get the Three.js light for direct access
    */
   public getLight(): THREE.Light {
-    return this.useHemispheric && this.hemisphereLight
-      ? this.hemisphereLight
-      : this.ambientLight
+    return this.useHemispheric && this.hemisphereLight ? this.hemisphereLight : this.ambientLight
   }
 
   /**
