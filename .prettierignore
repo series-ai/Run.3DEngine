@@ -11,3 +11,4 @@ package-lock.json
 README.md
 tsconfig.json
 tsup.config.ts
+eslint.config.js

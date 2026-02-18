@@ -47,3 +47,4 @@ coverage/
 # Claude code
 .claude/
 
+.rundot-docs
