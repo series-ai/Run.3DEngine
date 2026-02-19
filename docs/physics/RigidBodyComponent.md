@@ -56,8 +56,8 @@ const rb = new RigidBodyComponentThree({
 })
 platform.addComponent(rb)
 
-// Move kinematically
-rb.setNextKinematicTranslation(new THREE.Vector3(5, 2, 0))
+// Move kinematically by setting position directly
+platform.position.set(5, 2, 0)
 ```
 
 ### Trigger Collider (No Physics, Detects Overlap)
@@ -74,11 +74,11 @@ class TriggerZone extends Component {
         this.gameObject.addComponent(trigger)
         
         // Register callbacks
-        trigger.onTriggerEnter((other) => {
+        trigger.registerOnTriggerEnter((other) => {
             console.log("Entered:", other.name)
         })
-        
-        trigger.onTriggerExit((other) => {
+
+        trigger.registerOnTriggerExit((other) => {
             console.log("Exited:", other.name)
         })
     }
@@ -145,14 +145,32 @@ interface RigidBodyOptions {
 
 ### Methods
 
-- `applyForce(force: THREE.Vector3)` - Apply force at center
-- `applyImpulse(impulse: THREE.Vector3)` - Apply instant impulse
-- `setLinearVelocity(velocity: THREE.Vector3)` - Set velocity directly
-- `getLinearVelocity(): THREE.Vector3` - Get current velocity
+#### Velocity & Forces
+- `setVelocity(velocity: THREE.Vector3)` - Set linear velocity (dynamic only)
+- `getVelocity(out: THREE.Vector3)` - Get linear velocity into output vector (zero-allocation)
 - `setAngularVelocity(velocity: THREE.Vector3)` - Set rotation velocity
-- `setNextKinematicTranslation(position: THREE.Vector3)` - Move kinematic body
-- `onTriggerEnter(callback)` - Register trigger enter callback
-- `onTriggerExit(callback)` - Register trigger exit callback
+- `applyForce(force: THREE.Vector3, point?: THREE.Vector3)` - Apply force (optionally at a point)
+- `applyImpulse(impulse: THREE.Vector3, point?: THREE.Vector3)` - Apply instant impulse
+
+#### Enable/Disable
+- `setEnabled(enabled: boolean)` - Enable/disable the rigid body
+- `isEnabled(): boolean` - Check if enabled
+
+#### Trigger Callbacks
+- `registerOnTriggerEnter(callback)` - Register trigger enter callback
+- `registerOnTriggerExit(callback)` - Register trigger exit callback
+- `unregisterOnTriggerEnter()` - Unregister trigger enter callback
+- `unregisterOnTriggerExit()` - Unregister trigger exit callback
+
+#### Access
+- `getRigidBody(): RigidBody | null` - Get Rapier rigid body for advanced use
+- `getCollider(): Collider | null` - Get Rapier collider
+- `getBodyId(): string` - Get the unique body ID
+- `getBounds(): THREE.Box3` - Get bounding box (cuboid colliders)
+
+#### Static Methods
+- `RigidBodyComponentThree.fromBounds(bounds, options?)` - Create from bounds vector
+- `RigidBodyComponentThree.getMeshBounds(gameObject)` - Get mesh bounds dimensions
 
 ## Patterns & Best Practices
 

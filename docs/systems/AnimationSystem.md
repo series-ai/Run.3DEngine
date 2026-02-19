@@ -174,7 +174,56 @@ AnimationControllerComponent.setDebugViewEnabled(true)
 - `stopAll()` - Stop all animations
 - `getAnimator()` - Get the underlying Animatrix instance
 
+## AnimationLibrary
+
+Static class for loading and caching animation clips by ID.
+
+```typescript
+import { AnimationLibrary } from "@series-inc/rundot-3d-engine/systems"
+
+// Load animations
+await AnimationLibrary.loadAnimation("walk", "animations/walk.fbx")
+await AnimationLibrary.loadAnimations({
+  idle: "animations/idle.fbx",
+  run: "animations/run.fbx",
+})
+
+// Register a clip directly
+AnimationLibrary.registerClip("custom_anim", myClip)
+
+// Retrieve clips
+const clip = AnimationLibrary.getClip("walk")
+const clone = AnimationLibrary.cloneClip("walk")
+const all = AnimationLibrary.getAllClips()
+AnimationLibrary.hasClip("walk")
+
+// Debug logging
+AnimationLibrary.setDebug(true)
+```
+
+## AnimationGraphConfig
+
+```typescript
+interface AnimationGraphConfig {
+  parameters?: Record<string, { type: "bool" | "float" | "int"; default: any }>
+  states: Record<string, {
+    animation?: string
+    tree?: { parameter: string; children: { animation: string; threshold: number }[] }
+    randomizeStartTime?: boolean
+  }>
+  transitions?: {
+    from: string
+    to: string
+    when?: Record<string, any>
+    exitTime?: number | boolean
+  }[]
+  initialState: string
+  debug?: boolean
+}
+```
+
 ## Related Systems
 
 - [SkeletalRenderer](../rendering/SkeletalRenderer.md) - Animated character meshes
 - [AssetManager](../rendering/AssetManager.md) - Load animation clips
+- [StowKitSystem](StowKitSystem.md) - Load animations from StowKit packs

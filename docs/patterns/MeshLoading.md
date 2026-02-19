@@ -161,114 +161,64 @@ InstancedRenderer uses GPU instancing to render hundreds or thousands of the sam
 
 ### Basic Example
 
+Each InstancedRenderer is a **per-GameObject component** — one component per instance, all sharing the same batch.
+
 ```typescript
-import { Component, GameObject } from "@series-inc/rundot-3d-engine"
-import { InstancedRenderer } from "@series-inc/rundot-3d-engine/rendering"
+import { Component, GameObject, InstancedRenderer } from "@series-inc/rundot-3d-engine"
 import * as THREE from "three"
 
 class CoinSpawner extends Component {
-    private instancedRenderer: InstancedRenderer | null = null
-    private rendererObject: GameObject | null = null
-    
+    private coins: GameObject[] = []
+
     protected onCreate(): void {
         this.spawnCoins()
     }
-    
+
     private spawnCoins(): void {
-        // 1. Create InstancedRenderer with mesh name and instance count
-        this.instancedRenderer = new InstancedRenderer(
-            "restaurant_display_Money",
-            100 // Number of instances
-        )
-        
-        // 2. Create child GameObject
-        this.rendererObject = new GameObject("CoinsRenderer")
-        
-        // 3. Add component
-        this.rendererObject.addComponent(this.instancedRenderer)
-        
-        // 4. Add as child
-        this.gameObject.add(this.rendererObject)
-        
-        // 5. Set positions for each instance
         for (let i = 0; i < 100; i++) {
-            const x = (i % 10) * 2 - 10
-            const z = Math.floor(i / 10) * 2 - 10
-            const position = new THREE.Vector3(x, 0, z)
-            
-            this.instancedRenderer.setInstancePosition(i, position)
-        }
-        
-        // 6. Update to apply transforms
-        this.instancedRenderer.updateInstances()
-    }
-    
-    protected onCleanup(): void {
-        this.rendererObject?.dispose()
-    }
-}
-```
-
-### Setting Instance Properties
-
-```typescript
-// Set position
-instancedRenderer.setInstancePosition(0, new THREE.Vector3(0, 5, 0))
-
-// Set rotation
-instancedRenderer.setInstanceRotation(0, new THREE.Quaternion())
-
-// Set scale
-instancedRenderer.setInstanceScale(0, new THREE.Vector3(1, 1, 1))
-
-// Set color (tint)
-instancedRenderer.setInstanceColor(0, new THREE.Color(0xff0000))
-
-// IMPORTANT: Always call updateInstances() after making changes
-instancedRenderer.updateInstances()
-```
-
-### Dynamic Updates Example
-
-```typescript
-class FloatingCoins extends Component {
-    private instancedRenderer: InstancedRenderer | null = null
-    private elapsedTime: number = 0
-    
-    update(deltaTime: number): void {
-        if (!this.instancedRenderer) return
-        
-        this.elapsedTime += deltaTime
-        
-        // Animate each instance
-        for (let i = 0; i < 100; i++) {
-            const offset = i * 0.1
-            const y = Math.sin(this.elapsedTime + offset) * 2
-            const pos = new THREE.Vector3(
+            const coin = new GameObject(`Coin_${i}`)
+            coin.position.set(
                 (i % 10) * 2 - 10,
-                y,
-                Math.floor(i / 10) * 2 - 10
+                0,
+                Math.floor(i / 10) * 2 - 10,
             )
-            this.instancedRenderer.setInstancePosition(i, pos)
+            // All coins share the same batch key
+            coin.addComponent(new InstancedRenderer("coin_batch"))
+            this.coins.push(coin)
         }
-        
-        // Update GPU buffer with new transforms
-        this.instancedRenderer.updateInstances()
+    }
+
+    protected onCleanup(): void {
+        this.coins.forEach((c) => c.dispose())
     }
 }
+```
+
+### Dynamic vs Static Instances
+
+```typescript
+// Dynamic (default) - updates transform every frame
+coin.addComponent(new InstancedRenderer("coin_batch"))
+
+// Static - only updates when marked dirty (better performance)
+const renderer = new InstancedRenderer("coin_batch", { isDynamic: false })
+coin.addComponent(renderer)
+
+// After moving a static instance:
+coin.position.x = 10
+renderer.markDirty()
 ```
 
 ### Showing/Hiding Instances
 
 ```typescript
-// Hide an instance (moves it far away)
-instancedRenderer.setInstanceVisible(5, false)
+const renderer = coin.getComponent(InstancedRenderer)
+
+// Hide an instance
+renderer?.hide()   // or renderer?.setVisible(false)
 
 // Show an instance
-instancedRenderer.setInstanceVisible(5, true)
-
-// Don't forget to update!
-instancedRenderer.updateInstances()
+renderer?.show()   // or renderer?.setVisible(true)
 ```
 
 ## Choosing Between MeshRenderer and InstancedRenderer
@@ -290,21 +240,17 @@ instancedRenderer.updateInstances()
 ### Performance Comparison
 
 ```typescript
-// BAD - 1000 individual MeshRenderers
+// BAD - 1000 individual MeshRenderers (1000 draw calls)
 for (let i = 0; i < 1000; i++) {
     const obj = new GameObject(`Coin_${i}`)
-    const renderer = new MeshRenderer("coin_mesh")
-    obj.addComponent(renderer)
-    scene.add(obj)
-    // Result: 1000 draw calls, poor performance
+    obj.addComponent(new MeshRenderer("coin_mesh"))
 }
 
-// GOOD - 1 InstancedRenderer with 1000 instances
-const renderer = new InstancedRenderer("coin_mesh", 1000)
-const obj = new GameObject("Coins")
-obj.addComponent(renderer)
-scene.add(obj)
-// Result: 1 draw call, excellent performance
+// GOOD - 1000 InstancedRenderers sharing one batch (1 draw call)
+for (let i = 0; i < 1000; i++) {
+    const obj = new GameObject(`Coin_${i}`)
+    obj.addComponent(new InstancedRenderer("coin_batch"))
+}
 ```
 
 ## Related Patterns

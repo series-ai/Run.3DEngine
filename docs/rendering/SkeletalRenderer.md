@@ -6,7 +6,7 @@ SkeletalRenderer loads and displays animated character meshes with skeletal anim
 
 ```typescript
 import { GameObject, SkeletalRenderer } from "@series-inc/rundot-3d-engine"
-import { AssetManager } from "@series-inc/rundot-3d-engine/assets"
+import { AssetManager } from "@series-inc/rundot-3d-engine"
 
 // 1. Preload skeletal model
 await AssetManager.preloadSkeletalModel("Character/character_main.fbx")
@@ -109,9 +109,9 @@ class CustomAnimatedCharacter extends Component {
             this.mixer = new THREE.AnimationMixer(model)
             
             // Load and play animation
-            const clip = AssetManager.getAnimationClip("Animations/walk.fbx")
-            if (clip) {
-                const action = this.mixer.clipAction(clip)
+            const clips = AssetManager.getAnimations("Animations/walk.fbx")
+            if (clips.length > 0) {
+                const action = this.mixer.clipAction(clips[0])
                 action.play()
             }
         }
@@ -139,8 +139,8 @@ new SkeletalRenderer(
 - `getGroup(): THREE.Group | null` - Get wrapper group (attached to GameObject)
 - `getSkeletalModel(): THREE.Object3D | null` - Get skeletal model for animation
 - `getAssetPath(): string` - Get asset path being rendered
-- `getMaterial(): THREE.Material | null` - Get custom material if set
-- `setMaterial(material: THREE.Material): void` - Change material at runtime
+- `setVisible(visible: boolean): void` - Show/hide the skeletal model
+- `isVisible(): boolean` - Check visibility state
 
 ### Shadow Behavior
 

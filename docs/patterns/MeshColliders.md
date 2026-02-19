@@ -274,7 +274,7 @@ class CoinPickup extends Component {
         this.gameObject.addComponent(trigger)
         
         // 3. Handle pickup collision
-        trigger.onTriggerEnter((other: GameObject) => {
+        trigger.registerOnTriggerEnter((other: GameObject) => {
             if (other.name === "Player") {
                 console.log("Coin collected!")
                 this.collect()

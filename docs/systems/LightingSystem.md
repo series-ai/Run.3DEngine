@@ -1,27 +1,26 @@
 # LightingSystem
 
-Lighting components for Three.js scenes with directional and ambient lights.
+Lighting components for Three.js scenes with directional and ambient/hemisphere lights.
 
 ## Quick Start
 
 ```typescript
-import { DirectionalLightComponentThree, AmbientLightComponentThree } from "@series-inc/rundot-3d-engine/systems"
-import * as THREE from "three"
+import { DirectionalLightComponent, AmbientLightComponent } from "@series-inc/rundot-3d-engine/systems"
 
 // Add directional light (sun)
 const sunLight = new GameObject("Sun")
-sunLight.addComponent(new DirectionalLightComponentThree(
-    0xffffff,  // Color
-    1.0        // Intensity
-))
-sunLight.position.set(10, 20, 10)
+sunLight.addComponent(new DirectionalLightComponent({
+  color: 0xffffff,
+  intensity: 1.0,
+  castShadow: true,
+}))
 
 // Add ambient light (fill light)
 const ambient = new GameObject("Ambient")
-ambient.addComponent(new AmbientLightComponentThree(
-    0x404040,  // Color
-    0.5        // Intensity
-))
+ambient.addComponent(new AmbientLightComponent({
+  color: 0x404040,
+  intensity: 0.5,
+}))
 ```
 
 ## Common Use Cases
@@ -30,19 +29,46 @@ ambient.addComponent(new AmbientLightComponentThree(
 
 ```typescript
 class MyGame extends VenusGame {
-    protected async onStart(): Promise<void> {
-        // Sun light
-        const sun = new GameObject("Sun")
-        const sunLight = new DirectionalLightComponentThree(0xffffff, 1.5)
-        sun.addComponent(sunLight)
-        sun.position.set(10, 20, 5)
-        sun.lookAt(0, 0, 0)
-        
-        // Ambient fill
-        const ambient = new GameObject("Ambient")
-        ambient.addComponent(new AmbientLightComponentThree(0x404040, 0.4))
-    }
+  protected async onStart(): Promise<void> {
+    // Sun light with shadows
+    const sun = new GameObject("Sun")
+    sun.addComponent(new DirectionalLightComponent({
+      color: 0xffffff,
+      intensity: 1.5,
+      castShadow: true,
+      shadowMapSize: 2048,
+      shadowCamera: {
+        left: -50, right: 50,
+        top: 50, bottom: -50,
+        near: 0.5, far: 100,
+      },
+    }))
+
+    // Position and aim
+    const light = sun.getComponent(DirectionalLightComponent)
+    light?.setPosition(10, 20, 5)
+    light?.setTarget(0, 0, 0)
+
+    // Ambient fill
+    const ambient = new GameObject("Ambient")
+    ambient.addComponent(new AmbientLightComponent({
+      color: 0x404040,
+      intensity: 0.4,
+    }))
+  }
 }
+```
+
+### Hemisphere Light (Sky + Ground)
+
+```typescript
+// Providing groundColor enables hemisphere lighting mode
+const hemiLight = new GameObject("HemiLight")
+hemiLight.addComponent(new AmbientLightComponent({
+  color: 0x87CEEB,          // Sky color
+  groundColor: 0x8B4513,    // Ground color
+  intensity: 0.6,
+}))
 ```
 
 ### Shadows
@@ -50,42 +76,82 @@ class MyGame extends VenusGame {
 ```typescript
 // Enable shadows in VenusGame config
 protected getConfig(): VenusGameConfig {
-    return {
-        shadowMapEnabled: true,
-        shadowMapType: "vsm"
-    }
+  return {
+    shadowMapEnabled: true,
+    shadowMapType: "vsm",
+  }
 }
 
-// Directional lights cast shadows automatically
-// Configure shadow camera for better quality
-const sunLight = sun.getComponent(DirectionalLightComponentThree)
-if (sunLight) {
-    const light = sunLight.getLight()
-    light.shadow.camera.left = -50
-    light.shadow.camera.right = 50
-    light.shadow.camera.top = 50
-    light.shadow.camera.bottom = -50
-    light.shadow.camera.far = 100
-}
+// DirectionalLightComponent casts shadows via options
+const sun = new DirectionalLightComponent({
+  castShadow: true,
+  shadowMapSize: 2048,
+  shadowCamera: {
+    left: -50, right: 50,
+    top: 50, bottom: -50,
+    far: 100,
+  },
+})
 ```
 
-## API Overview
+## API Reference
 
-### DirectionalLightComponentThree
-- `new DirectionalLightComponentThree(color, intensity)` - Create directional light
-- `getLight(): THREE.DirectionalLight` - Get Three.js light
-- `setIntensity(intensity)` - Change brightness
-- `setColor(color)` - Change color
+### DirectionalLightComponent
 
-### AmbientLightComponentThree
-- `new AmbientLightComponentThree(color, intensity)` - Create ambient light
-- `getLight(): THREE.AmbientLight` - Get Three.js light
+#### Constructor
+
+```typescript
+new DirectionalLightComponent(options?: {
+  color?: THREE.ColorRepresentation     // Default: white
+  intensity?: number                     // Default: 1
+  castShadow?: boolean                   // Default: false
+  shadowMapSize?: number                 // Shadow map resolution
+  shadowCamera?: {
+    left?: number
+    right?: number
+    top?: number
+    bottom?: number
+    near?: number
+    far?: number
+  }
+})
+```
+
+#### Methods
+
+- `getLight(): THREE.DirectionalLight` — get the Three.js light for direct access
+- `setPosition(x, y, z): void` — set light position
+- `setTarget(x, y, z): void` — set light target position
+- `setIntensity(intensity): void` — set light intensity
+- `setColor(color): void` — set light color
+- `setCastShadow(enabled): void` — enable/disable shadow casting
+
+### AmbientLightComponent
+
+#### Constructor
+
+```typescript
+new AmbientLightComponent(options?: {
+  color?: THREE.ColorRepresentation        // Sky/main color
+  intensity?: number                        // Default: 1
+  groundColor?: THREE.ColorRepresentation   // If set, uses HemisphereLight
+  direction?: THREE.Vector3                 // Hemisphere light direction
+})
+```
+
+If `groundColor` is provided, creates a `THREE.HemisphereLight` (sky + ground colors). Otherwise creates a `THREE.AmbientLight`.
+
+#### Methods
+
+- `getLight(): THREE.Light` — get the Three.js light (AmbientLight or HemisphereLight)
+- `setIntensity(intensity): void` — set light intensity
+- `setColor(color): void` — set sky/main color
+- `setGroundColor(color): void` — set ground color (hemisphere mode only)
 
 ## Light Types
 
 ### Directional Light
-- Simulates sun/moon
-- Parallel rays
+- Simulates sun/moon with parallel rays
 - Casts shadows
 - Position determines direction
 
@@ -94,8 +160,12 @@ if (sunLight) {
 - No shadows
 - Fill light to prevent pure black
 
+### Hemisphere Light
+- Two-color lighting (sky + ground)
+- More natural outdoor lighting than plain ambient
+- Enabled by providing `groundColor` option
+
 ## Related Systems
 
 - [VenusGame](../core/VenusGame.md) - Shadow configuration
 - [GameObject](../core/GameObject.md) - Attach lights to objects
-

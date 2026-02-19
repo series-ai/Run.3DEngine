@@ -6,14 +6,10 @@ InstancedRenderer uses GPU instancing to efficiently render many copies of the s
 
 ```typescript
 import { GameObject, InstancedRenderer } from "@series-inc/rundot-3d-engine"
-import { InstancedMeshManager } from "@series-inc/rundot-3d-engine/render"
+import { InstancedMeshManager } from "@series-inc/rundot-3d-engine"
 
-// 1. Pre-register a batch (optional - auto-creates if not done)
-await InstancedMeshManager.getInstance().registerMeshForInstancing(
-    "coin_batch",          // Batch key
-    "restaurant_display_Money",  // Mesh asset name
-    100                    // Initial capacity
-)
+// 1. Batches auto-create when the first InstancedRenderer registers,
+// or pre-register via StowKitSystem or InstancedMeshManager
 
 // 2. Create many instances efficiently
 for (let i = 0; i < 50; i++) {
@@ -109,8 +105,7 @@ interface InstancedRendererOptions {
 - `getVisible(): boolean` - Check if instance is visible
 - `show(): void` - Show instance (convenience)
 - `hide(): void` - Hide instance (convenience)
-- `setDynamic(dynamic: boolean): void` - Switch dynamic/static mode
-- `isDynamic(): boolean` - Check current mode
+- `setDynamic(isDynamic: boolean): void` - Switch dynamic/static mode
 - `markDirty(): void` - Force matrix update (for static instances)
 - `getBatchKey(): string` - Get batch key
 - `isRegistered(): boolean` - Check if successfully registered
@@ -121,13 +116,9 @@ interface InstancedRendererOptions {
 ### Pre-Register Batches for Better Control
 
 ```typescript
-// Good - Explicit batch registration with settings
-await InstancedMeshManager.getInstance().registerMeshForInstancing(
-    "enemy_batch",
-    "enemy_mesh",
-    500, // Max enemies
-    { castShadow: true, receiveShadow: true }
-)
+// Good - Explicit batch registration via StowKitSystem
+const stowKit = StowKitSystem.getInstance()
+await stowKit.registerMeshForInstancing("enemy_batch", "enemy_mesh", true, true, 500)
 
 // Then create instances
 for (let i = 0; i < 100; i++) {
@@ -205,12 +196,12 @@ Use MeshRenderer for:
 
 ```typescript
 // Bad - Same batch key, different meshes
-registerMeshForInstancing("props", "tree_mesh", 100)
-registerMeshForInstancing("props", "rock_mesh", 100) // Overwrites!
+stowKit.registerMeshForInstancing("props", "tree_mesh")
+stowKit.registerMeshForInstancing("props", "rock_mesh") // Overwrites!
 
 // Good - Different keys
-registerMeshForInstancing("tree_batch", "tree_mesh", 100)
-registerMeshForInstancing("rock_batch", "rock_mesh", 100)
+stowKit.registerMeshForInstancing("tree_batch", "tree_mesh")
+stowKit.registerMeshForInstancing("rock_batch", "rock_mesh")
 ```
 
 ### Don't Use for Unique Objects
@@ -241,26 +232,56 @@ tree.position.x = 10
 tree.getComponent(InstancedRenderer)?.markDirty()
 ```
 
-## Batch Management
+## InstancedMeshManager
 
-### Creating Batches Explicitly
+The singleton that manages all instancing batches. InstancedRenderer components register with this manager automatically.
 
 ```typescript
-import { InstancedMeshManager } from "@series-inc/rundot-3d-engine/render"
+import { InstancedMeshManager } from "@series-inc/rundot-3d-engine"
 
-// Initialize manager (done automatically by VenusGame)
 const manager = InstancedMeshManager.getInstance()
+```
 
-// Register batch
-await manager.registerMeshForInstancing(
-    "batch_key",
-    "mesh_asset_name",
-    100, // Initial capacity (grows automatically)
-    {
-        castShadow: true,
-        receiveShadow: true
-    }
-)
+### Batch Management
+
+```typescript
+// Create a batch from geometry + material
+manager.getOrCreateBatch("batch_key", geometry, material, castShadow, receiveShadow, initialCapacity)
+
+// Create a batch from an existing GameObject's mesh
+manager.getOrCreateBatchFromGameObject("batch_key", sourceGameObject)
+
+// Check/get batches
+manager.hasBatch("batch_key")
+manager.getBatch("batch_key")
+manager.removeBatch("batch_key")
+```
+
+### Instance Management (Low-Level)
+
+```typescript
+// Add/remove instances directly
+const id = manager.addInstance("batch_key", gameObject, { isDynamic: true })
+manager.removeInstance("batch_key", id)
+
+// Visibility
+manager.setInstanceVisible("batch_key", id, false)
+manager.getInstanceVisible("batch_key", id)
+
+// Static instance updates
+manager.markInstanceDirty("batch_key", id)
+manager.setInstanceDynamic("batch_key", id, true)
+```
+
+### Update & Debug
+
+```typescript
+// Call every frame
+manager.updateAllBatches()
+
+// Debug
+manager.getStats()
+manager.debugReport()
 ```
 
 ### Auto-Creating from GameObject
@@ -280,7 +301,7 @@ secondCoin.addComponent(new InstancedRenderer("coin_batch")) // Uses existing
 ## Related Systems
 
 - [MeshRenderer](MeshRenderer.md) - For unique/few objects
-- [InstancedMeshManager](../../src/engine/render/InstancedMeshManager.ts) - Manages batches
+- [StowKitSystem](../systems/StowKitSystem.md) - Can register meshes for instancing
 - [GameObject](../core/GameObject.md) - Entity class for components
 - [Component](../core/Component.md) - Base component class
 

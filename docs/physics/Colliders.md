@@ -123,12 +123,12 @@ class PickupZone extends Component {
         })
         this.gameObject.addComponent(trigger)
         
-        trigger.onTriggerEnter((other: GameObject) => {
+        trigger.registerOnTriggerEnter((other: GameObject) => {
             console.log(`${other.name} entered pickup zone`)
             this.collectItem(other)
         })
         
-        trigger.onTriggerExit((other: GameObject) => {
+        trigger.registerOnTriggerExit((other: GameObject) => {
             console.log(`${other.name} left pickup zone`)
         })
     }
@@ -219,7 +219,7 @@ bullet.addComponent(new RigidBodyComponentThree({
 
 // Apply velocity
 const rb = bullet.getComponent(RigidBodyComponentThree)
-rb?.setLinearVelocity(new THREE.Vector3(0, 0, 50))
+rb?.setVelocity(new THREE.Vector3(0, 0, 50))
 ```
 
 ### Trigger Zone
@@ -234,12 +234,49 @@ const trigger = new RigidBodyComponentThree({
 })
 zone.addComponent(trigger)
 
-trigger.onTriggerEnter((other) => {
+trigger.registerOnTriggerEnter((other) => {
     if (other.name === "Player") {
         console.log("Player entered zone!")
     }
 })
 ```
+
+## Prefab Collider Components
+
+For prefab-based workflows, two additional collider components are available:
+
+### BoxColliderComponent
+
+Creates a box collider from prefab JSON data.
+
+```typescript
+import { BoxColliderComponent } from "@series-inc/rundot-3d-engine/systems"
+
+const collider = new BoxColliderComponent(
+  new THREE.Vector3(2, 2, 2),  // size
+  new THREE.Vector3(0, 1, 0),  // offset
+)
+gameObject.addComponent(collider)
+
+// Access internal rigid body
+const rb = collider.getRigidBody()
+```
+
+### MeshColliderComponent
+
+Creates a collider from a mesh asset (for complex shapes).
+
+```typescript
+import { MeshColliderComponent } from "@series-inc/rundot-3d-engine/systems"
+
+const collider = new MeshColliderComponent("complex_mesh_name")
+gameObject.addComponent(collider)
+
+// Mesh loads async; rigid body available after load
+const rb = collider.getRigidBody()
+```
+
+Both support `static fromPrefabJSON()` for automatic creation from prefab definitions.
 
 ## Related Systems
 

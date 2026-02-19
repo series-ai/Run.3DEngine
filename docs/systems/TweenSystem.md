@@ -90,6 +90,7 @@ Easing.easeOutCubic     // Stronger deceleration
 Easing.easeInOutCubic   // Smooth cubic
 Easing.spring           // Spring physics
 Easing.easeOutElastic   // Elastic bounce
+Easing.easeInBack       // Pull back before accelerating
 Easing.easeOutBack      // Overshoot
 Easing.anticipateOvershoot // Go back then overshoot
 ```
@@ -97,13 +98,18 @@ Easing.anticipateOvershoot // Go back then overshoot
 ## API Overview
 
 ### TweenSystem
-- `tween(target, property, endValue, duration, easing)` - Create tween
+- `tween(target, property, endValue, duration, easing): Tween` - Create tween
 - `update(deltaTime)` - Update all tweens (automatic)
+- `stopAll()` - Stop all active tweens
+- `getActiveCount(): number` - Get number of active tweens
+- `isActive(): boolean` - Check if any tweens are running
+- `getStats()` - Get `{ active, pending, lastActiveFrame, currentFrame }`
 
 ### Tween
-- `onUpdated(callback)` - Called each frame with current value
-- `onCompleted(callback)` - Called when tween finishes
-- `cancel()` - Stop tween early
+- `onUpdated(callback): Tween` - Called each frame with current value (chainable)
+- `onCompleted(callback): Tween` - Called when tween finishes (chainable)
+- `stop()` - Stop tween early
+- `isActive(): boolean` - Check if tween is still running
 
 ## Patterns
 

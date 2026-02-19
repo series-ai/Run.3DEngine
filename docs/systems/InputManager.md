@@ -1,101 +1,146 @@
 # InputManager
 
-Cross-platform input system for keyboard, mouse, and touch with mobile support.
+Action-based keyboard input system with configurable key bindings.
 
 ## Quick Start
 
 ```typescript
-import { InputManager } from "@series-inc/rundot-3d-engine/systems"
+import { InputManager, InputAction, Input } from "@series-inc/rundot-3d-engine/systems"
 
-// Check keyboard input
-if (InputManager.isKeyDown("w")) {
-    player.moveForward()
+// Initialize (called by VenusGame)
+InputManager.initialize()
+
+// Check action-based input
+if (Input.isPressed(InputAction.MOVE_FORWARD)) {
+  player.moveForward()
 }
 
-// Check mouse button
-if (InputManager.isMouseButtonDown(0)) { // Left click
-    fireWeapon()
+// Check raw key input
+if (Input.isKeyPressed("Space")) {
+  player.jump()
 }
-
-// Get mouse position
-const mousePos = InputManager.getMousePosition()
 ```
 
 ## Common Use Cases
 
-### Keyboard Input
+### Movement with Actions
 
 ```typescript
 class PlayerController extends Component {
-    public update(deltaTime: number): void {
-        const speed = 5
-        
-        if (InputManager.isKeyDown("w")) {
-            this.gameObject.position.z -= speed * deltaTime
-        }
-        if (InputManager.isKeyDown("s")) {
-            this.gameObject.position.z += speed * deltaTime
-        }
-        if (InputManager.isKeyDown("a")) {
-            this.gameObject.position.x -= speed * deltaTime
-        }
-        if (InputManager.isKeyDown("d")) {
-            this.gameObject.position.x += speed * deltaTime
-        }
+  public update(deltaTime: number): void {
+    const speed = 5
+
+    if (Input.isPressed(InputAction.MOVE_FORWARD)) {
+      this.gameObject.position.z -= speed * deltaTime
     }
+    if (Input.isPressed(InputAction.MOVE_BACKWARD)) {
+      this.gameObject.position.z += speed * deltaTime
+    }
+    if (Input.isPressed(InputAction.MOVE_LEFT)) {
+      this.gameObject.position.x -= speed * deltaTime
+    }
+    if (Input.isPressed(InputAction.MOVE_RIGHT)) {
+      this.gameObject.position.x += speed * deltaTime
+    }
+
+    if (Input.isPressed(InputAction.RUN)) {
+      // Sprint
+    }
+  }
 }
 ```
 
-### Mouse Input
+### Raw Key Input
 
 ```typescript
-// Mouse buttons
-if (InputManager.isMouseButtonDown(0)) { // Left
-    console.log("Left click")
+class Interaction extends Component {
+  public update(deltaTime: number): void {
+    if (Input.isKeyPressed("KeyE")) {
+      this.interact()
+    }
+    if (Input.isKeyPressed("Escape")) {
+      this.openMenu()
+    }
+  }
 }
-if (InputManager.isMouseButtonDown(2)) { // Right
-    console.log("Right click")
-}
-
-// Mouse position (screen coordinates)
-const pos = InputManager.getMousePosition()
-console.log(`Mouse at ${pos.x}, ${pos.y}`)
 ```
 
-### Touch Input (Mobile)
+### Custom Key Bindings
 
 ```typescript
-// Touch is automatically mapped to mouse on mobile
-// isMouseButtonDown(0) works for taps
-// getMousePosition() returns touch position
+const manager = InputManager.getInstance()
+
+// Rebind an action
+manager.setKeyBinding(InputAction.RUN, "ShiftRight")
+
+// Disable input (e.g., during menus)
+Input.setEnabled(false)
+
+// Re-enable
+Input.setEnabled(true)
 ```
 
-## API Overview
+## InputAction Enum
 
-### Keyboard
-- `isKeyDown(key: string): boolean` - Check if key is pressed
-- `isKeyPressed(key: string): boolean` - Check if key was just pressed this frame
-- `isKeyReleased(key: string): boolean` - Check if key was just released
+```typescript
+enum InputAction {
+  MOVE_FORWARD = "move_forward",
+  MOVE_BACKWARD = "move_backward",
+  MOVE_LEFT = "move_left",
+  MOVE_RIGHT = "move_right",
+  RUN = "run",
+}
+```
 
-### Mouse
-- `isMouseButtonDown(button: number): boolean` - Check mouse button (0=left, 1=middle, 2=right)
-- `getMousePosition(): {x: number, y: number}` - Get mouse/touch position
-- `getMouseDelta(): {x: number, y: number}` - Get mouse movement since last frame
+## Default Key Bindings
 
-### System
-- `initialize()` - Initialize input (called by VenusGame)
-- `update()` - Update input state (automatic)
+```typescript
+const DEFAULT_KEY_BINDINGS: Record<InputAction, string> = {
+  [InputAction.MOVE_FORWARD]: "KeyW",
+  [InputAction.MOVE_BACKWARD]: "KeyS",
+  [InputAction.MOVE_LEFT]: "KeyA",
+  [InputAction.MOVE_RIGHT]: "KeyD",
+  [InputAction.RUN]: "ShiftLeft",
+}
+```
 
 ## Key Codes
 
-Use standard keyboard keys:
-- Letters: `"a"`, `"b"`, `"w"`, etc.
-- Numbers: `"1"`, `"2"`, etc.
-- Special: `"Space"`, `"Enter"`, `"Shift"`, `"Control"`, `"Alt"`
+Uses the browser `event.code` format:
+
+- Letters: `"KeyW"`, `"KeyA"`, `"KeyS"`, `"KeyD"`, `"KeyE"`, etc.
+- Numbers: `"Digit1"`, `"Digit2"`, etc.
+- Special: `"Space"`, `"Enter"`, `"Escape"`, `"Tab"`
+- Modifiers: `"ShiftLeft"`, `"ShiftRight"`, `"ControlLeft"`, `"AltLeft"`
 - Arrows: `"ArrowUp"`, `"ArrowDown"`, `"ArrowLeft"`, `"ArrowRight"`
+
+## API Reference
+
+### Input (Convenience Object)
+
+A shorthand for common InputManager operations:
+
+- `Input.isPressed(action: InputAction): boolean` — check if an action is currently pressed
+- `Input.isKeyPressed(keyCode: string): boolean` — check if a specific key code is pressed
+- `Input.setEnabled(enabled: boolean): void` — enable/disable input processing
+
+### InputManager (Singleton)
+
+#### Static Methods
+
+- `InputManager.getInstance(): InputManager` — get the singleton instance
+- `InputManager.initialize(): void` — initialize the input system (called by VenusGame)
+
+#### Instance Methods
+
+- `isActionPressed(action: InputAction): boolean` — check if an action is pressed
+- `isKeyPressed(keyCode: string): boolean` — check if a key code is pressed
+- `setKeyBinding(action: InputAction, keyCode: string): void` — rebind a key for an action
+- `setEnabled(enabled: boolean): void` — enable/disable input processing
+- `getActiveKeys(): string[]` — get all currently pressed keys (for debugging)
+- `dispose(): void` — clean up event listeners
 
 ## Related Systems
 
 - [VenusGame](../core/VenusGame.md) - Initializes InputManager
 - [Component](../core/Component.md) - Use input in update()
-

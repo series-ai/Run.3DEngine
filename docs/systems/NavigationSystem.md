@@ -1,246 +1,274 @@
-# Dynamic Navigation System
+# Navigation System
 
-A fast 2D grid-based navigation system with reference counting for efficient obstacle management using static methods.
-
-## Features
-
-- **Fast Obstacle Addition/Removal**: Uses reference counting, no need to regenerate the entire navmesh
-- **3D to 2D Projection**: Handles 3D rotated objects by projecting them to 2D footprints on the XZ plane
-- **Component-Based**: Integrates seamlessly with the GameObject/Component system
-- **Memory Efficient**: Grid-based approach with minimal memory overhead
-- **Static API**: Clean static methods, no getInstance() calls needed
-- **Unity-like Debug Drawing**: Visual debug lines using Babylon.js UtilityLayerRenderer (similar to Unity's Debug.Draw)
+Grid-based 2D navigation with A* pathfinding, obstacle management, and AI agent movement.
 
 ## Quick Start
 
-### 1. Initialize the Navigation System
-
 ```typescript
-import { DynamicNavSystem } from "./systems/DynamicNav"
+import { DynamicNavSystem, NavAgent } from "@series-inc/rundot-3d-engine/systems"
+import * as THREE from "three"
 
-// Initialize in your main game setup
+// Initialize the navigation system
 DynamicNavSystem.initialize(
-  scene, // Babylon.js Scene
-  200, // World width
-  200, // World depth
-  2, // Grid cell size (smaller = higher precision, more memory)
+  scene,  // THREE.Scene (optional, for debug visualization)
+  200,    // World width
+  200,    // World depth
+  2,      // Grid cell size
 )
-```
 
-### 2. Add Navigation Obstacles
+// Add obstacles
+DynamicNavSystem.addBoxObstacle(10, 10, 4, 4)
 
-```typescript
-import { NavObstacleComponent, NavObstacleOptions } from "./systems/DynamicNav"
+// Check walkability
+const canWalk = DynamicNavSystem.isWalkable(5, 5)
 
-// Any GameObject can become a navigation obstacle
-const obstacle = new GameObject("Wall")
-obstacle.position = new Vector3(10, 0, 10)
-obstacle.scaling = new Vector3(4, 2, 4) // 4x4 footprint
-
-// Option 1: Basic usage (uses GameObject bounds)
-obstacle.addComponent(new NavObstacleComponent())
-
-// Option 2: With specific mesh data
-const renderer = obstacle.getComponent(ObjRenderer)
-const options: NavObstacleOptions = {
-  mesh: renderer?.getMesh(),
+// Find a path
+const result = DynamicNavSystem.findPath(
+  new THREE.Vector2(0, 0),
+  new THREE.Vector2(20, 20),
+)
+if (result.success) {
+  console.log(`Path found: ${result.waypoints.length} waypoints, distance: ${result.distance}`)
 }
-obstacle.addComponent(new NavObstacleComponent(options))
-
-// Option 3: With manual bounds specification
-obstacle.addComponent(
-  new NavObstacleComponent({
-    bounds: { width: 4, height: 2, depth: 4 },
-  }),
-)
-
-// Option 4: With custom position/rotation overrides
-obstacle.addComponent(
-  new NavObstacleComponent({
-    position: new Vector3(10, 0, 10),
-    rotation: new Vector3(0, Math.PI / 4, 0),
-    bounds: { width: 4, height: 2, depth: 4 },
-  }),
-)
 ```
 
-### 3. Check Walkability
+## AI Agent Movement
+
+The `NavAgent` component provides automatic pathfinding and movement for GameObjects.
 
 ```typescript
-// Check if a world position is walkable
-const canWalk = DynamicNavSystem.isWalkable(worldX, worldZ)
+import { NavAgent } from "@series-inc/rundot-3d-engine/systems"
 
-// Convert between world and grid coordinates
-const gridPos = DynamicNavSystem.worldToGrid(worldX, worldZ)
-const worldPos = DynamicNavSystem.gridToWorld(gridCol, gridRow)
-```
+class Enemy extends Component {
+  private navAgent?: NavAgent
 
-### 4. Dynamic Obstacles
-
-```typescript
-// Obstacles are automatically removed when:
-// 1. The GameObject is disposed
-obstacle.dispose()
-
-// 2. The NavObstacleComponent is removed
-obstacle.removeComponent(NavObstacleComponent)
-
-// 3. The GameObject is disabled
-obstacle.setEnabled(false)
-
-// If an obstacle moves or rotates, update its footprint:
-const navObstacle = obstacle.getComponent(NavObstacleComponent)
-navObstacle.updateFootprint()
-```
-
-### 5. Debug Visualization (Unity-like Debug.Draw)
-
-```typescript
-// Create debug visualization using line drawing (like Unity's Debug.DrawLine)
-DynamicNavSystem.createDebugVisualization()
-
-// Toggle debug visualization on/off
-DynamicNavSystem.toggleDebugVisualization()
-
-// Clear debug visualization
-DynamicNavSystem.clearDebugVisualization()
-
-// Check if debug is currently visible
-const isVisible = DynamicNavSystem.isDebugVisualizationVisible()
-
-// Also available via console (for backwards compatibility)
-DynamicNavSystem.debugPrintGrid()
-```
-
-**Debug Panel Integration**: The debug visualization is also available in the game's debug panel (press ` to open) under "Dynamic Nav Debug".
-
-**Debug Drawing Features**:
-
-- **Grid Lines**: Gray wireframe showing the navigation grid structure
-- **Blocked Cells**: Red squares with X marks showing obstacle locations
-- **UtilityLayerRenderer**: Uses Babylon.js's debug overlay system (like Unity's Debug.Draw)
-- **Non-intrusive**: Debug lines don't interfere with main scene rendering
-- **Real-time Updates**: Visualization updates as obstacles are added/removed
-
-## Integration Example
-
-```typescript
-// In your main game initialization:
-import { DynamicNavDemo } from "./systems/DynamicNav"
-
-export class MyGame extends VenusGame {
-  protected async onStart(): Promise<void> {
-    // Initialize dynamic navigation
-    await DynamicNavDemo.setupDynamicNavigation(this.scene)
-
-    // Test the system
-    DynamicNavDemo.testWalkability()
-
-    // Your existing game setup...
+  protected onCreate(): void {
+    this.navAgent = new NavAgent()
+    this.navAgent.moveSpeed = 3.0
+    this.navAgent.arrivalDistance = 0.5
+    this.gameObject.addComponent(this.navAgent)
   }
 
-  protected async onDispose(): Promise<void> {
-    // Clean up navigation system
-    DynamicNavDemo.cleanup()
+  public update(deltaTime: number): void {
+    if (this.navAgent?.hasReachedTarget()) {
+      this.navAgent.moveTo(this.getNextPatrolPoint())
+    }
+
+    // Use normalized speed for animation blending
+    const speedNorm = this.navAgent?.getMovementSpeedNormalized() ?? 0
+    this.animator?.setBlendWeight("walk", speedNorm)
   }
 }
 ```
 
-## Architecture
+### NavAgent Properties
+
+- `moveSpeed: number` — movement speed (default: 5.0)
+- `acceleration: number` — movement acceleration (default: 15.0)
+- `deceleration: number` — movement deceleration (default: 10.0)
+- `arrivalDistance: number` — distance threshold for waypoint arrival (default: 0.5)
+- `angularAcceleration: number` — rotation speed (default: 8.0)
+
+### NavAgent Methods
+
+- `moveTo(target: THREE.Vector3 | THREE.Vector2): boolean` — move to target using pathfinding (returns `true` if path found)
+- `stop(): void` — stop current movement
+- `hasReachedTarget(): boolean` — check if agent has reached its target
+- `isInMotion(): boolean` — check if agent is currently moving
+- `getMovementSpeedNormalized(): number` — get speed as 0–1 (for animation blending)
+- `getMovementSpeed(): number` — get current speed in units/second
+- `getCurrentSpeed(): number` — alias for `getMovementSpeed()`
+- `getWaypoints(): THREE.Vector3[]` — get current waypoints (copy)
+- `setVisualizationEnabled(enabled: boolean): void` — enable/disable path visualization
+
+## Obstacle Management
+
+### Box Obstacles
+
+```typescript
+// Add a box obstacle (center position + size)
+DynamicNavSystem.addBoxObstacle(x, z, width, depth)
+
+// Remove a box obstacle
+DynamicNavSystem.removeBoxObstacle(x, z, width, depth)
+
+// Add from a GameObject with RigidBody
+DynamicNavSystem.addBoxObstacleFromRigidBody(gameObject)
+
+// Add from bounds
+DynamicNavSystem.addBoxObstacleFromBounds(gameObject, boundsSize)
+```
+
+### Rotated Obstacles
+
+```typescript
+// Add a rotated box obstacle (returns ID for later removal)
+const id = DynamicNavSystem.addRotatedBoxObstacle(gameObject, boundsSize)
+
+// Remove by ID
+DynamicNavSystem.removeObstacleById(id)
+
+// Remove by GameObject
+DynamicNavSystem.removeObstacleByGameObject(gameObject)
+```
+
+### Raw Footprint API
+
+```typescript
+import { NavigationGrid, Footprint } from "@series-inc/rundot-3d-engine/systems"
+
+// Polygon footprint
+const footprint: Footprint = {
+  type: "polygon",
+  vertices: [new THREE.Vector3(0, 0, 0), new THREE.Vector3(4, 0, 0), new THREE.Vector3(4, 0, 4)],
+}
+DynamicNavSystem.addObstacle(footprint)
+
+// Circle footprint
+const circle: Footprint = {
+  type: "circle",
+  x: 10,
+  z: 10,
+  radius: 3,
+}
+DynamicNavSystem.addObstacle(circle)
+```
+
+## Pathfinding
+
+```typescript
+// Find a path (accepts Vector2 or Vector3)
+const result = DynamicNavSystem.findPath(startPos, endPos)
+
+// Result:
+// {
+//   success: boolean,
+//   waypoints: Waypoint[],  // { x, z } objects
+//   distance: number,
+// }
+
+// Quick reachability check (faster than full pathfinding)
+const reachable = DynamicNavSystem.canReach(startX, startZ, endX, endZ)
+```
+
+## Debug Visualization
+
+```typescript
+// Print grid state to console
+DynamicNavSystem.debugNavigation()
+```
+
+### Path Visualization
+
+```typescript
+import { PathVisualizationThree } from "@series-inc/rundot-3d-engine/systems"
+
+// Initialize
+PathVisualizationThree.initialize(scene)
+
+// Visualize a path
+PathVisualizationThree.addPath("myPath", pathResult)
+
+// Remove a specific path
+PathVisualizationThree.removePath("myPath")
+
+// Toggle all visualization
+PathVisualizationThree.setVisualizationEnabled(true)
+
+// Query
+PathVisualizationThree.getActivePathIds()
+PathVisualizationThree.hasActiveVisualization()
+
+// Clear all
+PathVisualizationThree.clearVisualization()
+PathVisualizationThree.dispose()
+```
+
+## API Reference
+
+### DynamicNavSystem (Static Class)
+
+#### Initialization
+
+- `initialize(scene?, worldWidth?, worldDepth?, gridSize?): void` — initialize the system
+- `getIsInitialized(): boolean` — check if initialized
+- `dispose(): void` — clean up
+
+#### Obstacle Management
+
+- `addObstacle(footprint: Footprint): void` — add a raw footprint obstacle
+- `removeObstacle(footprint: Footprint): void` — remove a raw footprint obstacle
+- `addBoxObstacle(x, z, width, depth): void` — add a box obstacle
+- `removeBoxObstacle(x, z, width, depth): void` — remove a box obstacle
+- `addBoxObstacleFromRigidBody(gameObject): void` — add obstacle from RigidBody
+- `addBoxObstacleFromBounds(gameObject, boundsSize): void` — add obstacle from bounds
+- `addRotatedBoxObstacle(gameObject, boundsSize): string` — add rotated obstacle (returns ID)
+- `removeObstacleById(id): boolean` — remove by ID
+- `removeObstacleByGameObject(gameObject): boolean` — remove by GameObject
+
+#### Queries
+
+- `isWalkable(x, z): boolean` — check if a position is walkable
+- `worldToGrid(x, z): { col, row } | null` — convert world to grid coords
+- `gridToWorld(col, row): { x, z } | null` — convert grid to world coords
+- `findPath(startPos, endPos): PathfindingResult` — A* pathfinding
+- `canReach(startX, startZ, endX, endZ): boolean` — quick reachability check
+
+#### Debug
+
+- `debugNavigation(): void` — print navigation state
 
 ### NavigationGrid
 
-- Core grid logic with reference counting
-- Handles 2D footprint calculations
-- Point-in-polygon and point-in-circle tests
+- `constructor(worldWidth, worldDepth, gridSize)` — create a grid
+- `worldToGrid(x, z): { col, row }` — convert coordinates
+- `gridToWorld(col, row): { x, z }` — convert coordinates
+- `addObstacle(footprint): void` — add obstacle with reference counting
+- `removeObstacle(footprint): void` — remove obstacle
+- `isWalkable(col, row): boolean` — check cell walkability
+- `getDimensions(): { cols, rows, worldWidth, worldDepth, gridSize }` — get grid info
+- `getGridData(): number[][]` — get raw grid data
+- `printGrid(): void` — debug print
+- `static setDebugMode(enabled): void` — toggle debug logging
+- `static isDebugMode(): boolean` — check debug mode
 
-### DynamicNavSystem
-
-- Static class that manages the NavigationGrid
-- Provides high-level API for the game
-- Handles initialization and cleanup
-- **All static methods** - no getInstance() needed!
-- **Debug Drawing**: Unity-like line visualization using UtilityLayerRenderer
-
-### NavObstacleComponent
-
-- Component that automatically registers GameObjects as obstacles
-- Generates 2D footprints from 3D bounding boxes or provided data
-- Handles rotated objects correctly
-- Automatically manages registration/unregistration
-- **Flexible Configuration**: Accepts mesh, bounds, position, and rotation overrides
-- **Decoupled Design**: No direct dependency on specific renderer components
-
-#### NavObstacleOptions Interface
+### Interfaces
 
 ```typescript
-interface NavObstacleOptions {
-  mesh?: AbstractMesh // Override mesh for bounds calculation
-  rotation?: Vector3 | Quaternion // Override rotation
-  position?: Vector3 // Override position
-  bounds?: {
-    // Manual bounds specification
-    width: number
-    height: number
-    depth: number
-  }
+interface Footprint {
+  type: "polygon" | "circle"
+  vertices?: Vector3[]   // For polygon
+  x?: number             // For circle
+  z?: number             // For circle
+  radius?: number        // For circle
+}
+
+interface Waypoint {
+  x: number
+  z: number
+}
+
+interface PathfindingResult {
+  success: boolean
+  waypoints: Waypoint[]
+  distance: number
 }
 ```
 
-## Performance Characteristics
+## Performance
 
-- **Obstacle Addition**: O(footprint_area / grid_cell_size²)
-- **Obstacle Removal**: O(footprint_area / grid_cell_size²)
-- **Walkability Check**: O(1)
-- **Memory Usage**: O(grid_width × grid_height × 4 bytes)
-- **Debug Drawing**: Minimal performance impact using UtilityLayerRenderer
-
-## Static API Benefits
-
-```typescript
-// Old way (CustomNavigationSystem):
-const navSystem = CustomNavigationSystem.getInstance()
-const walkable = navSystem.isWalkable(x, z)
-
-// New way (DynamicNavSystem):
-const walkable = DynamicNavSystem.isWalkable(x, z)
-```
-
-- **Cleaner code**: No getInstance() calls
-- **Less verbose**: Direct static method access
-- **Better performance**: No instance lookups
-- **Simpler API**: Just call `DynamicNavSystem.method()`
-
-## Debug Drawing vs Unity Comparison
-
-| Unity Debug.Draw       | Babylon.js DynamicNavSystem                           |
-| ---------------------- | ----------------------------------------------------- |
-| `Debug.DrawLine()`     | `MeshBuilder.CreateLines()` with UtilityLayerRenderer |
-| `Debug.DrawWireCube()` | Custom line drawing for cell squares                  |
-| Scene view only        | UtilityLayerRenderer overlay                          |
-| Gizmos drawer          | Debug panel integration                               |
+- **Obstacle add/remove:** O(footprint_area / cell_size²)
+- **Walkability check:** O(1)
+- **Pathfinding:** A* with 8-directional movement, line-of-sight optimization
 
 ## Configuration
 
-### Grid Size Selection
+- **Smaller cells (0.5–1.0):** Higher precision, more memory
+- **Medium cells (1.0–2.0):** Good balance for most games
+- **Larger cells (2.0–5.0):** Lower precision, less memory, faster updates
 
-- **Smaller cells (0.5-1.0)**: Higher precision, more memory, slower obstacle updates
-- **Medium cells (1.0-2.0)**: Good balance for most games
-- **Larger cells (2.0-5.0)**: Lower precision, less memory, faster obstacle updates
+## Related Systems
 
-### World Size
-
-- Should match your game world bounds
-- Can be larger than needed with minimal memory impact
-- Positions outside bounds are automatically treated as non-walkable
-
-## Future Extensions
-
-This system is designed to be extensible:
-
-- **A\* Pathfinding**: Add pathfinding algorithms on top of the grid
-- **Multi-Layer Navigation**: Support for different agent sizes
-- **Dynamic Grid Resizing**: Expand grid as world grows
-- **Hierarchical Pathfinding**: For large worlds
-- **Navigation Mesh**: Upgrade to proper navmesh with polygonal regions
-- **Advanced Debug Tools**: 3D height visualization, pathfinding visualization
+- [PhysicsSystem](../physics/PhysicsSystem.md) - RigidBody-based obstacle detection
+- [Component](../core/Component.md) - NavAgent is a component
+- [GameObject](../core/GameObject.md) - Obstacle and agent GameObjects

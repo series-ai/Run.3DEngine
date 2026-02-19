@@ -90,11 +90,31 @@ if (world) {
 - `unregisterGameObject(colliderId)` - Unregister GameObject
 - `unregisterTriggerComponent(colliderId)` - Unregister component
 
+### Convenience Creation
+
+- `createGround(size?)` - Create a ground plane (fixed body with cuboid collider)
+- `createBox(id, position, size, isDynamic?)` - Create a box collider
+- `createSphere(id, position, radius, isDynamic?)` - Create a sphere collider
+
+### Transform Sync
+
+- `syncObjectToPhysics(object, rigidBody)` - Sync Three.js object to physics body
+- `syncPhysicsToObject(rigidBody, object)` - Sync physics body to Three.js object
+
+### Collider Access
+
+- `getCollider(id): Collider | null` - Get collider by ID
+
 ### Debug Visualization
 
-- `enableDebug(scene)` - Show collision shapes
-- `disableDebug()` - Hide debug visualization
+- `initializeDebug(scene)` - Initialize debug rendering
+- `setDebugEnabled(enabled)` - Toggle debug visualization
 - `isDebugEnabled(): boolean` - Check debug state
+- `updateDebugMeshes()` - Update debug mesh positions
+
+### Cleanup
+
+- `dispose()` - Dispose of physics system and all resources
 
 ## Fixed-Step Integration
 

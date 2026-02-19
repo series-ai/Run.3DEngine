@@ -125,6 +125,7 @@ new MeshRenderer(
 - `setMaterial(material: THREE.Material): void` - Override material
 - `setStatic(isStatic: boolean): void` - Toggle static optimization
 - `forceMatrixUpdate(): void` - Manually update transform (for static meshes)
+- `static fromPrefabJSON(json, node): MeshRenderer` - Create from prefab JSON data
 
 ### Lifecycle
 

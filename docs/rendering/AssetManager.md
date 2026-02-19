@@ -5,7 +5,7 @@ AssetManager handles loading and caching of 3D assets (FBX, GLB, OBJ) with suppo
 ## Quick Start
 
 ```typescript
-import { AssetManager } from "@series-inc/rundot-3d-engine/assets"
+import { AssetManager } from "@series-inc/rundot-3d-engine"
 import * as THREE from "three"
 
 // Initialize (done automatically by VenusGame)
@@ -81,16 +81,13 @@ if (mesh) {
 // Preload animation file
 await AssetManager.preloadAssets(["animations/walk.fbx"])
 
-// Get animation clip
-const clip = AssetManager.getAnimationClip("animations/walk.fbx")
+// Get animation clips
+const clips = AssetManager.getAnimations("animations/walk.fbx")
 
-if (clip) {
-    const action = mixer.clipAction(clip)
+if (clips.length > 0) {
+    const action = mixer.clipAction(clips[0])
     action.play()
 }
-
-// Get all animations from a file
-const clips = AssetManager.getAnimations("animations/walk.fbx")
 ```
 
 ### Getting Asset Groups
@@ -115,24 +112,53 @@ if (assetGroup) {
 
 ### Preloading
 
-- `preloadAssets(paths, progressCallback?): Promise<void>` - Preload multiple assets
-- `preloadSkeletalModel(path): Promise<void>` - Preload skeletal model for animation
+- `preloadAssets(paths, progressCallback?): Promise<{ loaded: string[]; failed: string[] }>` - Preload multiple assets
+- `preloadSkeletalModel(path): Promise<THREE.Object3D>` - Preload skeletal model for animation
+- `loadAsset(path, progressCallback?): Promise<boolean>` - Load a single asset
+- `requireAsset(path): AssetInfo` - Get asset or throw if not loaded
+- `isPreloadingComplete(): boolean` - Check if all preloading is done
 
 ### Accessing Assets
 
-- `getMesh(path): THREE.Object3D | null` - Get first mesh from asset
+- `getMesh(path): THREE.Mesh | null` - Get first mesh from asset
 - `getMeshes(path): THREE.Mesh[]` - Get all meshes from asset
 - `getAssetGroup(path): THREE.Group | null` - Get entire asset group
 - `getSkeletalClone(path): THREE.Object3D | null` - Get properly cloned skeletal model
 - `getMaterials(path): THREE.Material[]` - Get all materials from asset
-- `getAnimationClip(path, index?): THREE.AnimationClip | null` - Get specific animation clip
 - `getAnimations(path): THREE.AnimationClip[]` - Get all animation clips
 - `getGLTF(path): any | null` - Get raw GLTF data
 
-### Utility
+### Asset Status
 
-- `isAssetLoaded(path): boolean` - Check if asset is loaded
-- `getLoadedAssetPaths(): string[]` - Get all loaded asset paths
+- `isLoaded(path): boolean` - Check if asset is loaded (static)
+- `getPreloadedAssets(): string[]` - Get all successfully preloaded asset paths
+- `getFailedAssets(): string[]` - Get all failed asset paths
+- `getPreloadingStats()` - Get `{ total, loaded, failed, loading, completionPercentage }`
+
+### Skeletal Model Management
+
+- `registerSkeletalModel(path, object)` - Register a skeletal model
+- `getSkeletalOriginal(path): THREE.Object3D | null` - Get original skeletal model
+- `isSkeletalModelLoaded(path): boolean` - Check if skeletal model is loaded
+
+### StowKit Integration
+
+- `registerStowKitAsset(path, group)` - Register a StowKit asset
+- `registerStowKitTexture(name, texture)` - Register a StowKit texture
+- `getStowKitTexture(name): THREE.Texture | null` - Get a StowKit texture
+
+### GPU Instancing
+
+- `addGPUInstance(assetPath, gameObject, material, isStatic?)` - Add a GPU instance
+- `removeGPUInstance(assetPath, instanceId)` - Remove a GPU instance
+- `setGPUInstanceVisible(assetPath, instanceId, visible)` - Set instance visibility
+- `getGPUInstanceVisible(assetPath, instanceId): boolean` - Get instance visibility
+- `updateAllGPUBatches(camera?, debug?)` - Update all GPU batches
+
+### Lifecycle
+
+- `unloadAsset(path)` - Unload an asset from cache
+- `reset()` - Reset all state
 
 ## Supported Formats
 
@@ -207,7 +233,7 @@ const clone = mesh.clone() // Broken bone structure!
 
 ```typescript
 // Good - Check before using
-if (AssetManager.isAssetLoaded("model.fbx")) {
+if (AssetManager.isLoaded("model.fbx")) {
     const mesh = AssetManager.getMesh("model.fbx")
     // Safe to use
 }
@@ -264,7 +290,7 @@ await AssetManager.preloadAssets(["model.fbx"])
 await AssetManager.preloadAssets(["model.fbx"]) // Cached, but unnecessary
 
 // Good - Check first
-if (!AssetManager.isAssetLoaded("model.fbx")) {
+if (!AssetManager.isLoaded("model.fbx")) {
     await AssetManager.preloadAssets(["model.fbx"])
 }
 ```

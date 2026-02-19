@@ -92,6 +92,10 @@ player.removeComponent(RigidBodyComponent) // Triggers onCleanup() on component
 - `parent` - Reference to parent object.
 - `children` - Array of child objects.
 
+### Scene Access
+
+- `getScene(): THREE.Scene` - Get the Three.js scene this GameObject belongs to
+
 ### Lifecycle
 
 - `dispose()` - Cleanup GameObject, all components, and children recursively.
