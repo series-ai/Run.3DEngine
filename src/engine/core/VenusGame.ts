@@ -3,7 +3,7 @@ import { PhysicsSystem } from "@systems/physics/PhysicsSystem.ts"
 import { ComponentUpdater } from "./ComponentUpdater"
 import { InputManager } from "@systems/input"
 import { TweenSystem } from "@systems/math"
-import RundotGameAPI from "@series-inc/rundot-game-sdk/api"
+import { Platform, initializePlatformAsync, type PlatformType } from "../../platform"
 import { AudioSystem } from "@systems/audio"
 import { UISystem } from "@systems/ui"
 import { InstancedMeshManager } from "@engine/render/InstancedMeshManager"
@@ -163,9 +163,13 @@ export abstract class VenusGame {
 
   /**
    * Static factory method to create, initialize and start a VenusGame instance
+   * @param platformType - Optional platform type override ("rundot", "capacitor", or "auto")
    * @returns A fully initialized and running VenusGame instance
    */
-  public static async create<T extends VenusGame>(this: new () => T): Promise<T> {
+  public static async create<T extends VenusGame>(
+    this: new () => T,
+    platformType: PlatformType = "auto"
+  ): Promise<T> {
     // Create the instance
     const instance = new this()
 
@@ -175,12 +179,14 @@ export abstract class VenusGame {
     VenusGame._renderer = instance.renderer
     VenusGame._camera = instance.camera
 
-    const context = await RundotGameAPI.initializeAsync({
-      usePreloader: true,
+    // Initialize the platform abstraction layer
+    const platform = await initializePlatformAsync(platformType)
+    const context = await platform.initializeAsync({
+      usePreloader: true
     })
-    console.log("[Venus SDK] Venus API initialized: ", context)
+    console.log("[Rundot 3D] Platform initialized: ", platform.platformId, context)
 
-    RundotGameAPI.analytics.trackFunnelStep(1, "Venus Initialized")
+    Platform.analytics.trackFunnelStep(1, "Rundot Initialized")
 
     // const insets = context?.
     // if (insets) {
@@ -188,13 +194,13 @@ export abstract class VenusGame {
     //   UISystem.setInsets(insets)
     // }
 
-    RundotGameAPI.lifecycles.onResume(() => {
+    Platform.lifecycles.onResume(() => {
       console.log(`[DEBUG] OnResume()`)
       window.focus()
       instance.resume()
     })
 
-    RundotGameAPI.lifecycles.onPause(() => {
+    Platform.lifecycles.onPause(() => {
       console.log(`[DEBUG] OnPause()`)
       instance.pause()
     })
@@ -223,7 +229,7 @@ export abstract class VenusGame {
     // Start the render loop
     instance.startRenderLoop()
 
-    await RundotGameAPI.preloader.hideLoadScreen()
+    await Platform.preloader.hideLoadScreen()
 
     window.focus()
 
@@ -288,7 +294,7 @@ export abstract class VenusGame {
     const cappedPixelRatio = Math.min(window.devicePixelRatio, maxPixelRatio)
     this.renderer.setPixelRatio(cappedPixelRatio)
     console.log(
-      `[VenusGame] Device pixel ratio: ${window.devicePixelRatio}, Using: ${cappedPixelRatio} (iPhone: ${this.isIPhone()})`
+      `[Rundot 3D] Device pixel ratio: ${window.devicePixelRatio}, Using: ${cappedPixelRatio} (iPhone: ${this.isIPhone()})`
     )
 
     // Apply rendering configuration from config
@@ -369,7 +375,7 @@ export abstract class VenusGame {
     this.camera.add(this.audioListener)
     AudioSystem.mainListener = this.audioListener
 
-    console.log("[VenusGame] Audio listener initialized and attached to camera")
+    console.log("[Rundot 3D] Audio listener initialized and attached to camera")
   }
 
   /**

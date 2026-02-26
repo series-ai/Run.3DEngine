@@ -47,7 +47,7 @@ const DEFAULT_DECODER_PATHS = {
  * // Load everything from build.json - that's it!
  * const prefabs = await StowKitSystem.getInstance().loadFromBuildJson(buildJson, {
  *   materialConverter: (mat) => MaterialUtils.convertToToon(mat),
- *   fetchBlob: (path) => RundotGameAPI.cdn.fetchBlob(path)
+ *   fetchBlob: (path) => Platform.cdn.fetchBlob(path)
  * })
  *
  * // Register instancing batches (optional, for frequently spawned items)
