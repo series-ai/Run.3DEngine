@@ -23,7 +23,7 @@ interface DebugOption {
  */
 export class DebugPanelThree {
   // Static variable to always hide debug panel for release builds
-  public static alwaysHide: boolean = true
+  public static alwaysHide: boolean = false
 
   protected container!: HTMLElement
   protected contentContainer!: HTMLElement

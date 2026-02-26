@@ -81,8 +81,17 @@ function detectPlatform(): PlatformType {
  * Uses dynamic import for RundotPlatform to avoid loading RundotGameAPI in Capacitor builds
  */
 async function createPlatformAsync(type: PlatformType): Promise<PlatformService> {
-  const resolvedType = type === "auto" ? detectPlatform() : type
-  
+  let resolvedType = type === "auto" ? detectPlatform() : type
+
+  // In Capacitor builds, RundotPlatform is not bundled (external). Never try to load it.
+  const buildIsCapacitor =
+    typeof (import.meta as any).env !== "undefined" &&
+    (import.meta as any).env?.VITE_PLATFORM === "capacitor"
+  if (buildIsCapacitor && resolvedType === "rundot") {
+    console.log("[Platform] Capacitor build: forcing CapacitorPlatform (Rundot not bundled)")
+    resolvedType = "capacitor"
+  }
+
   switch (resolvedType) {
     case "capacitor":
       console.log("[Platform] Using CapacitorPlatform")
@@ -90,7 +99,6 @@ async function createPlatformAsync(type: PlatformType): Promise<PlatformService>
     case "rundot":
     default:
       console.log("[Platform] Using RundotPlatform (dynamic import)")
-      // Dynamic import to avoid loading RundotGameAPI in Capacitor builds
       const { RundotPlatform } = await import("./RundotPlatform")
       return new RundotPlatform()
   }
