@@ -286,9 +286,7 @@ export class ParticleSystemPrefabComponent extends Component {
     // Load VFX texture
     const tex = await stowkit.getTexture(textureRef.assetId)
 
-    // Configure for particle shaders
     tex.colorSpace = THREE.NoColorSpace
-    tex.flipY = false
     tex.needsUpdate = true
 
     if (this.emitter) {

@@ -523,7 +523,6 @@ export function createParticleEmitter(
       : (cfg as any).textureUrl
         ? new THREE.TextureLoader().load((cfg as any).textureUrl)
         : new THREE.TextureLoader().load("assets/particle_tex.jpg")
-  texture.flipY = false
   texture.wrapS = THREE.ClampToEdgeWrapping
   texture.wrapT = THREE.ClampToEdgeWrapping
   texture.minFilter = THREE.NearestFilter
@@ -596,16 +595,12 @@ export function createParticleEmitter(
           float frame = spritePerParticle > 0.5 ? vFrame : spriteCurrentFrame;
           frame = mod(floor(frame), total);
           float col = mod(frame, tilesX);
-          float row = floor(frame / tilesX);
+          float row = tilesY - 1.0 - floor(frame / tilesX);
           vec2 tileSize = vec2(1.0 / tilesX, 1.0 / tilesY);
           vec2 pad = spritePad * tileSize;
           vec2 offset = vec2(col, row) * tileSize + pad;
-          // Flip V within tile to correct sprite orientation
-          vec2 uvInTile = vec2(vUv.x, 1.0 - vUv.y) * (tileSize - 2.0 * pad);
+          vec2 uvInTile = vUv * (tileSize - 2.0 * pad);
           uvFrame = offset + uvInTile;
-        } else {
-          // Flip V coordinate for regular (non-sprite-sheet) textures
-          uvFrame = vec2(vUv.x, 1.0 - vUv.y);
         }
         vec4 texel = texture2D(map, uvFrame);
         float alpha = texel.a;

@@ -54,8 +54,8 @@ class MyGame extends VenusGame {
 - **three** ^0.180.0
 - **@dimforge/rapier3d** ^0.11.2
 - **@series-inc/rundot-game-sdk** 5.0.4
-- **@stowkit/reader** ^0.1.39
-- **@stowkit/three-loader** ^0.1.40
+- **@series-inc/stowkit-reader** ^0.1.42
+- **@series-inc/stowkit-three-loader** ^0.1.40
 
 ## Development
 

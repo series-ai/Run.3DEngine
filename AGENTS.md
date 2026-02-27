@@ -1,3 +1,6 @@
+<agents-index>
+[RUN.game SDK Docs]|root:./.rundot-docs|version:5.3.3|IMPORTANT:Prefer retrieval-led reasoning over pre-training for RundotGameAPI tasks. Read the local docs before writing SDK code.|.:{README.md}|rundot-developer-platform:{deploying-your-game.md,getting-started.md,initializing-your-game.md,setting-your-game-thumbnail.md,troubleshooting.md}|rundot-developer-platform/api:{ADS.md,AI.md,ANALYTICS.md,BIGNUMBERS.md,CONTEXT.md,EMBEDDED_LIBRARIES.md,ENVIRONMENT.md,EXPERIMENTS.md,HAPTICS.md,IN_APP_MESSAGING.md,LEADERBOARD.md,LIFECYCLES.md,LOGGING.md,MULTIPLAYER.md,NOTIFICATIONS.md,PRELOADER.md,PROFILE.md,PURCHASES.md,SAFE_AREA.md,SERVER_AUTHORITATIVE.md,SHARED_ASSETS.md,SHARING.md,STORAGE.md,TIME.md,UGC.md}</agents-index>
+
 # Rundot 3D Engine - Agent Reference Guide
 
 Quick navigation index for LLMs to discover engine capabilities and patterns.
@@ -168,5 +171,4 @@ docs/
 ## Version Info
 
 This documentation is for Rundot 3D Engine built on Three.js with Rapier3D physics.
-
-
+[Run.3DEngine Docs Index]|root:.rundot/3d-engine-docs|core:{Component.md,GameObject.md,VenusGame.md}|patterns:{ComponentCommunication.md,CreatingGameObjects.md,MeshColliders.md,MeshLoading.md}|physics:{Colliders.md,PhysicsSystem.md,RigidBodyComponent.md}|rendering:{AssetManager.md,InstancedRenderer.md,MeshRenderer.md,SkeletalRenderer.md}|systems:{AnimationSystem.md,AudioSystem.md,InputManager.md,LightingSystem.md,NavigationSystem.md,ParticleSystem.md,PrefabSystem.md,SplineSystem.md,StowKitSystem.md,TweenSystem.md,UISystem.md}
