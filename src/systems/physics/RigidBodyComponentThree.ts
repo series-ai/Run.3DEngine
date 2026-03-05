@@ -230,7 +230,7 @@ export class RigidBodyComponentThree extends Component {
     }
 
     // Create collider descriptor
-    let colliderDesc: ColliderDesc
+    let colliderDesc: ColliderDesc = null!
 
     switch (this.options.shape) {
       case ColliderShape.SPHERE:
