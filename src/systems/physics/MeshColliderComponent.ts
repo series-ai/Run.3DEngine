@@ -153,11 +153,13 @@ export class MeshColliderComponent extends Component {
 
   protected onCreate(): void {
     const stowkit = StowKitSystem.getInstance()
-    const scale = this.gameObject.scale.clone()
 
     stowkit.getMesh(this.meshName).then((meshGroup) => {
       // Guard against GameObject being destroyed while mesh was loading
       if (!this.isAttached()) return
+
+      // Read scale at resolve time, not onCreate time — the game may set scale after instantiation
+      const scale = this.gameObject.scale.clone()
 
       if (this.colliderType === "convex_hull") {
         const vertices = MeshColliderComponent.collectVertices(meshGroup, scale)

@@ -182,28 +182,22 @@ export class RigidBodyComponentThree extends Component {
     const pos = this.gameObject.getWorldPosition(new THREE.Vector3())
 
     // Calculate collider center offset
-    let yOffset = 0
+    const offset = new THREE.Vector3(0, 0, 0)
 
-    // Use custom center offset if provided
     if (this.options.centerOffset) {
-      yOffset = this.options.centerOffset.y
+      offset.copy(this.options.centerOffset)
     } else {
       // Default behavior: offset by half the height so bottom sits at GameObject position
-      // For box shapes, offset by half the height so bottom sits at GameObject position
       if (this.options.shape === ColliderShape.BOX) {
-        yOffset = this.options.size!.y / 2
-      }
-      // For capsules, offset by half height so bottom sits at GameObject position
-      else if (this.options.shape === ColliderShape.CAPSULE) {
-        yOffset = this.options.height! / 2
-      }
-      // For spheres, offset by radius so bottom sits at GameObject position
-      else if (this.options.shape === ColliderShape.SPHERE) {
-        yOffset = this.options.radius!
+        offset.y = this.options.size!.y / 2
+      } else if (this.options.shape === ColliderShape.CAPSULE) {
+        offset.y = this.options.height! / 2
+      } else if (this.options.shape === ColliderShape.SPHERE) {
+        offset.y = this.options.radius!
       }
     }
 
-    bodyDesc.setTranslation(pos.x, pos.y + yOffset, pos.z)
+    bodyDesc.setTranslation(pos.x + offset.x, pos.y + offset.y, pos.z + offset.z)
 
     // Set initial rotation from GameObject
     // Use world rotation to account for parent transformations (important for child objects)
@@ -362,7 +356,7 @@ export class RigidBodyComponentThree extends Component {
       // Apply centerOffset compensation for DYNAMIC bodies
       // Physics body center is offset, but GameObject should represent feet/bottom position
       if (this.options.centerOffset) {
-        lerpPos.y -= this.options.centerOffset.y
+        lerpPos.sub(this.options.centerOffset)
       } else {
         // Default behavior: compensate for automatic center offset
         let defaultYOffset = 0
@@ -388,25 +382,25 @@ export class RigidBodyComponentThree extends Component {
       const worldQuat = this.gameObject.getWorldQuaternion(RigidBodyComponentThree._tempQuat)
 
       // Calculate the physics body center offset
-      let yOffset = 0
+      const offset = new THREE.Vector3(0, 0, 0)
 
       if (this.options.centerOffset) {
-        yOffset = this.options.centerOffset.y
+        offset.copy(this.options.centerOffset)
       } else {
         if (
           this.options.shape === ColliderShape.CAPSULE ||
           this.options.shape === ColliderShape.BOX
         ) {
           const height = this.options.height || this.options.size?.y || 3
-          yOffset = height / 2
+          offset.y = height / 2
         }
       }
 
       this.rigidBody.setTranslation(
         {
-          x: worldPos.x,
-          y: worldPos.y + yOffset,
-          z: worldPos.z,
+          x: worldPos.x + offset.x,
+          y: worldPos.y + offset.y,
+          z: worldPos.z + offset.z,
         },
         true
       )
