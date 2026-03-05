@@ -67,13 +67,13 @@ export class MeshColliderComponent extends Component {
   }
 
   /**
-   * Collect all vertex positions from a mesh group, transformed into the meshGroup's
-   * local space and scaled. Handles nested groups with intermediate transforms.
+   * Collect all vertex positions from a mesh group, including the root's own transform.
+   * Matches the editor's getAllVerticesFromStowMesh which uses parentWorldMatrixInverse
+   * (for a detached group, that's identity — so we just use child.matrixWorld directly).
    * Returns a flat Float32Array of [x,y,z, x,y,z, ...].
    */
   private static collectVertices(meshGroup: THREE.Group, scale: THREE.Vector3): Float32Array {
     meshGroup.updateMatrixWorld(true)
-    const rootWorldInverse = new THREE.Matrix4().copy(meshGroup.matrixWorld).invert()
 
     const allVertices: number[] = []
     const vertex = new THREE.Vector3()
@@ -83,14 +83,9 @@ export class MeshColliderComponent extends Component {
         const posAttr = child.geometry.getAttribute("position")
         if (!posAttr) return
 
-        // Transform from mesh local → world → meshGroup local
-        const localMatrix = new THREE.Matrix4()
-          .copy(child.matrixWorld)
-          .premultiply(rootWorldInverse)
-
         for (let i = 0; i < posAttr.count; i++) {
           vertex.fromBufferAttribute(posAttr, i)
-          vertex.applyMatrix4(localMatrix)
+          vertex.applyMatrix4(child.matrixWorld)
           allVertices.push(
             vertex.x * scale.x,
             vertex.y * scale.y,
@@ -104,15 +99,13 @@ export class MeshColliderComponent extends Component {
 
   /**
    * Compute bounding box size and center from a mesh group, matching the editor's approach.
-   * Transforms each sub-mesh bounding box through the full matrix chain back to the
-   * meshGroup's local space, so nested groups with their own transforms are handled correctly.
+   * The editor uses parentWorldMatrixInverse (the scene node's inverse), which for a
+   * detached cached mesh group is equivalent to identity. So we use child.matrixWorld
+   * directly, which includes the mesh group root's own transform — exactly as the editor does.
    */
   private static computeBounds(meshGroup: THREE.Group, scale: THREE.Vector3): { size: THREE.Vector3; center: THREE.Vector3 } | null {
     // Ensure all matrices in the hierarchy are up to date
     meshGroup.updateMatrixWorld(true)
-
-    // Inverse of the meshGroup root's world matrix — transforms world → meshGroup local
-    const rootWorldInverse = new THREE.Matrix4().copy(meshGroup.matrixWorld).invert()
 
     const box = new THREE.Box3()
     let foundMesh = false
@@ -126,12 +119,10 @@ export class MeshColliderComponent extends Component {
         if (child.geometry.boundingBox) {
           const tempBox = child.geometry.boundingBox.clone()
 
-          // mesh.matrixWorld: mesh local → world
-          // rootWorldInverse: world → meshGroup local
-          const localMatrix = new THREE.Matrix4()
-            .copy(child.matrixWorld)
-            .premultiply(rootWorldInverse)
-          tempBox.applyMatrix4(localMatrix)
+          // Use child.matrixWorld directly — includes the mesh group root's transform,
+          // matching editor's generateBoundingBoxGeometry which uses parentWorldMatrixInverse
+          // (identity for a detached group)
+          tempBox.applyMatrix4(child.matrixWorld)
 
           box.union(tempBox)
         }

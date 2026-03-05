@@ -51,6 +51,7 @@ export class MeshRenderer extends Component {
   private _isStatic: boolean
   private isMeshLoaded: boolean = false
   private materialOverride: THREE.Material | null = null
+  private loadedCallbacks: (() => void)[] | null = null
 
   /**
    * @param meshName The name of the mesh in the StowKit pack
@@ -117,6 +118,12 @@ export class MeshRenderer extends Component {
     // For static meshes, disable matrix auto-update to save CPU
     if (this._isStatic) {
       this.setStatic(true)
+    }
+
+    // Fire onLoaded callbacks
+    if (this.loadedCallbacks) {
+      for (const cb of this.loadedCallbacks) cb()
+      this.loadedCallbacks = null
     }
   }
 
@@ -212,6 +219,33 @@ export class MeshRenderer extends Component {
    */
   public isLoaded(): boolean {
     return this.mesh !== null
+  }
+
+  /**
+   * Register a callback that fires when the mesh finishes loading,
+   * or immediately if already loaded.
+   */
+  public onLoaded(callback: () => void): void {
+    if (this.mesh) {
+      callback()
+      return
+    }
+    if (!this.loadedCallbacks) this.loadedCallbacks = []
+    this.loadedCallbacks.push(callback)
+  }
+
+  /**
+   * Get the first material from the loaded mesh, or null if not yet loaded.
+   */
+  public getMaterial(): THREE.Material | null {
+    if (!this.mesh) return null
+    let result: THREE.Material | null = null
+    this.mesh.traverse((child) => {
+      if (!result && child instanceof THREE.Mesh && child.material) {
+        result = Array.isArray(child.material) ? child.material[0] : child.material
+      }
+    })
+    return result
   }
 
   /**

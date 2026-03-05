@@ -280,7 +280,9 @@ export class StowKitSystem {
   private async loadMeshFromPacks(name: string): Promise<THREE.Group> {
     for (const [, pack] of this.packs) {
       try {
-        return await pack.loadMesh(name)
+        const mesh = await pack.loadMesh(name)
+        this.fixTextureWrapping(mesh)
+        return mesh
       } catch {
         // Try next pack
       }
@@ -321,6 +323,8 @@ export class StowKitSystem {
           mesh.scale.setScalar(scale)
           mesh.updateMatrixWorld(true)
         }
+
+        this.fixTextureWrapping(mesh)
 
         // Apply material converter to skinned meshes (same as regular meshes)
         if (this.materialConverter) {
@@ -428,6 +432,8 @@ export class StowKitSystem {
         const tex = await pack.loadTexture(name)
         // colorSpace is set by stowkit-three-loader (sRGB for color textures, linear for data)
         tex.anisotropy = 8
+        tex.wrapS = THREE.RepeatWrapping
+        tex.wrapT = THREE.RepeatWrapping
         return tex
       } catch {
         // Try next pack
@@ -691,6 +697,32 @@ export class StowKitSystem {
   // ============================================
   // Utilities
   // ============================================
+
+  /**
+   * Fix texture wrapping on all materials in a mesh group.
+   * stowkit-three-loader doesn't set wrapS/wrapT, so Three.js defaults to
+   * ClampToEdgeWrapping. Game assets expect RepeatWrapping.
+   */
+  private fixTextureWrapping(group: THREE.Group): void {
+    group.traverse((child) => {
+      if (!(child as THREE.Mesh).isMesh) return
+      const mesh = child as THREE.Mesh
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+      for (const mat of materials) {
+        if (!mat) continue
+        const m = mat as any
+        // Cover all standard texture slots
+        const slots = ["map", "normalMap", "roughnessMap", "metalnessMap", "aoMap", "emissiveMap", "alphaMap", "bumpMap", "displacementMap", "envMap", "lightMap"]
+        for (const slot of slots) {
+          const tex = m[slot] as THREE.Texture | undefined
+          if (tex) {
+            tex.wrapS = THREE.RepeatWrapping
+            tex.wrapT = THREE.RepeatWrapping
+          }
+        }
+      }
+    })
+  }
 
   /**
    * Get bounds of a mesh group.
