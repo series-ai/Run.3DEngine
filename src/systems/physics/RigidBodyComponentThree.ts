@@ -175,29 +175,12 @@ export class RigidBodyComponentThree extends Component {
         break
     }
 
-    // Set initial position from GameObject with proper offset for mesh-based objects
-    // Use world position to account for parent transformations (important for child objects)
-    // Update matrix world first to ensure transforms are current
+    // Body position = gameObject world position (no offset).
+    // The collider offset is applied via colliderDesc.setTranslation below.
     this.gameObject.updateMatrixWorld(true)
     const pos = this.gameObject.getWorldPosition(new THREE.Vector3())
 
-    // Calculate collider center offset
-    const offset = new THREE.Vector3(0, 0, 0)
-
-    if (this.options.centerOffset) {
-      offset.copy(this.options.centerOffset)
-    } else {
-      // Default behavior: offset by half the height so bottom sits at GameObject position
-      if (this.options.shape === ColliderShape.BOX) {
-        offset.y = this.options.size!.y / 2
-      } else if (this.options.shape === ColliderShape.CAPSULE) {
-        offset.y = this.options.height! / 2
-      } else if (this.options.shape === ColliderShape.SPHERE) {
-        offset.y = this.options.radius!
-      }
-    }
-
-    bodyDesc.setTranslation(pos.x + offset.x, pos.y + offset.y, pos.z + offset.z)
+    bodyDesc.setTranslation(pos.x, pos.y, pos.z)
 
     // Set initial rotation from GameObject
     // Use world rotation to account for parent transformations (important for child objects)
@@ -255,6 +238,25 @@ export class RigidBodyComponentThree extends Component {
         colliderDesc = ColliderDesc.cuboid(size.x / 2, size.y / 2, size.z / 2)
         break
     }
+
+    // Apply collider center offset (relative to body).
+    // The body sits at gameObject worldPos; the collider is offset within the body.
+    const colliderOffset = new THREE.Vector3(0, 0, 0)
+
+    if (this.options.centerOffset) {
+      colliderOffset.copy(this.options.centerOffset)
+    } else {
+      // Default behavior: offset by half the height so bottom sits at GameObject position
+      if (this.options.shape === ColliderShape.BOX) {
+        colliderOffset.y = this.options.size!.y / 2
+      } else if (this.options.shape === ColliderShape.CAPSULE) {
+        colliderOffset.y = this.options.height! / 2
+      } else if (this.options.shape === ColliderShape.SPHERE) {
+        colliderOffset.y = this.options.radius!
+      }
+    }
+
+    colliderDesc.setTranslation(colliderOffset.x, colliderOffset.y, colliderOffset.z)
 
     // Set collider properties
     colliderDesc.setRestitution(this.options.restitution!)
@@ -353,23 +355,7 @@ export class RigidBodyComponentThree extends Component {
       const lerpPos = new THREE.Vector3(curPos.x, curPos.y, curPos.z).lerp(nextPos, alpha)
       const slerpQuat = curQuat.clone().slerp(nextQuat, alpha)
 
-      // Apply centerOffset compensation for DYNAMIC bodies
-      // Physics body center is offset, but GameObject should represent feet/bottom position
-      if (this.options.centerOffset) {
-        lerpPos.sub(this.options.centerOffset)
-      } else {
-        // Default behavior: compensate for automatic center offset
-        let defaultYOffset = 0
-        if (this.options.shape === ColliderShape.BOX) {
-          defaultYOffset = this.options.size!.y / 2
-        } else if (this.options.shape === ColliderShape.CAPSULE) {
-          defaultYOffset = this.options.height! / 2
-        } else if (this.options.shape === ColliderShape.SPHERE) {
-          defaultYOffset = this.options.radius!
-        }
-        lerpPos.y -= defaultYOffset
-      }
-
+      // Body position equals gameObject position (offset is on the collider, not the body)
       this.gameObject.position.copy(lerpPos)
       this.gameObject.quaternion.copy(slerpQuat)
     } else if (this.options.type === RigidBodyType.KINEMATIC) {
@@ -377,31 +363,13 @@ export class RigidBodyComponentThree extends Component {
       // This is for nav agents, scripted movement, etc.
 
       // Use world-space transforms so parented GameObjects sync correctly
+      // Body position equals gameObject position (offset is on the collider, not the body)
       this.gameObject.updateMatrixWorld(true)
       const worldPos = this.gameObject.getWorldPosition(RigidBodyComponentThree._tempVec3)
       const worldQuat = this.gameObject.getWorldQuaternion(RigidBodyComponentThree._tempQuat)
 
-      // Calculate the physics body center offset
-      const offset = new THREE.Vector3(0, 0, 0)
-
-      if (this.options.centerOffset) {
-        offset.copy(this.options.centerOffset)
-      } else {
-        if (
-          this.options.shape === ColliderShape.CAPSULE ||
-          this.options.shape === ColliderShape.BOX
-        ) {
-          const height = this.options.height || this.options.size?.y || 3
-          offset.y = height / 2
-        }
-      }
-
       this.rigidBody.setTranslation(
-        {
-          x: worldPos.x + offset.x,
-          y: worldPos.y + offset.y,
-          z: worldPos.z + offset.z,
-        },
+        { x: worldPos.x, y: worldPos.y, z: worldPos.z },
         true
       )
       this.rigidBody.setRotation(
