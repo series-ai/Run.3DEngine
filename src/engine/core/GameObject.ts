@@ -73,6 +73,58 @@ export class GameObject extends THREE.Object3D {
   }
 
   /**
+   * Walks up the parent hierarchy looking for a component of the given type.
+   * Checks this GameObject first, then each ancestor.
+   * @returns The first matching component, or undefined
+   */
+  getComponentInParent<T extends Component>(componentType: new (...args: any[]) => T): T | undefined {
+    let current: THREE.Object3D | null = this as THREE.Object3D
+    while (current) {
+      if (current instanceof GameObject) {
+        const comp = current.getComponent(componentType)
+        if (comp) return comp
+      }
+      current = current.parent
+    }
+    return undefined
+  }
+
+  /**
+   * Searches this GameObject and all descendants for a component of the given type.
+   * Uses depth-first traversal, returns the first match.
+   * @returns The first matching component, or undefined
+   */
+  getComponentInChildren<T extends Component>(componentType: new (...args: any[]) => T): T | undefined {
+    const comp = this.getComponent(componentType)
+    if (comp) return comp
+
+    for (const child of this.children) {
+      if (child instanceof GameObject) {
+        const found = child.getComponentInChildren(componentType)
+        if (found) return found
+      }
+    }
+    return undefined
+  }
+
+  /**
+   * Searches this GameObject and all descendants for all components of the given type.
+   * @returns Array of all matching components
+   */
+  getComponentsInChildren<T extends Component>(componentType: new (...args: any[]) => T): T[] {
+    const results: T[] = []
+    const comp = this.getComponent(componentType)
+    if (comp) results.push(comp)
+
+    for (const child of this.children) {
+      if (child instanceof GameObject) {
+        results.push(...child.getComponentsInChildren(componentType))
+      }
+    }
+    return results
+  }
+
+  /**
    * Removes a component of the specified type
    * @returns true if component was found and removed
    */
