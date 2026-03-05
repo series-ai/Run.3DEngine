@@ -88,11 +88,49 @@ export class MeshColliderComponent extends Component {
     return new Float32Array(allVertices)
   }
 
+  /**
+   * Compute bounding box size and center from a mesh group, matching the editor's approach.
+   * Transforms sub-mesh bounding boxes through their local matrices so offset meshes are handled.
+   */
+  private static computeBounds(meshGroup: THREE.Group, scale: THREE.Vector3): { size: THREE.Vector3; center: THREE.Vector3 } | null {
+    const box = new THREE.Box3()
+    let foundMesh = false
+
+    meshGroup.traverse((child) => {
+      if (child instanceof THREE.Mesh && child.geometry) {
+        foundMesh = true
+        if (!child.geometry.boundingBox) {
+          child.geometry.computeBoundingBox()
+        }
+        if (child.geometry.boundingBox) {
+          const localBox = child.geometry.boundingBox.clone()
+          localBox.applyMatrix4(child.matrix)
+          box.union(localBox)
+        }
+      }
+    })
+
+    if (!foundMesh || box.isEmpty()) return null
+
+    const size = new THREE.Vector3()
+    box.getSize(size)
+    size.multiply(scale)
+
+    const center = new THREE.Vector3()
+    box.getCenter(center)
+    center.multiply(scale)
+
+    return { size, center }
+  }
+
   protected onCreate(): void {
     const stowkit = StowKitSystem.getInstance()
     const scale = this.gameObject.scale.clone()
 
     stowkit.getMesh(this.meshName).then((meshGroup) => {
+      // Guard against GameObject being destroyed while mesh was loading
+      if (!this.isAttached()) return
+
       if (this.colliderType === "convex_hull") {
         const vertices = MeshColliderComponent.collectVertices(meshGroup, scale)
         if (vertices.length < 9) {
@@ -103,17 +141,19 @@ export class MeshColliderComponent extends Component {
           type: this.bodyType,
           shape: ColliderShape.CONVEX_HULL,
           vertices,
+          centerOffset: new THREE.Vector3(0, 0, 0),
           isSensor: this.isSensor,
           enableCollisionEvents: this.enableCollisionEvents,
         })
         this.gameObject.addComponent(this.rigidBody)
       } else {
-        const bounds = stowkit.getBounds(meshGroup)
+        const bounds = MeshColliderComponent.computeBounds(meshGroup, scale)
         if (bounds) {
-          const scaledBounds = bounds.clone().multiply(scale)
-          this.rigidBody = RigidBodyComponentThree.fromBounds(scaledBounds, {
+          this.rigidBody = new RigidBodyComponentThree({
             type: this.bodyType,
             shape: ColliderShape.BOX,
+            size: bounds.size,
+            centerOffset: bounds.center,
             isSensor: this.isSensor,
             enableCollisionEvents: this.enableCollisionEvents,
           })
