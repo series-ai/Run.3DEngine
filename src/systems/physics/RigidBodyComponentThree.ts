@@ -64,7 +64,7 @@ export interface RigidBodyOptions {
   lockTranslationZ?: boolean // Lock translation along Z axis
 
   // Collision event generation (automatically handles ActiveEvents + ActiveCollisionTypes)
-  enableCollisionEvents?: boolean // Enable collision events (defaults: true for kinematic/dynamic, false for static)
+  enableCollisionEvents?: boolean // Enable collision events (defaults: true for sensors and kinematic/dynamic, false for non-sensor static)
 
   // Collision groups for filtering interactions (16-bit membership + 16-bit filter)
   collisionGroups?: number // Packed 32-bit: membership (high 16 bits) + filter (low 16 bits)
@@ -79,6 +79,9 @@ export class RigidBodyComponentThree extends Component {
   private collider: Collider | null = null
   private options: RigidBodyOptions
   private bodyId: string
+
+  private static _tempVec3 = new THREE.Vector3()
+  private static _tempQuat = new THREE.Quaternion()
 
   // Trigger event callbacks - use proper type for GameObject
   private onTriggerEnterCallback: ((other: any) => void) | null = null
@@ -246,9 +249,11 @@ export class RigidBodyComponentThree extends Component {
     colliderDesc.setFriction(this.options.friction!)
     colliderDesc.setSensor(this.options.isSensor!)
 
-    // Auto-configure collision events based on body type (smart defaults)
+    // Auto-configure collision events: always on for sensors (they need events to fire
+    // trigger callbacks), otherwise on for kinematic/dynamic and off for static.
     const shouldEnableCollisionEvents =
-      this.options.enableCollisionEvents ?? this.options.type !== RigidBodyType.STATIC // Default: true for kinematic/dynamic, false for static
+      this.options.enableCollisionEvents ??
+      (this.options.isSensor || this.options.type !== RigidBodyType.STATIC)
 
     if (shouldEnableCollisionEvents) {
       // Enable collision events for all interactions
@@ -357,43 +362,40 @@ export class RigidBodyComponentThree extends Component {
       // KINEMATIC: Update physics body position from GameObject
       // This is for nav agents, scripted movement, etc.
 
-      // For kinematic bodies, we need to account for the physics body center offset
-      const position = this.gameObject.position
-      const quaternion = this.gameObject.quaternion
+      // Use world-space transforms so parented GameObjects sync correctly
+      this.gameObject.updateMatrixWorld(false)
+      const worldPos = this.gameObject.getWorldPosition(RigidBodyComponentThree._tempVec3)
+      const worldQuat = this.gameObject.getWorldQuaternion(RigidBodyComponentThree._tempQuat)
 
       // Calculate the physics body center offset
       let yOffset = 0
 
-      // Use custom center offset if provided
       if (this.options.centerOffset) {
         yOffset = this.options.centerOffset.y
       } else {
-        // Default behavior: For capsules and cylinders, center at half the height above GameObject
         if (
           this.options.shape === ColliderShape.CAPSULE ||
           this.options.shape === ColliderShape.BOX
         ) {
-          // Use height if specified, otherwise use size.y, otherwise default to half of 3 (matching visual mesh)
           const height = this.options.height || this.options.size?.y || 3
           yOffset = height / 2
         }
       }
 
-      // Update physics body position with offset
       this.rigidBody.setTranslation(
         {
-          x: position.x,
-          y: position.y + yOffset,
-          z: position.z,
+          x: worldPos.x,
+          y: worldPos.y + yOffset,
+          z: worldPos.z,
         },
         true
       )
       this.rigidBody.setRotation(
         {
-          x: quaternion.x,
-          y: quaternion.y,
-          z: quaternion.z,
-          w: quaternion.w,
+          x: worldQuat.x,
+          y: worldQuat.y,
+          z: worldQuat.z,
+          w: worldQuat.w,
         },
         true
       )
