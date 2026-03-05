@@ -23,6 +23,7 @@ export enum ColliderShape {
   BOX = "box",
   SPHERE = "sphere",
   CAPSULE = "capsule",
+  CONVEX_HULL = "convex_hull",
 }
 
 // General collision group utilities (game-agnostic)
@@ -42,6 +43,7 @@ export interface RigidBodyOptions {
   restitution?: number // Bounciness
   friction?: number
   isSensor?: boolean // For trigger colliders
+  vertices?: Float32Array // For convex hull: raw vertex positions (x,y,z,x,y,z,...)
 
   // Auto-sizing from mesh bounds
   fitToMesh?: boolean // If true, automatically calculate size from mesh bounds
@@ -237,6 +239,16 @@ export class RigidBodyComponentThree extends Component {
       case ColliderShape.CAPSULE:
         colliderDesc = ColliderDesc.capsule(this.options.height! / 2, this.options.radius!)
         break
+      case ColliderShape.CONVEX_HULL:
+        if (this.options.vertices && this.options.vertices.length >= 9) {
+          const hullDesc = ColliderDesc.convexHull(this.options.vertices)
+          if (hullDesc) {
+            colliderDesc = hullDesc
+            break
+          }
+        }
+        console.warn("Convex hull creation failed, falling back to box collider")
+        // falls through to BOX
       case ColliderShape.BOX:
       default:
         const size = this.options.size!
