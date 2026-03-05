@@ -383,7 +383,7 @@ export class RigidBodyComponentThree extends Component {
       // This is for nav agents, scripted movement, etc.
 
       // Use world-space transforms so parented GameObjects sync correctly
-      this.gameObject.updateMatrixWorld(false)
+      this.gameObject.updateMatrixWorld(true)
       const worldPos = this.gameObject.getWorldPosition(RigidBodyComponentThree._tempVec3)
       const worldQuat = this.gameObject.getWorldQuaternion(RigidBodyComponentThree._tempQuat)
 

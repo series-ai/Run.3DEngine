@@ -1,4 +1,5 @@
 import * as THREE from "three"
+import { ConvexGeometry } from "three/examples/jsm/geometries/ConvexGeometry.js"
 import {
   World,
   RigidBody,
@@ -495,14 +496,12 @@ export class PhysicsSystem {
       case 9: { // ConvexPolyhedron
         const convex = shape as any
         const vertices = convex.vertices as Float32Array
-        const indices = convex.indices as Uint32Array | null | undefined
         if (vertices && vertices.length >= 9) {
-          geometry = new THREE.BufferGeometry()
-          geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(vertices), 3))
-          if (indices && indices.length >= 3) {
-            geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1))
+          const points: THREE.Vector3[] = []
+          for (let i = 0; i < vertices.length; i += 3) {
+            points.push(new THREE.Vector3(vertices[i], vertices[i + 1], vertices[i + 2]))
           }
-          geometry.computeVertexNormals()
+          geometry = new ConvexGeometry(points)
         }
         break
       }
