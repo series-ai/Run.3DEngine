@@ -239,16 +239,22 @@ export class RigidBodyComponentThree extends Component {
       case ColliderShape.CAPSULE:
         colliderDesc = ColliderDesc.capsule(this.options.height! / 2, this.options.radius!)
         break
-      case ColliderShape.CONVEX_HULL:
+      case ColliderShape.CONVEX_HULL: {
+        let hullCreated = false
         if (this.options.vertices && this.options.vertices.length >= 9) {
           const hullDesc = ColliderDesc.convexHull(this.options.vertices)
           if (hullDesc) {
             colliderDesc = hullDesc
-            break
+            hullCreated = true
           }
         }
-        console.warn("Convex hull creation failed, falling back to box collider")
-        // falls through to BOX
+        if (!hullCreated) {
+          console.warn("Convex hull creation failed, falling back to box collider")
+          const fallbackSize = this.options.size ?? new THREE.Vector3(1, 1, 1)
+          colliderDesc = ColliderDesc.cuboid(fallbackSize.x / 2, fallbackSize.y / 2, fallbackSize.z / 2)
+        }
+        break
+      }
       case ColliderShape.BOX:
       default:
         const size = this.options.size!
