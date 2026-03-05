@@ -280,7 +280,9 @@ export class RigidBodyComponentThree extends Component {
       // For kinematic bodies, also enable collision with static bodies (sensors)
       if (this.options.type === RigidBodyType.KINEMATIC) {
         colliderDesc.setActiveCollisionTypes(
-          ActiveCollisionTypes.DEFAULT | ActiveCollisionTypes.KINEMATIC_FIXED
+          ActiveCollisionTypes.DEFAULT |
+          ActiveCollisionTypes.KINEMATIC_FIXED |
+          ActiveCollisionTypes.KINEMATIC_KINEMATIC
         )
       }
     }

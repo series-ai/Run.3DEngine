@@ -261,40 +261,27 @@ export class PhysicsSystem {
       // Sensor types determined
 
       // If collider1 is sensor, notify its component about collider2
-      if (
-        collider1IsSensor &&
-        component1 &&
-        component1.onTriggerEnter &&
-        component1.onTriggerExit
-      ) {
-        // Find GameObject for collider2 (may or may not have a registered component)
-        const gameObject2 =
+      if (collider1IsSensor && component1) {
+        const otherGameObject =
           component2?.gameObject || PhysicsSystem.colliderIdToGameObject.get(id2 || "")
-        if (gameObject2) {
-          if (started) {
-            component1.onTriggerEnter(gameObject2)
-          } else {
-            component1.onTriggerExit(gameObject2)
+        if (otherGameObject) {
+          if (started && component1.onTriggerEnter) {
+            component1.onTriggerEnter(otherGameObject)
+          } else if (!started && component1.onTriggerExit) {
+            component1.onTriggerExit(otherGameObject)
           }
         }
       }
 
       // If collider2 is sensor, notify its component about collider1
-      if (
-        collider2IsSensor &&
-        component2 &&
-        component2.onTriggerEnter &&
-        component2.onTriggerExit
-      ) {
-        // Find GameObject for collider1 (may or may not have a registered component)
-        const gameObject1 =
+      if (collider2IsSensor && component2) {
+        const otherGameObject =
           component1?.gameObject || PhysicsSystem.colliderIdToGameObject.get(id1 || "")
-        if (gameObject1) {
-          // console.log(`🔥 PhysicsSystem: Calling trigger on component2 (${component2.constructor?.name}) for gameObject: ${gameObject1.name}`); // Reduced spam
-          if (started) {
-            component2.onTriggerEnter(gameObject1)
-          } else {
-            component2.onTriggerExit(gameObject1)
+        if (otherGameObject) {
+          if (started && component2.onTriggerEnter) {
+            component2.onTriggerEnter(otherGameObject)
+          } else if (!started && component2.onTriggerExit) {
+            component2.onTriggerExit(otherGameObject)
           }
         }
       }
@@ -496,7 +483,6 @@ export class PhysicsSystem {
       case 2: // Capsule
         const capsuleRadius = (shape as any).radius
         const capsuleHalfHeight = (shape as any).halfHeight
-        // Create capsule as cylinder + two spheres
         const capsuleGeometry = new THREE.CapsuleGeometry(
           capsuleRadius,
           capsuleHalfHeight * 2,
@@ -506,10 +492,25 @@ export class PhysicsSystem {
         geometry = capsuleGeometry
         break
 
+      case 9: { // ConvexPolyhedron
+        const convex = shape as any
+        const vertices = convex.vertices as Float32Array
+        const indices = convex.indices as Uint32Array | null | undefined
+        if (vertices && vertices.length >= 9) {
+          geometry = new THREE.BufferGeometry()
+          geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(vertices), 3))
+          if (indices && indices.length >= 3) {
+            geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1))
+          }
+          geometry.computeVertexNormals()
+        }
+        break
+      }
+
       default:
         // For other shapes, create a simple box as fallback
         geometry = new THREE.BoxGeometry(1, 1, 1)
-        console.warn(`⚠️ Unsupported collider shape type: ${shape.type}, using box fallback`)
+        console.warn(`Unsupported collider shape type: ${shape.type}, using box fallback`)
         break
     }
 
