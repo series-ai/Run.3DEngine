@@ -28,6 +28,10 @@ export interface VenusGameConfig {
   toneMappingExposure?: number
   /** Enable audio system and auto-create listener (default: true) */
   audioEnabled?: boolean
+  /** Camera type: 'perspective' or 'orthographic' (default: 'perspective') */
+  cameraType?: "perspective" | "orthographic"
+  /** Orthographic camera frustum size — half-height in world units (default: 10) */
+  orthoSize?: number
 }
 
 /** Default configuration values */
@@ -39,6 +43,8 @@ const DEFAULT_CONFIG: Required<VenusGameConfig> = {
   toneMapping: "aces",
   toneMappingExposure: 1.0,
   audioEnabled: true,
+  cameraType: "perspective",
+  orthoSize: 10,
 }
 
 /**
@@ -50,13 +56,13 @@ export abstract class VenusGame {
   private static _instance: VenusGame
   private static _scene: THREE.Scene
   private static _renderer: THREE.WebGLRenderer
-  private static _camera: THREE.PerspectiveCamera
+  private static _camera: THREE.PerspectiveCamera | THREE.OrthographicCamera
 
   // Instance properties
   protected canvas: HTMLCanvasElement
   protected renderer: THREE.WebGLRenderer
   protected scene: THREE.Scene
-  protected camera: THREE.PerspectiveCamera
+  protected camera: THREE.PerspectiveCamera | THREE.OrthographicCamera
   private resizeListener: () => void
   private isDisposed: boolean = false
   private animationId: number | null = null
@@ -120,7 +126,7 @@ export abstract class VenusGame {
   /**
    * Get the active Three.js camera
    */
-  public static get camera(): THREE.PerspectiveCamera {
+  public static get camera(): THREE.PerspectiveCamera | THREE.OrthographicCamera {
     return VenusGame._camera
   }
 
@@ -307,19 +313,41 @@ export abstract class VenusGame {
     this.scene.background = new THREE.Color(this.config.backgroundColor)
 
     // Create the Three.js camera
-    this.camera = new THREE.PerspectiveCamera(
-      75, // fov
-      window.innerWidth / window.innerHeight, // aspect
-      0.1, // near
-      1000 // far
-    )
+    if (this.config.cameraType === "orthographic") {
+      const aspect = window.innerWidth / window.innerHeight
+      const size = this.config.orthoSize
+      this.camera = new THREE.OrthographicCamera(
+        -size * aspect, // left
+        size * aspect,  // right
+        size,           // top
+        -size,          // bottom
+        0.1,            // near
+        1000            // far
+      )
+    } else {
+      this.camera = new THREE.PerspectiveCamera(
+        75, // fov
+        window.innerWidth / window.innerHeight, // aspect
+        0.1, // near
+        1000 // far
+      )
+    }
 
     // Create clock for delta time
     this.clock = new THREE.Clock()
 
     // Set up window resize handling
     this.resizeListener = () => {
-      this.camera.aspect = window.innerWidth / window.innerHeight
+      const aspect = window.innerWidth / window.innerHeight
+      if (this.camera instanceof THREE.PerspectiveCamera) {
+        this.camera.aspect = aspect
+      } else if (this.camera instanceof THREE.OrthographicCamera) {
+        const size = this.config.orthoSize
+        this.camera.left = -size * aspect
+        this.camera.right = size * aspect
+        this.camera.top = size
+        this.camera.bottom = -size
+      }
       this.camera.updateProjectionMatrix()
       this.renderer.setSize(window.innerWidth, window.innerHeight)
 
