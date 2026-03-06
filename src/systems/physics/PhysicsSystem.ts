@@ -330,13 +330,19 @@ export class PhysicsSystem {
   /**
    * Sync Three.js object position with physics body
    */
-  public static syncObjectToPhysics(object: THREE.Object3D, rigidBody: RigidBody): void {
+  public static syncObjectToPhysics(object: THREE.Object3D, rigidBody: RigidBody, collider?: Collider): void {
     const translation = rigidBody.translation()
     const rotation = rigidBody.rotation()
 
     // Update Three.js object position
     object.position.set(translation.x, translation.y, translation.z)
     object.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w)
+
+    // Apply collider world position (accounts for collider-local offset from body)
+    if (collider) {
+      const ct = collider.translation()
+      object.position.set(ct.x, ct.y, ct.z)
+    }
   }
 
   /**
@@ -519,10 +525,10 @@ export class PhysicsSystem {
     const debugMesh = new THREE.Mesh(geometry, PhysicsSystem.debugMaterial)
     debugMesh.name = `debug_${id}`
 
-    // Position the debug mesh
+    // Position the debug mesh at the collider's world position
     const rigidBody = PhysicsSystem.rigidBodies.get(id)
     if (rigidBody) {
-      PhysicsSystem.syncObjectToPhysics(debugMesh, rigidBody)
+      PhysicsSystem.syncObjectToPhysics(debugMesh, rigidBody, collider)
     }
 
     return debugMesh
@@ -597,7 +603,8 @@ export class PhysicsSystem {
 
         if (isEnabled) {
           // Update position and show mesh if not already in scene
-          PhysicsSystem.syncObjectToPhysics(mesh, rigidBody)
+          const collider = PhysicsSystem.colliders.get(id)
+          PhysicsSystem.syncObjectToPhysics(mesh, rigidBody, collider ?? undefined)
           if (!PhysicsSystem.debugScene!.children.includes(mesh)) {
             PhysicsSystem.debugScene!.add(mesh)
           }
