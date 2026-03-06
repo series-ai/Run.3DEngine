@@ -58,6 +58,27 @@ class MyGame extends VenusGame {
 }
 ```
 
+### Using an Orthographic Camera
+
+```typescript
+class MyIsometricGame extends VenusGame {
+    protected getConfig(): VenusGameConfig {
+        return {
+            cameraType: "orthographic",
+            orthoSize: 10, // Half-height in world units (visible area is 20 units tall)
+        }
+    }
+
+    protected async onStart(): Promise<void> {
+        // Position the camera for a top-down or isometric view
+        this.camera.position.set(10, 10, 10)
+        this.camera.lookAt(0, 0, 0)
+    }
+}
+```
+
+The orthographic camera automatically handles window resizing, maintaining the correct aspect ratio based on `orthoSize`.
+
 ### Accessing Global Scene/Camera
 
 ```typescript
@@ -129,7 +150,7 @@ class MyGame extends VenusGame {
 ### Protected Properties
 
 - `scene: THREE.Scene` - The Three.js scene
-- `camera: THREE.PerspectiveCamera` - The main camera
+- `camera: THREE.PerspectiveCamera | THREE.OrthographicCamera` - The main camera
 - `renderer: THREE.WebGLRenderer` - The WebGL renderer
 - `canvas: HTMLCanvasElement` - The render canvas
 - `config: VenusGameConfig` - Merged configuration
@@ -162,6 +183,8 @@ interface VenusGameConfig {
     toneMapping?: "aces" | "linear" | "none" // Default: "aces"
     toneMappingExposure?: number      // Default: 1.0
     audioEnabled?: boolean            // Default: true
+    cameraType?: "perspective" | "orthographic" // Default: "perspective"
+    orthoSize?: number               // Default: 10 (half-height in world units)
 }
 ```
 
