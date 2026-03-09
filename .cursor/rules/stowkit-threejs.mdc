@@ -1,0 +1,227 @@
+---
+description: StowKit Three.js loader — loading meshes, skinned meshes, animations, textures, and audio from .stow packs
+alwaysApply: true
+---
+
+# StowKit Three.js Loader
+
+Use `@series-inc/stowkit-three-loader` to load `.stow` asset packs in Three.js applications.
+
+## Installation
+
+```bash
+npm install @series-inc/stowkit-three-loader three
+```
+
+The postinstall script copies WASM/Basis/Draco files to `public/stowkit/`.
+
+## Loading a Pack
+
+```typescript
+import { StowKitLoader } from '@series-inc/stowkit-three-loader';
+
+const pack = await StowKitLoader.load('cdn-assets/default.stow');
+```
+
+Options (all optional):
+- `wasmPath` — path to `stowkit_reader.wasm` (default: `'/stowkit/stowkit_reader.wasm'`)
+- `basisPath` — path to Basis transcoder dir (default: `'/stowkit/basis/'`)
+- `dracoPath` — path to Draco decoder dir (default: `'/stowkit/draco/'`)
+
+Load from memory (e.g. after a custom fetch):
+```typescript
+const buffer = await fetch(url).then(r => r.arrayBuffer());
+const pack = await StowKitLoader.loadFromMemory(buffer, undefined, url);
+```
+
+## Asset Types
+
+| Type | Enum | Load Method |
+|------|------|-------------|
+| Static Mesh | `AssetType.STATIC_MESH` (1) | `pack.loadMesh(id)` / `pack.loadMeshByIndex(i)` |
+| Skinned Mesh | `AssetType.SKINNED_MESH` (5) | `pack.loadSkinnedMesh(id)` / `pack.loadSkinnedMeshByIndex(i)` |
+| Animation | `AssetType.ANIMATION_CLIP` (6) | `pack.loadAnimation(group, id)` / `pack.loadAnimationByIndex(group, i)` |
+| Texture | `AssetType.TEXTURE_2D` (2) | `pack.loadTexture(id)` / `pack.loadTextureByIndex(i)` |
+| Audio | `AssetType.AUDIO` (3) | `pack.loadAudio(id, listener)` |
+| Material | `AssetType.MATERIAL_SCHEMA` (4) | Embedded in mesh metadata |
+
+Assets are referenced by their `stringId` from `.stowmeta` files (e.g. `"hero_model"`, `"level_geometry"`).
+
+## Static Meshes
+
+```typescript
+const mesh = await pack.loadMesh('level_geometry');
+scene.add(mesh);
+```
+
+Returns `THREE.Group` with Draco-decoded geometry, materials, textures, and node hierarchy.
+
+## Skinned Meshes
+
+```typescript
+const character = await pack.loadSkinnedMesh('hero_model');
+scene.add(character);
+```
+
+Returns `THREE.Group` containing a `BoneContainer` group and a `THREE.SkinnedMesh`. The skeleton is bound at load time with correct bind pose.
+
+Access internals via `character.userData.skinnedMesh` and bone names via `character.userData.boneOriginalNames`.
+
+## Animations
+
+Load and auto-play:
+```typescript
+const { mixer, action, clip } = await pack.loadAnimation(character, 'hero_idle');
+
+// In your render loop:
+mixer.update(clock.getDelta());
+```
+
+`loadAnimation` automatically:
+- Creates an `AnimationMixer` on the group
+- Retargets bone names if they don't match exactly (suffix matching)
+- Sets `LoopRepeat` and starts playback
+
+Load clip only (no playback):
+```typescript
+const clip = await pack.loadAnimationClip('hero_walk');
+```
+
+## Textures
+
+```typescript
+const texture = await pack.loadTexture('hero_diffuse');
+material.map = texture;
+```
+
+Returns `THREE.CompressedTexture` (KTX2/Basis Universal). Textures are cached per-pack — loading the same ID twice returns the same instance.
+
+## Audio
+
+```typescript
+const listener = new THREE.AudioListener();
+camera.add(listener);
+
+const audio = await pack.loadAudio('bgm_main', listener);
+audio.setLoop(true);
+audio.play();
+```
+
+Audio is AAC format (M4A container), decoded via Web Audio API.
+
+For HTML5 preview: `const el = await pack.createAudioPreview(index);`
+
+## Pack Manifest
+
+```typescript
+const assets = pack.listAssets();
+// Each: { index, name, id, type, dataSize, hasMetadata }
+
+const count = pack.getAssetCount();
+const info = pack.getAssetInfo(0);
+const rawData = pack.readAssetData(0);
+const rawMeta = pack.readAssetMetadata(0);
+```
+
+## Metadata Helpers
+
+```typescript
+// Animation
+const anim = pack.getAnimationMetadata(index);
+// { stringId, targetMeshId, duration, ticksPerSecond, channelCount, boneCount }
+
+// Audio
+const audio = pack.getAudioMetadata('bgm_main');
+// { sampleRate, channels, durationMs }
+
+// Texture
+const tex = pack.getTextureMetadata(index);
+// { width, height, channels, channelFormat }
+```
+
+## Multiple Packs
+
+Each pack has its own WASM reader instance — fully isolated:
+```typescript
+const [env, chars] = await Promise.all([
+    StowKitLoader.load('cdn-assets/environment.stow'),
+    StowKitLoader.load('cdn-assets/characters.stow')
+]);
+```
+
+## Cleanup
+
+```typescript
+pack.dispose(); // Clears texture cache, closes WASM reader
+```
+
+## Caching
+
+Decoded Draco geometries and transcoded Basis textures are cached in IndexedDB (`StowKitAssetCache`). Cache invalidates when pack file size changes. Use `AssetMemoryCache.clear()` to reset.
+
+## Exports
+
+```typescript
+import {
+    StowKitLoader,    // Static loader class
+    StowKitPack,      // Pack instance (returned by load)
+    AssetMemoryCache, // IndexedDB cache
+    AssetType,        // Enum: STATIC_MESH, TEXTURE_2D, AUDIO, etc.
+    PerfLogger        // Performance logging
+} from '@series-inc/stowkit-three-loader';
+
+// Types
+import type {
+    StowKitLoaderOptions,
+    MeshGeometryInfo,
+    MaterialPropertyValue,
+    MaterialData,
+    Node,
+    MeshMetadata
+} from '@series-inc/stowkit-three-loader';
+```
+
+## Complete Example
+
+```typescript
+import * as THREE from 'three';
+import { StowKitLoader } from '@series-inc/stowkit-three-loader';
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer();
+const clock = new THREE.Clock();
+
+const listener = new THREE.AudioListener();
+camera.add(listener);
+
+const pack = await StowKitLoader.load('cdn-assets/default.stow');
+
+// Environment
+const level = await pack.loadMesh('level_geometry');
+scene.add(level);
+
+// Character with animation
+const hero = await pack.loadSkinnedMesh('hero_model');
+scene.add(hero);
+const { mixer } = await pack.loadAnimation(hero, 'hero_idle');
+
+// Background music
+const bgm = await pack.loadAudio('bgm_main', listener);
+bgm.setLoop(true);
+bgm.play();
+
+function animate() {
+    requestAnimationFrame(animate);
+    mixer.update(clock.getDelta());
+    renderer.render(scene, camera);
+}
+animate();
+```
+
+## Troubleshooting
+
+- **Animations offset from origin** — Ensure `.stow` was packed with latest stowkit (correct bone parent indices)
+- **Textures not loading** — Check that `public/stowkit/basis/` has `basis_transcoder.js` and `.wasm`
+- **Audio not playing** — Create `AudioListener` and add to camera before loading audio
+- **Mesh materials missing** — Assign `.stowmat` files via `materialOverrides` in the mesh's `.stowmeta`
