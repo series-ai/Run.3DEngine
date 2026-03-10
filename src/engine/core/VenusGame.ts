@@ -62,7 +62,16 @@ export abstract class VenusGame {
   protected canvas: HTMLCanvasElement
   protected renderer: THREE.WebGLRenderer
   protected scene: THREE.Scene
-  protected camera: THREE.PerspectiveCamera | THREE.OrthographicCamera
+  private _instanceCamera: THREE.PerspectiveCamera | THREE.OrthographicCamera
+
+  /** Setting the camera also updates VenusGame.camera (static) */
+  protected get camera(): THREE.PerspectiveCamera | THREE.OrthographicCamera {
+    return this._instanceCamera
+  }
+  protected set camera(cam: THREE.PerspectiveCamera | THREE.OrthographicCamera) {
+    this._instanceCamera = cam
+    VenusGame._camera = cam
+  }
   private resizeListener: () => void
   private isDisposed: boolean = false
   private animationId: number | null = null
