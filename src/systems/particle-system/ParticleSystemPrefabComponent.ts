@@ -573,6 +573,9 @@ export class ParticleSystemPrefabComponent extends Component {
    */
   public update(deltaTime: number): void {
     if (!this.emitter) return
+    // Track gameObject's world position as spawn origin
+    this.gameObject.getWorldPosition(ParticleSystemPrefabComponent._tempOrigin)
+    this.emitter.setOrigin(ParticleSystemPrefabComponent._tempOrigin)
     this.emitter.update(deltaTime, VenusGame.camera, this.gameObject?.matrixWorld)
   }
 
