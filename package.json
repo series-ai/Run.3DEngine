@@ -34,7 +34,7 @@
         "@dimforge/rapier3d": "^0.11.2",
         "@dimforge/rapier3d-compat": "^0.11.2",
         "@series-inc/stowkit-reader": "^0.1.42",
-        "@series-inc/stowkit-three-loader": "^0.1.46",
+        "@series-inc/stowkit-three-loader": "^0.1.47",
         "three-stdlib": "^2.36.0"
     },
     "peerDependencies": {
