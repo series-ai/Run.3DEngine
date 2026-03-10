@@ -8,6 +8,7 @@ import { AudioSystem } from "@systems/audio"
 import { UISystem } from "@systems/ui"
 import { InstancedMeshManager } from "@engine/render/InstancedMeshManager"
 import { AnimationCullingManager } from "@systems/animatrix/AnimationCullingManager"
+import { StowKitLoader } from "@series-inc/stowkit-three-loader"
 
 /**
  * Configuration interface for VenusGame.
@@ -194,6 +195,12 @@ export abstract class VenusGame {
     VenusGame._renderer = instance.renderer
     VenusGame._camera = instance.camera
 
+    // Pre-initialize StowKit decoders in parallel with platform init.
+    // Passes the game's renderer to avoid creating a temporary WebGL context.
+    const stowkitInitPromise = StowKitLoader.preInitialize({
+      renderer: instance.renderer,
+    }).catch((e) => console.warn("[VenusGame] StowKit pre-init failed (will retry on first load):", e))
+
     // Initialize the platform abstraction layer
     const platform = await initializePlatformAsync(platformType)
     const context = await platform.initializeAsync({
@@ -237,6 +244,9 @@ export abstract class VenusGame {
 
     // Set up audio listener (before game code runs so it can use audio)
     instance.setupAudioListener()
+
+    // Ensure StowKit decoders are ready before game code runs
+    await stowkitInitPromise
 
     // Call the custom implementation's onInitialize method
     await instance.onStart()

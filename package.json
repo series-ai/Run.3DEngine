@@ -34,18 +34,18 @@
         "@dimforge/rapier3d": "^0.11.2",
         "@dimforge/rapier3d-compat": "^0.11.2",
         "@series-inc/stowkit-reader": "^0.1.42",
-        "@series-inc/stowkit-three-loader": "^0.1.45",
+        "@series-inc/stowkit-three-loader": "^0.1.46",
         "three-stdlib": "^2.36.0"
     },
     "peerDependencies": {
-        "three": ">=0.180.0",
         "@capacitor/app": ">=6.0.0",
         "@capacitor/core": ">=6.0.0",
         "@capacitor/local-notifications": ">=6.0.0",
         "@capacitor/preferences": ">=6.0.0",
         "@capacitor/splash-screen": ">=6.0.0",
         "@series-inc/rundot-game-sdk": "^5.3.0",
-        "appsflyer-capacitor-plugin": ">=6.17.0"
+        "appsflyer-capacitor-plugin": ">=6.17.0",
+        "three": ">=0.180.0"
     },
     "peerDependenciesMeta": {
         "@capacitor/app": {

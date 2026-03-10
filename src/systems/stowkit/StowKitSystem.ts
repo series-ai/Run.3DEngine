@@ -128,31 +128,35 @@ export class StowKitSystem {
     )
     this._prefabCollection = prefabCollection
 
-    // Load all packs from mounts
+    // Load all packs from mounts (in parallel for faster startup)
     const mounts = prefabCollection.getMounts()
     console.log(`[StowKitSystem] Loading ${mounts.length} packs from mounts...`)
 
     PerfLogger.disable()
 
-    for (const mount of mounts) {
-      if (this.packs.has(mount.alias)) {
-        continue // Already loaded
-      }
+    const packLoadStart = performance.now()
 
-      console.log(`[StowKitSystem] Loading pack "${mount.alias}" from ${mount.path}`)
-      const blob = await config.fetchBlob(mount.path)
-      const arrayBuffer = await blob.arrayBuffer()
+    await Promise.all(
+      mounts
+        .filter((mount) => !this.packs.has(mount.alias))
+        .map(async (mount) => {
+          console.log(`[StowKitSystem] Loading pack "${mount.alias}" from ${mount.path}`)
+          const blob = await config.fetchBlob(mount.path)
+          const arrayBuffer = await blob.arrayBuffer()
 
-      const pack = await StowKitLoader.loadFromMemory(arrayBuffer, {
-        basisPath: this.decoderPaths.basis,
-        dracoPath: this.decoderPaths.draco,
-        wasmPath: this.decoderPaths.wasm,
-      })
+          const pack = await StowKitLoader.loadFromMemory(arrayBuffer, {
+            basisPath: this.decoderPaths.basis,
+            dracoPath: this.decoderPaths.draco,
+            wasmPath: this.decoderPaths.wasm,
+          })
 
-      this.packs.set(mount.alias, pack)
-    }
+          this.packs.set(mount.alias, pack)
+        })
+    )
 
-    console.log(`[StowKitSystem] All packs loaded`)
+    console.log(
+      `[StowKitSystem] All packs loaded in ${(performance.now() - packLoadStart).toFixed(0)}ms`
+    )
     return prefabCollection
   }
 
@@ -213,6 +217,61 @@ export class StowKitSystem {
       throw new Error(`StowKitSystem: Prefab not found: ${path}`)
     }
     return prefab
+  }
+
+  /**
+   * Pre-decode meshes so they're ready before the loading screen hides.
+   * Call this in onStart() after loadFromBuildJson() to avoid a visible pop-in.
+   *
+   * @param meshNames Array of mesh asset paths to pre-decode
+   * @returns Map of mesh names to loaded groups (failed meshes are logged and skipped)
+   */
+  public async preloadMeshes(meshNames: string[]): Promise<Map<string, THREE.Group>> {
+    const start = performance.now()
+    const results = new Map<string, THREE.Group>()
+
+    await Promise.allSettled(
+      meshNames.map(async (name) => {
+        try {
+          const mesh = await this.getMesh(name)
+          results.set(name, mesh)
+        } catch (e) {
+          console.warn(`[StowKitSystem] Failed to preload mesh "${name}":`, e)
+        }
+      })
+    )
+
+    console.log(
+      `[StowKitSystem] Preloaded ${results.size}/${meshNames.length} meshes in ${(performance.now() - start).toFixed(0)}ms`
+    )
+    return results
+  }
+
+  /**
+   * Pre-decode skinned meshes so they're ready before the loading screen hides.
+   */
+  public async preloadSkinnedMeshes(
+    meshNames: string[],
+    scale: number = 1
+  ): Promise<Map<string, THREE.Group>> {
+    const start = performance.now()
+    const results = new Map<string, THREE.Group>()
+
+    await Promise.allSettled(
+      meshNames.map(async (name) => {
+        try {
+          const mesh = await this.getSkinnedMesh(name, scale)
+          results.set(name, mesh)
+        } catch (e) {
+          console.warn(`[StowKitSystem] Failed to preload skinned mesh "${name}":`, e)
+        }
+      })
+    )
+
+    console.log(
+      `[StowKitSystem] Preloaded ${results.size}/${meshNames.length} skinned meshes in ${(performance.now() - start).toFixed(0)}ms`
+    )
+    return results
   }
 
   // ============================================
