@@ -1,12 +1,20 @@
 import * as THREE from "three"
-import { Component } from "@engine/core"
+import { GameObject, Component } from "@engine/core"
 import {
   PrefabComponent,
   PrefabInstance,
+  ComponentRegistry,
   type ComponentJSON,
   type PrefabNode,
 } from "@systems/prefabs"
 import { StowKitSystem } from "@systems/stowkit"
+
+interface NodeOverrideJSON {
+  position?: [number, number, number]
+  rotation?: [number, number, number]
+  scale?: [number, number, number]
+  components?: ComponentJSON[]
+}
 
 interface StowMeshJSON extends ComponentJSON {
   type: "stow_mesh"
@@ -16,6 +24,7 @@ interface StowMeshJSON extends ComponentJSON {
   }
   castShadow?: boolean
   receiveShadow?: boolean
+  nodeOverrides?: Record<string, NodeOverrideJSON>
 }
 
 /**
@@ -23,6 +32,11 @@ interface StowMeshJSON extends ComponentJSON {
  *
  * This is a non-instanced renderer - each instance is a separate draw call.
  * Use InstancedRenderer for many instances of the same mesh (better performance).
+ *
+ * When a mesh has named child groups (from preserveHierarchy), MeshRenderer
+ * promotes them to GameObjects so they can have components and be accessed
+ * via getMeshChild(). Transform overrides and components from nodeOverrides
+ * are applied automatically.
  *
  * Usage:
  * ```typescript
@@ -41,7 +55,11 @@ export class MeshRenderer extends Component {
     const options = PrefabInstance.currentOptions
     const castShadow = json.castShadow ?? options?.castShadow ?? true
     const receiveShadow = json.receiveShadow ?? options?.receiveShadow ?? true
-    return new MeshRenderer(json.mesh.assetId, castShadow, receiveShadow)
+    const renderer = new MeshRenderer(json.mesh.assetId, castShadow, receiveShadow)
+    if (json.nodeOverrides) {
+      renderer.nodeOverrides = json.nodeOverrides
+    }
+    return renderer
   }
 
   private mesh: THREE.Group | null = null
@@ -52,6 +70,8 @@ export class MeshRenderer extends Component {
   private isMeshLoaded: boolean = false
   private materialOverride: THREE.Material | null = null
   private loadedCallbacks: (() => void)[] | null = null
+  private nodeOverrides: Record<string, NodeOverrideJSON> | null = null
+  private meshChildMap: Map<string, GameObject> | null = null
 
   /**
    * @param meshName The name of the mesh in the StowKit pack
@@ -115,6 +135,9 @@ export class MeshRenderer extends Component {
 
     this.gameObject.add(this.mesh)
 
+    // Promote named child groups to GameObjects for component support
+    this.promoteMeshChildren(this.mesh)
+
     // For static meshes, disable matrix auto-update to save CPU
     if (this._isStatic) {
       this.setStatic(true)
@@ -125,6 +148,93 @@ export class MeshRenderer extends Component {
       for (const cb of this.loadedCallbacks) cb()
       this.loadedCallbacks = null
     }
+  }
+
+  /**
+   * Walk the loaded mesh hierarchy and replace named child Groups with
+   * GameObjects so they can receive components. Applies nodeOverrides
+   * (transform + components) from the prefab data.
+   */
+  private promoteMeshChildren(group: THREE.Object3D): void {
+    for (const child of [...group.children]) {
+      if (child.type !== "Group" || !child.name) continue
+
+      // Create a GameObject to replace this group
+      const childGO = new GameObject(child.name)
+      childGO.position.copy(child.position)
+      childGO.quaternion.copy(child.quaternion)
+      childGO.scale.copy(child.scale)
+
+      // Apply nodeOverride transforms if present
+      const override = this.nodeOverrides?.[child.name]
+      if (override?.position) childGO.position.fromArray(override.position)
+      if (override?.rotation) {
+        childGO.rotation.set(
+          override.rotation[0],
+          override.rotation[1],
+          override.rotation[2]
+        )
+      }
+      if (override?.scale) childGO.scale.fromArray(override.scale)
+
+      // Move all children from the group into the GameObject
+      for (const grandchild of [...child.children]) {
+        child.remove(grandchild)
+        childGO.add(grandchild)
+      }
+
+      // Replace group with GameObject in parent
+      group.remove(child)
+      group.add(childGO)
+
+      // Create override components
+      if (override?.components) {
+        for (const compJSON of override.components) {
+          const factory = ComponentRegistry.get(compJSON.type)
+          if (factory) {
+            try {
+              const comp = factory.fromPrefabJSON(compJSON, null as unknown as PrefabNode)
+              if (comp) childGO.addComponent(comp)
+            } catch (e) {
+              console.error(
+                `[MeshRenderer] Failed to create component "${compJSON.type}" on mesh child "${child.name}":`,
+                e
+              )
+            }
+          }
+        }
+      }
+
+      // Index for getMeshChild()
+      if (!this.meshChildMap) this.meshChildMap = new Map()
+      this.meshChildMap.set(child.name, childGO)
+
+      // Recurse for nested groups
+      this.promoteMeshChildren(childGO)
+    }
+  }
+
+  /**
+   * Get a named child group from the loaded mesh as a GameObject.
+   * Returns null if the mesh hasn't loaded yet or if no child with that name exists.
+   *
+   * ```typescript
+   * renderer.onLoaded(() => {
+   *   const key = renderer.getMeshChild("Key")
+   *   key?.addComponent(new Spinner("z"))
+   * })
+   * ```
+   */
+  public getMeshChild(name: string): GameObject | null {
+    return this.meshChildMap?.get(name) ?? null
+  }
+
+  /**
+   * Get all named child groups from the loaded mesh.
+   * Returns null if the mesh hasn't loaded yet.
+   */
+  public getMeshChildren(): ReadonlyMap<string, GameObject> | null {
+    return this.meshChildMap ?? null
   }
 
   /**
@@ -298,5 +408,7 @@ export class MeshRenderer extends Component {
 
       this.mesh = null
     }
+
+    this.meshChildMap = null
   }
 }
