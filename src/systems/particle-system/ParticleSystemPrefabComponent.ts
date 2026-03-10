@@ -19,6 +19,7 @@ interface CurvePropertyValue {
 interface ParticleSystemJSON extends ComponentJSON {
   type: "particle_system"
   main: {
+    simulationSpace?: "local" | "world"
     duration: number
     looping: boolean
     startLifetimeMin: number
@@ -232,6 +233,7 @@ function convertCurvePropertyToEngine(
 export class ParticleSystemPrefabComponent extends Component {
   private emitter: ParticleSystem | null = null
   private json: ParticleSystemJSON
+  private worldSpace: boolean = false
 
   // Reusable vector to avoid allocation on trigger
   private static readonly _tempOrigin = new THREE.Vector3()
@@ -256,16 +258,24 @@ export class ParticleSystemPrefabComponent extends Component {
     const config = this.buildEmitterConfig()
     const assets = this.buildEmitterAssets()
 
+    // Check simulation space from main module
+    const main = this.json.main || {}
+    this.worldSpace = (main.simulationSpace ?? "local") === "world"
+
     // Create the particle emitter directly (like editor does)
     this.emitter = createParticleEmitter(config, assets)
 
-    // Add to the object (like editor does)
     if (this.emitter?.object && this.gameObject) {
-      this.gameObject.add(this.emitter.object)
-      this.emitter.object.position.set(0, 0, 0)
+      if (this.worldSpace) {
+        // World space: add to scene root so parent transform doesn't affect particles
+        this.scene.add(this.emitter.object)
+      } else {
+        // Local space: add as child so particles move with parent
+        this.gameObject.add(this.emitter.object)
+        this.emitter.object.position.set(0, 0, 0)
+      }
       this.emitter.object.frustumCulled = false
       // Store emitter reference in userData for cascade functionality
-      // This allows parent particle systems to find and control child emitters
       this.gameObject.userData.__particleEmitter = this.emitter
     }
 
@@ -573,10 +583,15 @@ export class ParticleSystemPrefabComponent extends Component {
    */
   public update(deltaTime: number): void {
     if (!this.emitter) return
-    // Track gameObject's world position as spawn origin
-    this.gameObject.getWorldPosition(ParticleSystemPrefabComponent._tempOrigin)
-    this.emitter.setOrigin(ParticleSystemPrefabComponent._tempOrigin)
-    this.emitter.update(deltaTime, VenusGame.camera, this.gameObject?.matrixWorld)
+    if (this.worldSpace) {
+      // World space: track parent position for spawn origin, no matrix correction
+      this.gameObject.getWorldPosition(ParticleSystemPrefabComponent._tempOrigin)
+      this.emitter.setOrigin(ParticleSystemPrefabComponent._tempOrigin)
+      this.emitter.update(deltaTime, VenusGame.camera)
+    } else {
+      // Local space: pass world matrix for billboard correction
+      this.emitter.update(deltaTime, VenusGame.camera, this.gameObject?.matrixWorld)
+    }
   }
 
   /**
@@ -587,10 +602,11 @@ export class ParticleSystemPrefabComponent extends Component {
   }
 
   protected onCleanup(): void {
-    if (this.emitter?.object && this.gameObject) {
-      this.gameObject.remove(this.emitter.object)
-      // Clean up the userData reference
-      delete this.gameObject.userData.__particleEmitter
+    if (this.emitter?.object) {
+      this.emitter.object.removeFromParent()
+      if (this.gameObject) {
+        delete this.gameObject.userData.__particleEmitter
+      }
     }
     this.emitter = null
   }
