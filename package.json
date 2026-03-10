@@ -35,10 +35,10 @@
         "@dimforge/rapier3d-compat": "^0.11.2",
         "@series-inc/stowkit-reader": "^0.1.42",
         "@series-inc/stowkit-three-loader": "^0.1.45",
-        "three": "^0.180.0",
         "three-stdlib": "^2.36.0"
     },
     "peerDependencies": {
+        "three": ">=0.180.0",
         "@capacitor/app": ">=6.0.0",
         "@capacitor/core": ">=6.0.0",
         "@capacitor/local-notifications": ">=6.0.0",

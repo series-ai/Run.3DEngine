@@ -216,6 +216,13 @@ export class MeshColliderComponent extends Component {
     }
   }
 
+  protected onCleanup(): void {
+    if (this.rigidBody) {
+      this.gameObject.removeComponent(RigidBodyComponentThree)
+      this.rigidBody = null
+    }
+  }
+
   public getRigidBody(): RigidBodyComponentThree | null {
     return this.rigidBody
   }
