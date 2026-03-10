@@ -9,10 +9,19 @@ type MeshColliderType = "bounding_box" | "convex_hull"
 
 interface MeshColliderJSON extends ComponentJSON {
   type: "mesh_collider"
-  colliderType: MeshColliderType
+  colliderType?: MeshColliderType
   bodyType?: "static" | "kinematic" | "dynamic"
   isSensor?: boolean
   enableCollisionEvents?: boolean
+  excludeChildren?: boolean
+  /** nodeOverrides wraps properties inside a `data` object */
+  data?: {
+    colliderType?: MeshColliderType
+    bodyType?: "static" | "kinematic" | "dynamic"
+    isSensor?: boolean
+    enableCollisionEvents?: boolean
+    excludeChildren?: boolean
+  }
 }
 
 interface StowMeshJSON extends ComponentJSON {
@@ -25,11 +34,23 @@ interface StowMeshJSON extends ComponentJSON {
 
 @PrefabComponent("mesh_collider")
 export class MeshColliderComponent extends Component {
-  static fromPrefabJSON(json: MeshColliderJSON, node: PrefabNode): MeshColliderComponent | null {
-    const colliderType: MeshColliderType = json.colliderType ?? "bounding_box"
+  static fromPrefabJSON(json: MeshColliderJSON, node: PrefabNode | null): MeshColliderComponent | null {
+    // nodeOverrides wraps properties in a `data` object — unwrap if present
+    const props = json.data ?? json
+    const colliderType: MeshColliderType = props.colliderType ?? "bounding_box"
     if (colliderType !== "bounding_box" && colliderType !== "convex_hull") {
-      console.warn(`Unknown mesh collider type: ${json.colliderType}`)
+      console.warn(`Unknown mesh collider type: ${props.colliderType}`)
       return null
+    }
+
+    const bodyType = (props.bodyType as RigidBodyType) ?? RigidBodyType.STATIC
+    const isSensor = props.isSensor
+    const enableCollisionEvents = props.enableCollisionEvents
+    const excludeChildren = props.excludeChildren ?? false
+
+    // Sub-mesh node case: no PrefabNode available, compute bounds from own children
+    if (!node) {
+      return new MeshColliderComponent(null, colliderType, bodyType, isSensor, enableCollisionEvents, excludeChildren)
     }
 
     const stowMeshComponent = node.components.find((c) => c.type === "stow_mesh") as
@@ -40,23 +61,24 @@ export class MeshColliderComponent extends Component {
       return null
     }
 
-    const bodyType = (json.bodyType as RigidBodyType) ?? RigidBodyType.STATIC
-    return new MeshColliderComponent(stowMeshComponent.mesh.assetId, colliderType, bodyType, json.isSensor, json.enableCollisionEvents)
+    return new MeshColliderComponent(stowMeshComponent.mesh.assetId, colliderType, bodyType, isSensor, enableCollisionEvents, excludeChildren)
   }
 
   private rigidBody: RigidBodyComponentThree | null = null
-  private readonly meshName: string
+  private readonly meshName: string | null
   private readonly colliderType: MeshColliderType
   private readonly bodyType: RigidBodyType
   private readonly isSensor?: boolean
   private readonly enableCollisionEvents?: boolean
+  private readonly excludeChildren: boolean
 
   constructor(
-    meshName: string,
+    meshName: string | null,
     colliderType: MeshColliderType = "bounding_box",
     bodyType: RigidBodyType = RigidBodyType.STATIC,
     isSensor?: boolean,
-    enableCollisionEvents?: boolean
+    enableCollisionEvents?: boolean,
+    excludeChildren: boolean = false
   ) {
     super()
     this.meshName = meshName
@@ -64,34 +86,45 @@ export class MeshColliderComponent extends Component {
     this.bodyType = bodyType
     this.isSensor = isSensor
     this.enableCollisionEvents = enableCollisionEvents
+    this.excludeChildren = excludeChildren
+  }
+
+  /** Iterate meshes, optionally only direct children */
+  private static forEachMesh(root: THREE.Object3D, excludeChildren: boolean, fn: (mesh: THREE.Mesh) => void): void {
+    if (excludeChildren) {
+      for (const child of root.children) {
+        if ((child as any).isMesh) fn(child as THREE.Mesh)
+      }
+    } else {
+      root.traverse((child) => {
+        if ((child as any).isMesh) fn(child as THREE.Mesh)
+      })
+    }
   }
 
   /**
-   * Collect all vertex positions from a mesh group, including the root's own transform.
-   * Matches the editor's getAllVerticesFromStowMesh which uses parentWorldMatrixInverse
-   * (for a detached group, that's identity — so we just use child.matrixWorld directly).
+   * Collect all vertex positions from a mesh group.
    * Returns a flat Float32Array of [x,y,z, x,y,z, ...].
    */
-  private static collectVertices(meshGroup: THREE.Group, scale: THREE.Vector3): Float32Array {
+  private static collectVertices(meshGroup: THREE.Object3D, scale: THREE.Vector3, excludeChildren: boolean = false): Float32Array {
     meshGroup.updateMatrixWorld(true)
 
     const allVertices: number[] = []
     const vertex = new THREE.Vector3()
 
-    meshGroup.traverse((child) => {
-      if (child instanceof THREE.Mesh && child.geometry) {
-        const posAttr = child.geometry.getAttribute("position")
-        if (!posAttr) return
+    MeshColliderComponent.forEachMesh(meshGroup, excludeChildren, (mesh) => {
+      if (!mesh.geometry) return
+      const posAttr = mesh.geometry.getAttribute("position")
+      if (!posAttr) return
 
-        for (let i = 0; i < posAttr.count; i++) {
-          vertex.fromBufferAttribute(posAttr, i)
-          vertex.applyMatrix4(child.matrixWorld)
-          allVertices.push(
-            vertex.x * scale.x,
-            vertex.y * scale.y,
-            vertex.z * scale.z
-          )
-        }
+      for (let i = 0; i < posAttr.count; i++) {
+        vertex.fromBufferAttribute(posAttr, i)
+        vertex.applyMatrix4(mesh.matrixWorld)
+        allVertices.push(
+          vertex.x * scale.x,
+          vertex.y * scale.y,
+          vertex.z * scale.z
+        )
       }
     })
     return new Float32Array(allVertices)
@@ -103,29 +136,22 @@ export class MeshColliderComponent extends Component {
    * detached cached mesh group is equivalent to identity. So we use child.matrixWorld
    * directly, which includes the mesh group root's own transform — exactly as the editor does.
    */
-  private static computeBounds(meshGroup: THREE.Group, scale: THREE.Vector3): { size: THREE.Vector3; center: THREE.Vector3 } | null {
-    // Ensure all matrices in the hierarchy are up to date
+  private static computeBounds(meshGroup: THREE.Object3D, scale: THREE.Vector3, excludeChildren: boolean = false): { size: THREE.Vector3; center: THREE.Vector3 } | null {
     meshGroup.updateMatrixWorld(true)
 
     const box = new THREE.Box3()
     let foundMesh = false
 
-    meshGroup.traverse((child) => {
-      if (child instanceof THREE.Mesh && child.geometry) {
-        foundMesh = true
-        if (!child.geometry.boundingBox) {
-          child.geometry.computeBoundingBox()
-        }
-        if (child.geometry.boundingBox) {
-          const tempBox = child.geometry.boundingBox.clone()
-
-          // Use child.matrixWorld directly — includes the mesh group root's transform,
-          // matching editor's generateBoundingBoxGeometry which uses parentWorldMatrixInverse
-          // (identity for a detached group)
-          tempBox.applyMatrix4(child.matrixWorld)
-
-          box.union(tempBox)
-        }
+    MeshColliderComponent.forEachMesh(meshGroup, excludeChildren, (mesh) => {
+      if (!mesh.geometry) return
+      foundMesh = true
+      if (!mesh.geometry.boundingBox) {
+        mesh.geometry.computeBoundingBox()
+      }
+      if (mesh.geometry.boundingBox) {
+        const tempBox = mesh.geometry.boundingBox.clone()
+        tempBox.applyMatrix4(mesh.matrixWorld)
+        box.union(tempBox)
       }
     })
 
@@ -143,45 +169,51 @@ export class MeshColliderComponent extends Component {
   }
 
   protected onCreate(): void {
-    const stowkit = StowKitSystem.getInstance()
+    if (this.meshName) {
+      // Standard path: load mesh by name from StowKit
+      const stowkit = StowKitSystem.getInstance()
+      stowkit.getMesh(this.meshName).then((meshGroup) => {
+        if (!this.isAttached()) return
+        this.createCollider(meshGroup)
+      })
+    } else {
+      // Sub-mesh node path: geometry is already on this gameObject
+      this.createCollider(this.gameObject)
+    }
+  }
 
-    stowkit.getMesh(this.meshName).then((meshGroup) => {
-      // Guard against GameObject being destroyed while mesh was loading
-      if (!this.isAttached()) return
+  private createCollider(meshRoot: THREE.Object3D): void {
+    const scale = this.gameObject.scale.clone()
 
-      // Read scale at resolve time, not onCreate time — the game may set scale after instantiation
-      const scale = this.gameObject.scale.clone()
-
-      if (this.colliderType === "convex_hull") {
-        const vertices = MeshColliderComponent.collectVertices(meshGroup, scale)
-        if (vertices.length < 9) {
-          console.warn("MeshColliderComponent: Not enough vertices for convex hull")
-          return
-        }
+    if (this.colliderType === "convex_hull") {
+      const vertices = MeshColliderComponent.collectVertices(meshRoot, scale, this.excludeChildren)
+      if (vertices.length < 9) {
+        console.warn("MeshColliderComponent: Not enough vertices for convex hull")
+        return
+      }
+      this.rigidBody = new RigidBodyComponentThree({
+        type: this.bodyType,
+        shape: ColliderShape.CONVEX_HULL,
+        vertices,
+        centerOffset: new THREE.Vector3(0, 0, 0),
+        isSensor: this.isSensor,
+        enableCollisionEvents: this.enableCollisionEvents,
+      })
+      this.gameObject.addComponent(this.rigidBody)
+    } else {
+      const bounds = MeshColliderComponent.computeBounds(meshRoot, scale, this.excludeChildren)
+      if (bounds) {
         this.rigidBody = new RigidBodyComponentThree({
           type: this.bodyType,
-          shape: ColliderShape.CONVEX_HULL,
-          vertices,
-          centerOffset: new THREE.Vector3(0, 0, 0),
+          shape: ColliderShape.BOX,
+          size: bounds.size,
+          centerOffset: bounds.center,
           isSensor: this.isSensor,
           enableCollisionEvents: this.enableCollisionEvents,
         })
         this.gameObject.addComponent(this.rigidBody)
-      } else {
-        const bounds = MeshColliderComponent.computeBounds(meshGroup, scale)
-        if (bounds) {
-          this.rigidBody = new RigidBodyComponentThree({
-            type: this.bodyType,
-            shape: ColliderShape.BOX,
-            size: bounds.size,
-            centerOffset: bounds.center,
-            isSensor: this.isSensor,
-            enableCollisionEvents: this.enableCollisionEvents,
-          })
-          this.gameObject.addComponent(this.rigidBody)
-        }
       }
-    })
+    }
   }
 
   public getRigidBody(): RigidBodyComponentThree | null {
