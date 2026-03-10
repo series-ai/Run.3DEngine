@@ -161,7 +161,7 @@ export class PrefabInstance {
   }
 
   public getComponent<T extends Component>(
-    componentType: new (...args: unknown[]) => T
+    componentType: new (...args: any[]) => T
   ): T | undefined {
     return this._gameObject.getComponent(componentType)
   }
