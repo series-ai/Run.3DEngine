@@ -147,15 +147,35 @@ export async function PopulateAudioBank3D(
 }
 
 export function PlayAudioOneShot2D(audioBank: AudioBank2D, audioClip: string) {
-  if (!audioBank[audioClip]) {
+  const audio = audioBank[audioClip]
+  if (!audio) {
     throw new Error(`Audio clip not found in bank: ${audioClip}`)
   }
 
-  if (!audioBank[audioClip].buffer) {
+  if (!audio.buffer) {
     throw new Error(`Audio clip not loaded yet: ${audioClip}`)
   }
 
-  audioBank[audioClip].play()
+  // Use raw Web Audio API so overlapping plays work (THREE.Audio only allows one at a time)
+  const ctx = audio.context
+  const source = ctx.createBufferSource()
+  source.buffer = audio.buffer
+  source.playbackRate.value = audio.playbackRate
+
+  // Respect the clip's volume via a gain node
+  const gain = ctx.createGain()
+  gain.gain.value = audio.getVolume()
+  source.connect(gain)
+
+  // Connect through audio's existing filter chain if any, otherwise straight to context
+  const filters = (audio as any).filters as AudioNode[] | undefined
+  if (filters && filters.length > 0) {
+    gain.connect(filters[0])
+  } else {
+    gain.connect(ctx.destination)
+  }
+
+  source.start(0)
 }
 
 /**
