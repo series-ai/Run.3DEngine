@@ -12,6 +12,8 @@ import { LocalNotifications } from "@capacitor/local-notifications"
 import { App } from "@capacitor/app"
 import { SplashScreen } from "@capacitor/splash-screen"
 
+import { init as initDatadogAnalytics, trackCustom as datadogTrackCustom, trackFunnel as datadogTrackFunnel } from "./datadog-analytics"
+
 import type {
   PlatformService,
   PlatformContext,
@@ -97,21 +99,35 @@ export class CapacitorPlatform implements PlatformService {
   // AppsFlyer module (lazy-loaded, only on native)
   private appsFlyerModule: { AppsFlyer: { initSDK: (config: any) => Promise<unknown>; logEvent: (event: { eventName: string; eventValue?: Record<string, unknown> }) => Promise<unknown> } } | null = null
 
-  // Analytics implementation - AppsFlyer on native, console fallback otherwise
+  // Analytics implementation - AppsFlyer + Datadog on native (Capacitor builds), console fallback otherwise
   readonly analytics: PlatformAnalytics = {
     trackFunnelStep: (step: number, name: string) => {
       console.log(`${LOG_PREFIX} analytics.trackFunnelStep(${step}, "${name}")`)
       this.sendAppsFlyerEvent(`funnel_step_${step}`, { af_content: name })
+      this.sendDatadogFunnel(step, name)
     },
     recordCustomEvent: (eventName: string, params?: Record<string, unknown>) => {
       console.log(`${LOG_PREFIX} analytics.recordCustomEvent("${eventName}")`, params)
       this.sendAppsFlyerEvent(eventName, params ?? {})
+      this.sendDatadogCustomEvent(eventName, params ?? {})
     },
   }
 
   private sendAppsFlyerEvent(eventName: string, eventValue: Record<string, unknown>): void {
     if (!this.appsFlyerModule) return
     this.appsFlyerModule.AppsFlyer.logEvent({ eventName, eventValue }).catch(() => {})
+  }
+
+  private datadogInitialized = false
+
+  private sendDatadogFunnel(step: number, name: string): void {
+    if (!this.datadogInitialized) return
+    datadogTrackFunnel({ step: name, screenName: name, stepNumber: step }).catch(() => {})
+  }
+
+  private sendDatadogCustomEvent(eventName: string, params: Record<string, unknown>): void {
+    if (!this.datadogInitialized) return
+    datadogTrackCustom({ name: eventName, ...params }).catch(() => {})
   }
 
   // Ads implementation
@@ -304,6 +320,20 @@ export class CapacitorPlatform implements PlatformService {
     },
   }
 
+  private initDatadogAsync(): void {
+    const endpoint = (import.meta as any).env?.VITE_OTEL_EXPORTER_OTLP_ENDPOINT as string | undefined
+    if (!endpoint || endpoint === "your_otel_endpoint_here") {
+      console.log(`${LOG_PREFIX} Datadog analytics: VITE_OTEL_EXPORTER_OTLP_ENDPOINT not set, using default`)
+    }
+    const url = endpoint && endpoint !== "your_otel_endpoint_here" ? endpoint : "https://otel.run.game"
+    const platform = Capacitor.getPlatform() as "ios" | "android" | "web"
+    const serviceName = (import.meta as any).env?.VITE_OTEL_SERVICE_NAME as string | undefined ?? "burgertime-capacitor"
+    const serviceVersion = (import.meta as any).env?.VITE_OTEL_SERVICE_VERSION as string | undefined ?? "0.0.0"
+    initDatadogAnalytics({ endpoint: url, serviceName, serviceVersion, platform })
+    this.datadogInitialized = true
+    console.log(`${LOG_PREFIX} Datadog analytics: initialized (${platform})`)
+  }
+
   private async initAppsFlyerAsync(): Promise<void> {
     console.log(`${LOG_PREFIX} AppsFlyer: initAppsFlyerAsync() called (native platform)`)
 
@@ -364,8 +394,9 @@ export class CapacitorPlatform implements PlatformService {
   async initializeAsync(options?: { usePreloader?: boolean }): Promise<PlatformContext> {
     console.log(`${LOG_PREFIX} initializeAsync()`, options)
 
-    // Init AppsFlyer on native only (Android/iOS) - enables retention, installs, sessions
+    // Init AppsFlyer + Datadog analytics on native only (Android/iOS)
     if (Capacitor.isNativePlatform()) {
+      this.initDatadogAsync()
       await this.initAppsFlyerAsync()
     }
 

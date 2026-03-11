@@ -11,7 +11,8 @@
         "format": "prettier --write .",
         "format:check": "prettier --check .",
         "postinstall": "node scripts/postinstall.mjs",
-        "gen-docs-index": "node scripts/gen-docs-index.mjs && node scripts/update-docs-index.mjs"
+        "gen-docs-index": "node scripts/gen-docs-index.mjs && node scripts/update-docs-index.mjs",
+        "test:datadog": "npx tsx src/platform/datadog-analytics/test-send.ts"
     },
     "repository": {
         "type": "git",
