@@ -103,13 +103,13 @@ export class CapacitorPlatform implements PlatformService {
   readonly analytics: PlatformAnalytics = {
     trackFunnelStep: (step: number, name: string) => {
       console.log(`${LOG_PREFIX} analytics.trackFunnelStep(${step}, "${name}")`)
-      this.sendAppsFlyerEvent(`funnel_step_${step}`, { af_content: name })
       this.sendDatadogFunnel(step, name)
+      this.sendAppsFlyerEvent(`funnel_step_${step}`, { af_content: name })
     },
     recordCustomEvent: (eventName: string, params?: Record<string, unknown>) => {
       console.log(`${LOG_PREFIX} analytics.recordCustomEvent("${eventName}")`, params)
-      this.sendAppsFlyerEvent(eventName, params ?? {})
       this.sendDatadogCustomEvent(eventName, params ?? {})
+      this.sendAppsFlyerEvent(eventName, params ?? {})
     },
   }
 
@@ -249,16 +249,27 @@ export class CapacitorPlatform implements PlatformService {
       delaySeconds: number,
       notificationId?: string
     ): Promise<void> => {
+      // Only schedule on native (Android/iOS). On web, skip to avoid permission prompts and "blocked" warnings.
+      if (!Capacitor.isNativePlatform()) {
+        return
+      }
+
       const id = notificationId ? stringToNotificationId(notificationId) : Date.now()
       console.log(`${LOG_PREFIX} notifications.scheduleAsync("${title}", "${body}", ${delaySeconds}s, id=${id})`)
-      
+
       try {
-        // Request permission first
-        const permission = await LocalNotifications.requestPermissions()
-        console.log(`${LOG_PREFIX} notifications: permission status =`, permission.display)
-        
+        // Check permission first; only request if we might get granted (avoids "blocked" warning when user denied repeatedly)
+        const existing = await LocalNotifications.checkPermissions()
+        let permission = existing
+        if (existing.display !== 'granted') {
+          if (existing.display === 'denied') {
+            console.log(`${LOG_PREFIX} notifications: permission denied, skipping`)
+            return
+          }
+          permission = await LocalNotifications.requestPermissions()
+        }
         if (permission.display !== 'granted') {
-          console.warn(`${LOG_PREFIX} notifications: permission not granted (${permission.display})`)
+          console.log(`${LOG_PREFIX} notifications: permission not granted (${permission.display})`)
           return
         }
 
@@ -281,8 +292,7 @@ export class CapacitorPlatform implements PlatformService {
             },
           ],
         })
-        
-        // Verify it was scheduled
+
         const pending = await LocalNotifications.getPending()
         console.log(`${LOG_PREFIX} notifications.scheduleAsync() => scheduled successfully, pending count: ${pending.notifications.length}`)
       } catch (error) {
@@ -387,9 +397,10 @@ export class CapacitorPlatform implements PlatformService {
   async initializeAsync(options?: { usePreloader?: boolean }): Promise<PlatformContext> {
     console.log(`${LOG_PREFIX} initializeAsync()`, options)
 
-    // Init AppsFlyer + Datadog analytics on native only (Android/iOS)
+    // Datadog: init for all Capacitor builds (web dev + native) so gameplay events are sent
+    this.initDatadogAsync()
+    // AppsFlyer: native only (Android/iOS)
     if (Capacitor.isNativePlatform()) {
-      this.initDatadogAsync()
       await this.initAppsFlyerAsync()
     }
 

@@ -22,19 +22,39 @@ function toOtlpAttributes(data: Record<string, unknown>): { key: string; value: 
   return Object.entries(data).map(([key, value]) => ({ key, value: toOtlpValue(value) }));
 }
 
+function generateSessionId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
 let config = {
   endpoint: OTEL_ENDPOINT.replace(/\/$/, ''),
   serviceName: 'unknown',
   serviceVersion: '0.0.0',
   platform: 'web' as 'ios' | 'android' | 'web',
+  sessionId: '',
 };
 
 function init(options?: { serviceName?: string; serviceVersion?: string; platform?: 'ios' | 'android' | 'web' }): void {
+  config.sessionId = generateSessionId();
   if (options) {
     if (options.serviceName !== undefined) config.serviceName = options.serviceName;
     if (options.serviceVersion !== undefined) config.serviceVersion = options.serviceVersion;
     if (options.platform !== undefined) config.platform = options.platform;
   }
+}
+
+function getEndpoint(): string {
+  // On localhost, use Vite proxy so the request is same-origin (no CORS). Requires demos dev server with /api/otel proxy.
+  if (typeof window !== 'undefined') {
+    const host = window.location?.hostname ?? ''
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return `${window.location.origin}/api/otel`
+    }
+  }
+  return config.endpoint
 }
 
 function send(attributes: Record<string, unknown>, body: string): Promise<boolean> {
@@ -57,7 +77,13 @@ function send(attributes: Record<string, unknown>, body: string): Promise<boolea
                 severityText: 'INFO',
                 severityNumber: 9,
                 body: { stringValue: body },
-                attributes: toOtlpAttributes({ timestamp: Date.now(), platform: config.platform, ...attributes }),
+                attributes: toOtlpAttributes({
+                  timestamp: Date.now(),
+                  platform: config.platform,
+                  service_name: config.serviceName,
+                  session_id: config.sessionId,
+                  ...attributes,
+                }),
               },
             ],
           },
@@ -65,7 +91,7 @@ function send(attributes: Record<string, unknown>, body: string): Promise<boolea
       },
     ],
   };
-  return fetch(`${config.endpoint}${LOGS_PATH}`, {
+  return fetch(`${getEndpoint()}${LOGS_PATH}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

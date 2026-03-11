@@ -41,4 +41,4 @@ Or with env:
 OTEL_EXPORTER_OTLP_ENDPOINT=https://otel.run.game npx tsx venus-three/src/platform/datadog-analytics/test-send.ts
 ```
 
-**Databricks:** Table `venus-dev`.events.raw_events, column `raw_json`. Filter by `event_type = 'datadog_analytics_test'` or `service_name = 'datadog-analytics-test'`.
+**Databricks:** Table `venus-dev`.events.raw_events, column `raw_json`. Filter by `event_type` (e.g. `datadog_analytics_test` or `step_funnel`). Each event also includes `service_name` and `service_version` in the payload so you can filter gameplay (`service_name = 'burgertime-capacitor'`) from test (`service_name = 'datadog-analytics-test'`).

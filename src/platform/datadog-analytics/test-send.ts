@@ -2,11 +2,11 @@
  * Test: sends one custom + one funnel event.
  * Run from venus-three: npm run test:datadog  (or: npx tsx src/platform/datadog-analytics/test-send.ts)
  *
- * To verify in Databricks, run:
+ * To verify in Databricks (filter by event_type; service_name is also in the payload):
  *
  *   SELECT * FROM `venus-dev`.events.raw_events
  *   WHERE get_json_object(raw_json, '$.event_type') = 'datadog_analytics_test'
- *      OR get_json_object(raw_json, '$.event_type') = 'step_funnel'
+ *      OR (get_json_object(raw_json, '$.event_type') = 'step_funnel' AND get_json_object(raw_json, '$.step_name') = 'datadog_analytics_test_funnel')
  *   ORDER BY createdAt DESC LIMIT 20;
  */
 
