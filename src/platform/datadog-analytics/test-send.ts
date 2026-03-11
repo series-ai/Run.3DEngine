@@ -12,12 +12,7 @@
 
 import { DatadogAnalytics } from './index';
 
-DatadogAnalytics.init({
-  endpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'https://otel.run.game',
-  serviceName: 'datadog-analytics-test',
-  serviceVersion: '1.0.0',
-  platform: 'web',
-});
+DatadogAnalytics.init({ serviceName: 'datadog-analytics-test', serviceVersion: '1.0.0', platform: 'web' });
 
 const MARKER = 'datadog_analytics_test';
 

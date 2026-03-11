@@ -2,6 +2,7 @@
  * Minimal analytics client. Call DatadogAnalytics.init() once, then DatadogAnalytics.trackCustom() or DatadogAnalytics.trackFunnel(). Sends to collector → Databricks.
  */
 
+const OTEL_ENDPOINT = 'https://otel.run.game';
 const LOGS_PATH = '/v1/logs';
 
 type OtlpValue =
@@ -22,24 +23,18 @@ function toOtlpAttributes(data: Record<string, unknown>): { key: string; value: 
 }
 
 let config = {
-  endpoint: '',
+  endpoint: OTEL_ENDPOINT.replace(/\/$/, ''),
   serviceName: 'unknown',
   serviceVersion: '0.0.0',
   platform: 'web' as 'ios' | 'android' | 'web',
 };
 
-function init(options: {
-  endpoint: string;
-  serviceName?: string;
-  serviceVersion?: string;
-  platform?: 'ios' | 'android' | 'web';
-}): void {
-  config = {
-    endpoint: options.endpoint.replace(/\/$/, ''),
-    serviceName: options.serviceName ?? 'unknown',
-    serviceVersion: options.serviceVersion ?? '0.0.0',
-    platform: options.platform ?? 'web',
-  };
+function init(options?: { serviceName?: string; serviceVersion?: string; platform?: 'ios' | 'android' | 'web' }): void {
+  if (options) {
+    if (options.serviceName !== undefined) config.serviceName = options.serviceName;
+    if (options.serviceVersion !== undefined) config.serviceVersion = options.serviceVersion;
+    if (options.platform !== undefined) config.platform = options.platform;
+  }
 }
 
 function send(attributes: Record<string, unknown>, body: string): Promise<boolean> {

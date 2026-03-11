@@ -321,15 +321,8 @@ export class CapacitorPlatform implements PlatformService {
   }
 
   private initDatadogAsync(): void {
-    const endpoint = (import.meta as any).env?.VITE_OTEL_EXPORTER_OTLP_ENDPOINT as string | undefined
-    if (!endpoint || endpoint === "your_otel_endpoint_here") {
-      console.log(`${LOG_PREFIX} Datadog analytics: VITE_OTEL_EXPORTER_OTLP_ENDPOINT not set, using default`)
-    }
-    const url = endpoint && endpoint !== "your_otel_endpoint_here" ? endpoint : "https://otel.run.game"
-    const platform = Capacitor.getPlatform() as "ios" | "android" | "web"
-    const serviceName = (import.meta as any).env?.VITE_OTEL_SERVICE_NAME as string | undefined ?? "burgertime-capacitor"
-    const serviceVersion = (import.meta as any).env?.VITE_OTEL_SERVICE_VERSION as string | undefined ?? "0.0.0"
-    DatadogAnalytics.init({ endpoint: url, serviceName, serviceVersion, platform })
+    const platform = Capacitor.getPlatform() as 'ios' | 'android' | 'web'
+    DatadogAnalytics.init({ serviceName: 'burgertime-capacitor', serviceVersion: '0.0.0', platform })
     this.datadogInitialized = true
     console.log(`${LOG_PREFIX} Datadog analytics: initialized (${platform})`)
   }
