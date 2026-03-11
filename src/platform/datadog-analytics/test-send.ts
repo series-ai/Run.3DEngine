@@ -10,9 +10,9 @@
  *   ORDER BY createdAt DESC LIMIT 20;
  */
 
-import { init, trackCustom, trackFunnel } from './index';
+import { DatadogAnalytics } from './index';
 
-init({
+DatadogAnalytics.init({
   endpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'https://otel.run.game',
   serviceName: 'datadog-analytics-test',
   serviceVersion: '1.0.0',
@@ -24,7 +24,7 @@ const MARKER = 'datadog_analytics_test';
 async function main() {
   console.log('Sending test events (search for "%s" or service "datadog-analytics-test")...\n', MARKER);
 
-  const ok1 = await trackCustom({
+  const ok1 = await DatadogAnalytics.trackCustom({
     name: MARKER,
     screen: 'test_script',
     desc: 'Test from datadog-analytics/test-send.ts',
@@ -32,7 +32,7 @@ async function main() {
   });
   console.log('trackCustom:', ok1 ? 'OK' : 'FAIL');
 
-  const ok2 = await trackFunnel({
+  const ok2 = await DatadogAnalytics.trackFunnel({
     step: `${MARKER}_funnel`,
     screenName: 'test_script',
     stepNumber: 0,

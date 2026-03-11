@@ -1,5 +1,5 @@
 /**
- * Minimal analytics client. init() once, then trackCustom() or trackFunnel(). Sends to collector → Databricks.
+ * Minimal analytics client. Call DatadogAnalytics.init() once, then DatadogAnalytics.trackCustom() or DatadogAnalytics.trackFunnel(). Sends to collector → Databricks.
  */
 
 const LOGS_PATH = '/v1/logs';
@@ -28,7 +28,7 @@ let config = {
   platform: 'web' as 'ios' | 'android' | 'web',
 };
 
-export function init(options: {
+function init(options: {
   endpoint: string;
   serviceName?: string;
   serviceVersion?: string;
@@ -79,7 +79,7 @@ function send(attributes: Record<string, unknown>, body: string): Promise<boolea
     .catch(() => false);
 }
 
-export function trackCustom(params: { name: string; screen?: string; desc?: string; [key: string]: unknown }): Promise<boolean> {
+function trackCustom(params: { name: string; screen?: string; desc?: string; [key: string]: unknown }): Promise<boolean> {
   const { name, screen, desc, ...rest } = params;
   return send(
     { event_type: name, screen_name: screen ?? '', ...(desc !== undefined && { description: desc }), ...rest },
@@ -87,7 +87,7 @@ export function trackCustom(params: { name: string; screen?: string; desc?: stri
   );
 }
 
-export function trackFunnel(params: {
+function trackFunnel(params: {
   step: string;
   screenName: string;
   stepNumber?: number;
@@ -100,3 +100,10 @@ export function trackFunnel(params: {
     `step_funnel:${step}`
   );
 }
+
+/** Datadog analytics API: init once, then trackCustom / trackFunnel. Type DatadogAnalytics. to see all methods. */
+export const DatadogAnalytics = {
+  init,
+  trackCustom,
+  trackFunnel,
+};

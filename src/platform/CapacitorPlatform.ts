@@ -12,7 +12,7 @@ import { LocalNotifications } from "@capacitor/local-notifications"
 import { App } from "@capacitor/app"
 import { SplashScreen } from "@capacitor/splash-screen"
 
-import { init as initDatadogAnalytics, trackCustom as datadogTrackCustom, trackFunnel as datadogTrackFunnel } from "./datadog-analytics"
+import { DatadogAnalytics } from "./datadog-analytics"
 
 import type {
   PlatformService,
@@ -122,12 +122,12 @@ export class CapacitorPlatform implements PlatformService {
 
   private sendDatadogFunnel(step: number, name: string): void {
     if (!this.datadogInitialized) return
-    datadogTrackFunnel({ step: name, screenName: name, stepNumber: step }).catch(() => {})
+    DatadogAnalytics.trackFunnel({ step: name, screenName: name, stepNumber: step }).catch(() => {})
   }
 
   private sendDatadogCustomEvent(eventName: string, params: Record<string, unknown>): void {
     if (!this.datadogInitialized) return
-    datadogTrackCustom({ name: eventName, ...params }).catch(() => {})
+    DatadogAnalytics.trackCustom({ name: eventName, ...params }).catch(() => {})
   }
 
   // Ads implementation
@@ -329,7 +329,7 @@ export class CapacitorPlatform implements PlatformService {
     const platform = Capacitor.getPlatform() as "ios" | "android" | "web"
     const serviceName = (import.meta as any).env?.VITE_OTEL_SERVICE_NAME as string | undefined ?? "burgertime-capacitor"
     const serviceVersion = (import.meta as any).env?.VITE_OTEL_SERVICE_VERSION as string | undefined ?? "0.0.0"
-    initDatadogAnalytics({ endpoint: url, serviceName, serviceVersion, platform })
+    DatadogAnalytics.init({ endpoint: url, serviceName, serviceVersion, platform })
     this.datadogInitialized = true
     console.log(`${LOG_PREFIX} Datadog analytics: initialized (${platform})`)
   }
