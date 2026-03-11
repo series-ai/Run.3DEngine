@@ -42,3 +42,30 @@ OTEL_EXPORTER_OTLP_ENDPOINT=https://otel.run.game npx tsx venus-three/src/platfo
 ```
 
 **Databricks:** Table `venus-dev`.events.raw_events, column `raw_json`. Filter by `event_type` (e.g. `datadog_analytics_test` or `step_funnel`). Each event also includes `service_name` and `service_version` in the payload so you can filter gameplay (`service_name = 'burgertime-capacitor'`) from test (`service_name = 'datadog-analytics-test'`).
+
+## Android build and verifying Android events
+
+From repo root:
+
+- **Build and sync to Android:** `npm run build:all:android` (builds engine + demos capacitor + cap sync).
+- **Build debug APK:** `npm run build:android:apk` (build:all:android + Gradle assembleDebug).
+- **Open Android Studio:** `npm run open:android`.
+
+**CORS / native HTTP:** The demos app enables `CapacitorHttp` in `capacitor.config.ts` so `fetch()` uses the native HTTP client on Android/iOS and bypasses WebView CORS. Rebuild and sync after changing that config.
+
+**Check APK logs (device connected via USB):**
+```bash
+adb logcat | grep -E "DatadogAnalytics|Capacitor/Console|Capacitor.*otel"
+```
+Look for `[DatadogAnalytics] send failed` or `send error` if events aren’t reaching the server.
+
+To verify analytics on Android: install and run the app on a device/emulator, play the game, then in Databricks run:
+
+```sql
+SELECT *
+FROM `venus-dev`.events.raw_events
+WHERE get_json_object(raw_json, '$.service_name') = 'burgertime-capacitor'
+  AND get_json_object(raw_json, '$.platform') = 'android'
+ORDER BY get_json_object(raw_json, '$.timestamp') DESC
+LIMIT 50;
+```

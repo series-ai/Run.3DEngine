@@ -47,7 +47,11 @@ function init(options?: { serviceName?: string; serviceVersion?: string; platfor
 }
 
 function getEndpoint(): string {
-  // On localhost, use Vite proxy so the request is same-origin (no CORS). Requires demos dev server with /api/otel proxy.
+  // Native (android/ios): always use real endpoint; device has no proxy.
+  if (config.platform === 'android' || config.platform === 'ios') {
+    return config.endpoint
+  }
+  // Web on localhost: use Vite proxy so same-origin (no CORS). Requires demos dev server with /api/otel proxy.
   if (typeof window !== 'undefined') {
     const host = window.location?.hostname ?? ''
     if (host === 'localhost' || host === '127.0.0.1') {
@@ -91,13 +95,24 @@ function send(attributes: Record<string, unknown>, body: string): Promise<boolea
       },
     ],
   };
-  return fetch(`${getEndpoint()}${LOGS_PATH}`, {
+  const url = `${getEndpoint()}${LOGS_PATH}`
+  return fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
-    .then((res) => res.ok)
-    .catch(() => false);
+    .then((res) => {
+      if (!res.ok && typeof console !== 'undefined' && console.warn) {
+        console.warn('[DatadogAnalytics] send failed:', res.status, url)
+      }
+      return res.ok
+    })
+    .catch((err) => {
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[DatadogAnalytics] send error:', err)
+      }
+      return false
+    })
 }
 
 function trackCustom(params: { name: string; screen?: string; desc?: string; [key: string]: unknown }): Promise<boolean> {
