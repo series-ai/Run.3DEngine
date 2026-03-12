@@ -31,6 +31,13 @@ export interface StowKitLoadConfig {
     draco?: string // default: "stowkit/draco/"
     wasm?: string // default: "stowkit_reader.wasm"
   }
+
+  /**
+   * Optional callbacks to wrap fetch, arrayBuffer, and unpack in your step timing (e.g. startTimingStep/endTimingStep).
+   * Called with labels like "StowKit: fetch - burgershop", "StowKit: arrayBuffer - burgershop", "StowKit: unpack - burgershop".
+   */
+  onTimingStart?: (label: string) => void
+  onTimingEnd?: (label: string) => void
 }
 
 const DEFAULT_DECODER_PATHS = {
@@ -64,6 +71,8 @@ export class StowKitSystem {
   private materialConverter?: (material: THREE.Material) => THREE.Material
   private decoderPaths = { ...DEFAULT_DECODER_PATHS }
   private fetchBlob?: (path: string) => Promise<Blob>
+  private onTimingStart?: (label: string) => void
+  private onTimingEnd?: (label: string) => void
 
   // Loaded packs by alias
   private packs: Map<string, StowKitPack> = new Map()
@@ -118,6 +127,8 @@ export class StowKitSystem {
     // Store config
     this.materialConverter = config.materialConverter
     this.fetchBlob = config.fetchBlob
+    this.onTimingStart = config.onTimingStart
+    this.onTimingEnd = config.onTimingEnd
     if (config.decoderPaths) {
       this.decoderPaths = { ...DEFAULT_DECODER_PATHS, ...config.decoderPaths }
     }
@@ -140,14 +151,24 @@ export class StowKitSystem {
       }
 
       console.log(`[StowKitSystem] Loading pack "${mount.alias}" from ${mount.path}`)
+      const fetchLabel = `StowKit: fetch - ${mount.alias}`
+      this.onTimingStart?.(fetchLabel)
       const blob = await config.fetchBlob(mount.path)
-      const arrayBuffer = await blob.arrayBuffer()
+      this.onTimingEnd?.(fetchLabel)
 
+      const arrayBufferLabel = `StowKit: arrayBuffer - ${mount.alias}`
+      this.onTimingStart?.(arrayBufferLabel)
+      const arrayBuffer = await blob.arrayBuffer()
+      this.onTimingEnd?.(arrayBufferLabel)
+
+      const unpackLabel = `StowKit: unpack - ${mount.alias}`
+      this.onTimingStart?.(unpackLabel)
       const pack = await StowKitLoader.loadFromMemory(arrayBuffer, {
         basisPath: this.decoderPaths.basis,
         dracoPath: this.decoderPaths.draco,
         wasmPath: this.decoderPaths.wasm,
       })
+      this.onTimingEnd?.(unpackLabel)
 
       this.packs.set(mount.alias, pack)
     }
@@ -174,14 +195,24 @@ export class StowKitSystem {
     }
 
     console.log(`[StowKitSystem] Loading pack "${alias}" from ${path}`)
+    const fetchLabel = `StowKit: fetch - ${alias}`
+    this.onTimingStart?.(fetchLabel)
     const blob = await this.fetchBlob(path)
-    const arrayBuffer = await blob.arrayBuffer()
+    this.onTimingEnd?.(fetchLabel)
 
+    const arrayBufferLabel = `StowKit: arrayBuffer - ${alias}`
+    this.onTimingStart?.(arrayBufferLabel)
+    const arrayBuffer = await blob.arrayBuffer()
+    this.onTimingEnd?.(arrayBufferLabel)
+
+    const unpackLabel = `StowKit: unpack - ${alias}`
+    this.onTimingStart?.(unpackLabel)
     const pack = await StowKitLoader.loadFromMemory(arrayBuffer, {
       basisPath: this.decoderPaths.basis,
       dracoPath: this.decoderPaths.draco,
       wasmPath: this.decoderPaths.wasm,
     })
+    this.onTimingEnd?.(unpackLabel)
 
     this.packs.set(alias, pack)
     console.log(`[StowKitSystem] Pack "${alias}" loaded`)
