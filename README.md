@@ -1,3 +1,5 @@
+DEPRECATED: REPO MOVED TO -> https://github.com/series-ai/rundot-stowkit/tree/main/stowkit-engine
+
 # Run.3DEngine
 
 A Three.js-based game engine with ECS architecture, physics, navigation, and comprehensive game systems.
